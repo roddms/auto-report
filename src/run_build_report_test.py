@@ -14,6 +14,7 @@ engine = create_engine(
     connect_args={"options": "-csearch_path=regionmonitor"}
 )
 
+
 with open("config/slides_text.yml", encoding="utf-8") as f:
     cfg = yaml.safe_load(f)
 
