@@ -7,8 +7,10 @@ from ppt_fillers import apply_tokens_and_charts
 
 load_dotenv(find_dotenv(), override=True)
 
+db_url = os.getenv("DB_URL")
+
 engine = create_engine(
-    "", 
+    db_url, 
     connect_args={"options": "-csearch_path=regionmonitor"}
 )
 
