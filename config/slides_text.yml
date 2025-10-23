@@ -3097,7 +3097,7 @@ slides:
                 AND s.STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
               GROUP BY i.svc_induty_sclas_cd_nm
             )
-            SELECT (amt/NULLIF(cnt,0))/1e4   -- 만원 단위
+            SELECT (amt/NULLIF(cnt,0))/1e4
             FROM avg10
             WHERE cnt > 0
             ORDER BY (amt/NULLIF(cnt,0)) DESC
@@ -3427,7 +3427,7 @@ slides:
             WHERE REGION_CD = CAST(:REGION_CD AS VARCHAR)
               AND STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
           )
-          SELECT to_char(ROUND(v/100000000.0, 1), 'FM999,999,990D0') || '억' FROM age;
+          SELECT to_char(ROUND(v/100000000.0, 0), 'FM999,999,999') || '억' FROM age;
 
 
       SL15_4:
@@ -3447,7 +3447,7 @@ slides:
             WHERE REGION_CD = CAST(:REGION_CD AS VARCHAR)
               AND STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
           )
-          SELECT to_char(ROUND(v/100000000.0, 1), 'FM999,999,990D0') || '억' FROM age;
+          SELECT to_char(ROUND(v/100000000.0, 0), 'FM999,999,999') || '억' FROM age;
 
 
       SL15_6:
@@ -3467,7 +3467,7 @@ slides:
             WHERE REGION_CD = CAST(:REGION_CD AS VARCHAR)
               AND STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
           )
-          SELECT to_char(ROUND(v/100000000.0, 1), 'FM999,999,990D0') || '억' FROM age;
+          SELECT to_char(ROUND(v/100000000.0, 0), 'FM999,999,999') || '억' FROM age;
 
 
       SL15_8:
@@ -3486,7 +3486,7 @@ slides:
             WHERE REGION_CD = CAST(:REGION_CD AS VARCHAR)
               AND STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
           )
-          SELECT to_char(ROUND(v/100000000.0, 1), 'FM999,999,990D0') || '억' FROM age;
+          SELECT to_char(ROUND(v/100000000.0, 0), 'FM999,999,999') || '억' FROM age;
 
 
       SL15_10:
@@ -3505,7 +3505,7 @@ slides:
             WHERE REGION_CD = CAST(:REGION_CD AS VARCHAR)
               AND STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
           )
-          SELECT to_char(ROUND(v/100000000.0, 1), 'FM999,999,990D0') || '억' FROM age;
+          SELECT to_char(ROUND(v/100000000.0, 0), 'FM999,999,999') || '억' FROM age;
 
 
       SL15_12:
@@ -3524,7 +3524,7 @@ slides:
             WHERE REGION_CD = CAST(:REGION_CD AS VARCHAR)
               AND STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
           )
-          SELECT to_char(ROUND(v/100000000.0, 1), 'FM999,999,990D0') || '억' FROM age;
+          SELECT to_char(ROUND(v/100000000.0, 0), 'FM999,999,999') || '억' FROM age;
 
 
       SL15_14:
@@ -3593,7 +3593,7 @@ slides:
           SELECT hr
           FROM (
             SELECT
-              unnest(ARRAY[0,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23]) AS hr,
+              unnest(ARRAY['0시-6시','7시','8시','9시','10시','11시','12시','13시','14시','15시','16시','17시','18시','19시','20시','21시','22시','23시']) AS hr,
               unnest(ARRAY[t0,t7,t8,t9,t10,t11,t12,t13,t14,t15,t16,t17,t18,t19,t20,t21,t22,t23]) AS amt
             FROM s
           ) x
@@ -3664,7 +3664,7 @@ slides:
           SELECT hr
           FROM (
             SELECT
-              unnest(ARRAY[0,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23]) AS hr,
+              unnest(ARRAY['0시-6시','7시','8시','9시','10시','11시','12시','13시','14시','15시','16시','17시','18시','19시','20시','21시','22시','23시']) AS hr,
               unnest(ARRAY[s.t0,s.t7,s.t8,s.t9,s.t10,s.t11,s.t12,s.t13,s.t14,s.t15,s.t16,s.t17,s.t18,s.t19,s.t20,s.t21,s.t22,s.t23]) AS amt
             FROM s JOIN top USING (SVC_INDUTY_SCLAS_CD)
           ) x
@@ -3715,7 +3715,7 @@ slides:
           SELECT hr
           FROM (
             SELECT
-              unnest(ARRAY[0,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23]) AS hr,
+              unnest(ARRAY['0시-6시','7시','8시','9시','10시','11시','12시','13시','14시','15시','16시','17시','18시','19시','20시','21시','22시','23시']) AS hr,
               unnest(ARRAY[s.t0,s.t7,s.t8,s.t9,s.t10,s.t11,s.t12,s.t13,s.t14,s.t15,s.t16,s.t17,s.t18,s.t19,s.t20,s.t21,s.t22,s.t23]) AS amt
             FROM s JOIN top USING (SVC_INDUTY_SCLAS_CD)
           ) x
@@ -3766,7 +3766,7 @@ slides:
           SELECT hr
           FROM (
             SELECT
-              unnest(ARRAY[0,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23]) AS hr,
+              unnest(ARRAY['0시-6시','7시','8시','9시','10시','11시','12시','13시','14시','15시','16시','17시','18시','19시','20시','21시','22시','23시']) AS hr,
               unnest(ARRAY[s.t0,s.t7,s.t8,s.t9,s.t10,s.t11,s.t12,s.t13,s.t14,s.t15,s.t16,s.t17,s.t18,s.t19,s.t20,s.t21,s.t22,s.t23]) AS amt
             FROM s JOIN top USING (SVC_INDUTY_SCLAS_CD)
           ) x
@@ -3817,7 +3817,7 @@ slides:
           SELECT hr
           FROM (
             SELECT
-              unnest(ARRAY[0,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23]) AS hr,
+              unnest(ARRAY['0시-6시','7시','8시','9시','10시','11시','12시','13시','14시','15시','16시','17시','18시','19시','20시','21시','22시','23시']) AS hr,
               unnest(ARRAY[s.t0,s.t7,s.t8,s.t9,s.t10,s.t11,s.t12,s.t13,s.t14,s.t15,s.t16,s.t17,s.t18,s.t19,s.t20,s.t21,s.t22,s.t23]) AS amt
             FROM s JOIN top USING (SVC_INDUTY_SCLAS_CD)
           ) x
@@ -3868,7 +3868,7 @@ slides:
           SELECT hr
           FROM (
             SELECT
-              unnest(ARRAY[0,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23]) AS hr,
+              unnest(ARRAY['0시-6시','7시','8시','9시','10시','11시','12시','13시','14시','15시','16시','17시','18시','19시','20시','21시','22시','23시']) AS hr,
               unnest(ARRAY[s.t0,s.t7,s.t8,s.t9,s.t10,s.t11,s.t12,s.t13,s.t14,s.t15,s.t16,s.t17,s.t18,s.t19,s.t20,s.t21,s.t22,s.t23]) AS amt
             FROM s JOIN top USING (SVC_INDUTY_SCLAS_CD)
           ) x
@@ -4101,7 +4101,7 @@ slides:
           SELECT hr
           FROM (
             SELECT
-              unnest(ARRAY[0,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23]) AS hr,
+              unnest(ARRAY['0시-6시','7시','8시','9시','10시','11시','12시','13시','14시','15시','16시','17시','18시','19시','20시','21시','22시','23시']) AS hr,
               unnest(ARRAY[d0,d7,d8,d9,d10,d11,d12,d13,d14,d15,d16,d17,d18,d19,d20,d21,d22,d23]) AS cnt
             FROM s
           ) x
@@ -4173,7 +4173,7 @@ slides:
           SELECT hr
           FROM (
             SELECT
-              unnest(ARRAY[0-6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23]) AS hr,
+              unnest(ARRAY['0시-6시','7시','8시','9시','10시','11시','12시','13시','14시','15시','16시','17시','18시','19시','20시','21시','22시','23시']) AS hr,
               unnest(ARRAY[s.d0,s.d7,s.d8,s.d9,s.d10,s.d11,s.d12,s.d13,s.d14,s.d15,s.d16,s.d17,s.d18,s.d19,s.d20,s.d21,s.d22,s.d23]) AS cnt
             FROM s JOIN top USING (SVC_INDUTY_SCLAS_CD)
           ) x
@@ -4225,7 +4225,7 @@ slides:
           SELECT hr
           FROM (
             SELECT
-              unnest(ARRAY[0-6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23]) AS hr,
+              unnest(ARRAY['0시-6시','7시','8시','9시','10시','11시','12시','13시','14시','15시','16시','17시','18시','19시','20시','21시','22시','23시']) AS hr,
               unnest(ARRAY[s.d0,s.d7,s.d8,s.d9,s.d10,s.d11,s.d12,s.d13,s.d14,s.d15,s.d16,s.d17,s.d18,s.d19,s.d20,s.d21,s.d22,s.d23]) AS cnt
             FROM s JOIN top USING (SVC_INDUTY_SCLAS_CD)
           ) x
@@ -4273,7 +4273,7 @@ slides:
             LIMIT 1 OFFSET 2 )
           SELECT hr
           FROM (
-            SELECT unnest(ARRAY[0-6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23]) AS hr,
+            SELECT unnest(ARRAY['0시-6시','7시','8시','9시','10시','11시','12시','13시','14시','15시','16시','17시','18시','19시','20시','21시','22시','23시']) AS hr,
                   unnest(ARRAY[s.d0,s.d7,s.d8,s.d9,s.d10,s.d11,s.d12,s.d13,s.d14,s.d15,s.d16,s.d17,s.d18,s.d19,s.d20,s.d21,s.d22,s.d23]) AS cnt
             FROM s JOIN top USING (SVC_INDUTY_SCLAS_CD)
           ) x ORDER BY cnt DESC, hr LIMIT 1;
@@ -4319,7 +4319,7 @@ slides:
             LIMIT 1 OFFSET 3 )
           SELECT hr
           FROM (
-            SELECT unnest(ARRAY[0-6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23]) AS hr,
+            SELECT unnest(ARRAY['0시-6시','7시','8시','9시','10시','11시','12시','13시','14시','15시','16시','17시','18시','19시','20시','21시','22시','23시']) AS hr,
                   unnest(ARRAY[s.d0,s.d7,s.d8,s.d9,s.d10,s.d11,s.d12,s.d13,s.d14,s.d15,s.d16,s.d17,s.d18,s.d19,s.d20,s.d21,s.d22,s.d23]) AS cnt
             FROM s JOIN top USING (SVC_INDUTY_SCLAS_CD)
           ) x ORDER BY cnt DESC, hr LIMIT 1;
@@ -4365,7 +4365,7 @@ slides:
             LIMIT 1 OFFSET 4 )
           SELECT hr
           FROM (
-            SELECT unnest(ARRAY[0,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23]) AS hr,
+            SELECT unnest(ARRAY['0시-6시','7시','8시','9시','10시','11시','12시','13시','14시','15시','16시','17시','18시','19시','20시','21시','22시','23시']) AS hr,
                   unnest(ARRAY[s.d0,s.d7,s.d8,s.d9,s.d10,s.d11,s.d12,s.d13,s.d14,s.d15,s.d16,s.d17,s.d18,s.d19,s.d20,s.d21,s.d22,s.d23]) AS cnt
             FROM s JOIN top USING (SVC_INDUTY_SCLAS_CD)
           ) x ORDER BY cnt DESC, hr LIMIT 1;
@@ -4415,7 +4415,7 @@ slides:
       # 관내/관외/인접 : 금액(억), 건수, 최다 업종
       SL18_1:
         sql: | # 관내 금액(억)
-          SELECT to_char(ROUND(SUM(WHTHRC_SALAMT) / 100000000.0, 1), 'FM999,999,999,990.0')
+          SELECT to_char(ROUND(SUM(WHTHRC_SALAMT) / 100000000.0, 0), 'FM999,999,999,999')
           FROM regionmonitor.TB_INFLOW_SELNG
           WHERE REGION_CD = CAST(:REGION_CD AS VARCHAR)
             AND STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO;
@@ -4444,7 +4444,7 @@ slides:
 
       SL18_4:
         sql: | # 관외 금액(억)
-          SELECT to_char(ROUND(SUM(OUTHRC_SALAMT) / 100000000.0, 1), 'FM999,999,999,990.0')
+          SELECT to_char(ROUND(SUM(OUTHRC_SALAMT) / 100000000.0, 0), 'FM999,999,999,999')
           FROM regionmonitor.TB_INFLOW_SELNG
           WHERE REGION_CD = CAST(:REGION_CD AS VARCHAR)
             AND STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO;
@@ -4473,7 +4473,7 @@ slides:
 
       SL18_7:
         sql: | # 인접 금액(억)
-          SELECT to_char(ROUND(SUM(NEARBY_SALAMT) / 100000000.0, 1), 'FM999,999,999,990.0')
+          SELECT to_char(ROUND(SUM(NEARBY_SALAMT) / 100000000.0, 0), 'FM999,999,999,999')
           FROM regionmonitor.TB_INFLOW_SELNG
           WHERE REGION_CD = CAST(:REGION_CD AS VARCHAR)
             AND STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO;
@@ -4852,14 +4852,14 @@ slides:
       # 총액/건수/1건당 평균
       SL19_13:
         sql: | # 내국인 총 매출액(억)
-          SELECT to_char(ROUND(SUM(NATIVE_SALAMT)/100000000.0,1),'FM999,999,999,990.0')
+          SELECT to_char(ROUND(SUM(NATIVE_SALAMT)/100000000.0,0),'FM999,999,999,999')
           FROM regionmonitor.TB_NATION_SELNG
           WHERE REGION_CD = CAST(:REGION_CD AS VARCHAR)
             AND STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO;
 
       SL19_14:
         sql: | # 외국인 총 매출액(억)
-          SELECT to_char(ROUND(SUM(FRGNR_SALAMT)/100000000.0,1),'FM999,999,999,990.0')
+          SELECT to_char(ROUND(SUM(FRGNR_SALAMT)/100000000.0,0),'FM999,999,999,999')
           FROM regionmonitor.TB_NATION_SELNG
           WHERE REGION_CD = CAST(:REGION_CD AS VARCHAR)
             AND STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO;
