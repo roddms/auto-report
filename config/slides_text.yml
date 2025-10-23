@@ -1099,7 +1099,76 @@ slides:
             ORDER BY d.dte;
 
       SL5_chart_6:
+        category_sql: |
+          WITH cat AS (
+            SELECT lbl, ord
+            FROM unnest(
+              ARRAY['0-6','7','8','9','10','11','12','13','14','15','16','17','18','19','20','21','22','23']
+            ) WITH ORDINALITY AS t(lbl, ord)
+          )
+          SELECT lbl FROM cat ORDER BY ord;
 
+        series:
+          평균 방문인구(명): |
+            WITH d AS (
+              SELECT COUNT(DISTINCT STDR_YMD)::numeric AS days
+              FROM regionmonitor.TB_TMZON_VISIT_POPLTN
+              WHERE REGION_CD = CAST(:REGION_CD AS VARCHAR)
+                AND STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
+            ),
+            s AS (  -- 분자: 시간대별 합계
+              SELECT
+                SUM(COALESCE(T0_T6_VIPOP,0))  AS v0_6,
+                SUM(COALESCE(T7_VIPOP,0))     AS v7,
+                SUM(COALESCE(T8_VIPOP,0))     AS v8,
+                SUM(COALESCE(T9_VIPOP,0))     AS v9,
+                SUM(COALESCE(T10_VIPOP,0))    AS v10,
+                SUM(COALESCE(T11_VIPOP,0))    AS v11,
+                SUM(COALESCE(T12_VIPOP,0))    AS v12,
+                SUM(COALESCE(T13_VIPOP,0))    AS v13,
+                SUM(COALESCE(T14_VIPOP,0))    AS v14,
+                SUM(COALESCE(T15_VIPOP,0))    AS v15,
+                SUM(COALESCE(T16_VIPOP,0))    AS v16,
+                SUM(COALESCE(T17_VIPOP,0))    AS v17,
+                SUM(COALESCE(T18_VIPOP,0))    AS v18,
+                SUM(COALESCE(T19_VIPOP,0))    AS v19,
+                SUM(COALESCE(T20_VIPOP,0))    AS v20,
+                SUM(COALESCE(T21_VIPOP,0))    AS v21,
+                SUM(COALESCE(T22_VIPOP,0))    AS v22,
+                SUM(COALESCE(T23_VIPOP,0))    AS v23
+              FROM regionmonitor.TB_TMZON_VISIT_POPLTN
+              WHERE REGION_CD = CAST(:REGION_CD AS VARCHAR)
+                AND STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
+            ),
+            avgv AS (
+              SELECT
+                (v0_6 / NULLIF((SELECT days FROM d),0)) AS a0_6,
+                (v7   / NULLIF((SELECT days FROM d),0)) AS a7,
+                (v8   / NULLIF((SELECT days FROM d),0)) AS a8,
+                (v9   / NULLIF((SELECT days FROM d),0)) AS a9,
+                (v10  / NULLIF((SELECT days FROM d),0)) AS a10,
+                (v11  / NULLIF((SELECT days FROM d),0)) AS a11,
+                (v12  / NULLIF((SELECT days FROM d),0)) AS a12,
+                (v13  / NULLIF((SELECT days FROM d),0)) AS a13,
+                (v14  / NULLIF((SELECT days FROM d),0)) AS a14,
+                (v15  / NULLIF((SELECT days FROM d),0)) AS a15,
+                (v16  / NULLIF((SELECT days FROM d),0)) AS a16,
+                (v17  / NULLIF((SELECT days FROM d),0)) AS a17,
+                (v18  / NULLIF((SELECT days FROM d),0)) AS a18,
+                (v19  / NULLIF((SELECT days FROM d),0)) AS a19,
+                (v20  / NULLIF((SELECT days FROM d),0)) AS a20,
+                (v21  / NULLIF((SELECT days FROM d),0)) AS a21,
+                (v22  / NULLIF((SELECT days FROM d),0)) AS a22,
+                (v23  / NULLIF((SELECT days FROM d),0)) AS a23
+              FROM s
+            )
+            SELECT val
+            FROM (
+              SELECT unnest(ARRAY[
+                a0_6, a7, a8, a9, a10, a11, a12, a13, a14, a15, a16, a17, a18, a19, a20, a21, a22, a23
+              ]) AS val
+              FROM avgv
+            ) z;
 
 
 
@@ -1199,13 +1268,13 @@ slides:
             SELECT val
             FROM (
               SELECT '남자' AS lbl,
-                     ROUND(SUM(MVIPOP)::numeric / 10000, 0)::TEXT || '만명' AS val
+                    (SUM(MVIPOP)::NUMERIC) AS val
               FROM regionmonitor.TB_SEXDSTN_VISIT_POPLTN
               WHERE REGION_CD = :REGION_CD
                 AND STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
               UNION ALL
               SELECT '여자',
-                     ROUND(SUM(FVIPOP)::numeric / 10000, 0)::TEXT || '만명'
+                    SUM(FVIPOP)::NUMERIC
               FROM regionmonitor.TB_SEXDSTN_VISIT_POPLTN
               WHERE REGION_CD = :REGION_CD
                 AND STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO

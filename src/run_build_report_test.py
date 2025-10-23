@@ -214,7 +214,7 @@ print(f"DEBUG: 최종 Image Map: {image_map}")
 
 apply_tokens_and_charts(
     prs_path="template/master.pptx",
-    out_path="out/report_test_테스트최종2.pptx",
+    out_path="out/report_test_SL6수정.pptx",
     token_map=token_values,
     chart_map=chart_data,
     image_map=image_map
