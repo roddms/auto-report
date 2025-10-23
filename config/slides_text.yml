@@ -15,9 +15,14 @@ slides:
 
       SL3_p_2:
         sql: | # 전년대비 방문인구 증감율(%)
-          SELECT ROUND(
-                  (cur.tot - COALESCE(yoy.tot_prev,0)) * 100.0 / NULLIF(yoy.tot_prev,0), 1
-                )
+          SELECT 
+            CASE
+              WHEN (cur.tot - COALESCE(yoy.tot_prev,0)) * 100.0 / NULLIF(yoy.tot_prev,0) > 0
+                THEN ROUND((cur.tot - COALESCE(yoy.tot_prev,0)) * 100.0 / NULLIF(yoy.tot_prev,0), 1)::TEXT || '% ▲'
+              WHEN (cur.tot - COALESCE(yoy.tot_prev,0)) * 100.0 / NULLIF(yoy.tot_prev,0) < 0
+                THEN ABS(ROUND((cur.tot - COALESCE(yoy.tot_prev,0)) * 100.0 / NULLIF(yoy.tot_prev,0), 1))::TEXT || '% ▼'
+              ELSE COALESCE(ROUND((cur.tot - COALESCE(yoy.tot_prev,0)) * 100.0 / NULLIF(yoy.tot_prev,0), 1), 0.0)::TEXT || '% -'
+            END
           FROM (
             SELECT SUM(TOT_VIPOP) AS tot
             FROM regionmonitor.TB_SEXDSTN_VISIT_POPLTN
@@ -43,9 +48,14 @@ slides:
 
       SL3_p_4:
         sql: | # 전년대비 매출 증감율(%)
-          SELECT ROUND(
-                  (cur.s - COALESCE(yoy.s_prev,0)) * 100.0 / NULLIF(yoy.s_prev,0), 1
-                )
+          SELECT 
+            CASE
+              WHEN (cur.s - COALESCE(yoy.s_prev,0)) * 100.0 / NULLIF(yoy.s_prev,0) > 0
+                THEN ROUND((cur.s - COALESCE(yoy.s_prev,0)) * 100.0 / NULLIF(yoy.s_prev,0), 1)::TEXT || '% ▲'
+              WHEN (cur.s - COALESCE(yoy.s_prev,0)) * 100.0 / NULLIF(yoy.s_prev,0) < 0
+                THEN ABS(ROUND((cur.s - COALESCE(yoy.s_prev,0)) * 100.0 / NULLIF(yoy.s_prev,0), 1))::TEXT || '% ▼'
+              ELSE COALESCE(ROUND((cur.s - COALESCE(yoy.s_prev,0)) * 100.0 / NULLIF(yoy.s_prev,0), 1), 0.0)::TEXT || '% -'
+            END
           FROM (
             SELECT SUM(TOT_SALAMT) AS s
             FROM regionmonitor.TB_SEXDSTN_SELNG
@@ -385,7 +395,14 @@ slides:
                   to_char(to_date(:DATE_FROM,'YYYYMMDD') - INTERVAL '1 year','YYYYMMDD')
               AND to_char(to_date(:DATE_TO  ,'YYYYMMDD') - INTERVAL '1 year','YYYYMMDD')
           )
-          SELECT COALESCE(ROUND(100.0 * (y24.v - y23.v) / NULLIF(y23.v,0), 1), 0.0)
+          SELECT 
+            CASE 
+              WHEN COALESCE(ROUND(100.0 * (y24.v - y23.v) / NULLIF(y23.v,0), 1), 0.0) > 0 
+                THEN COALESCE(ROUND(100.0 * (y24.v - y23.v) / NULLIF(y23.v,0), 1), 0.0)::TEXT || '% ▲'
+              WHEN COALESCE(ROUND(100.0 * (y24.v - y23.v) / NULLIF(y23.v,0), 1), 0.0) < 0 
+                THEN ABS(COALESCE(ROUND(100.0 * (y24.v - y23.v) / NULLIF(y23.v,0), 1), 0.0))::TEXT || '% ▼'
+              ELSE COALESCE(ROUND(100.0 * (y24.v - y23.v) / NULLIF(y23.v,0), 1), 0.0)::TEXT || '% -'
+            END
           FROM y23, y24;
 
       SL4_p_4:
@@ -411,7 +428,14 @@ slides:
             WHERE REGION_CD = CAST(:REGION_CD AS VARCHAR)
               AND STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
           )
-          SELECT COALESCE(ROUND(100.0 * (y25.v - y24.v) / NULLIF(y24.v,0), 1), 0.0)
+          SELECT 
+            CASE 
+              WHEN COALESCE(ROUND(100.0 * (y25.v - y24.v) / NULLIF(y24.v,0), 1), 0.0) > 0 
+                THEN (COALESCE(ROUND(100.0 * (y25.v - y24.v) / NULLIF(y24.v,0), 1), 0.0)::TEXT || '% ▲')
+              WHEN COALESCE(ROUND(100.0 * (y25.v - y24.v) / NULLIF(y24.v,0), 1), 0.0) < 0
+                THEN ABS(COALESCE(ROUND(100.0 * (y25.v - y24.v) / NULLIF(y24.v,0), 1), 0.0))::TEXT || '% ▼' 
+              ELSE (COALESCE(ROUND(100.0 * (y25.v - y24.v) / NULLIF(y24.v,0), 1), 0.0)::TEXT || '% -') 
+            END
           FROM y24, y25;
 
       SL4_p_6:
@@ -450,7 +474,14 @@ slides:
                   to_char(to_date(:DATE_FROM,'YYYYMMDD') - INTERVAL '1 year','YYYYMMDD')
               AND to_char(to_date(:DATE_TO  ,'YYYYMMDD') - INTERVAL '1 year','YYYYMMDD')
           )
-          SELECT COALESCE(ROUND(100.0 * (y24.s - y23.s) / NULLIF(y23.s,0), 1), 0.0)
+          SELECT 
+            CASE 
+              WHEN COALESCE(ROUND(100.0 * (y24.s - y23.s) / NULLIF(y23.s,0), 1), 0.0) > 0 
+                THEN (COALESCE(ROUND(100.0 * (y24.s - y23.s) / NULLIF(y23.s,0), 1), 0.0)::TEXT || '% ▲')
+              WHEN COALESCE(ROUND(100.0 * (y24.s - y23.s) / NULLIF(y23.s,0), 1), 0.0) < 0
+                THEN ABS(COALESCE(ROUND(100.0 * (y24.s - y23.s) / NULLIF(y23.s,0), 1), 0.0))::TEXT || '% ▼' 
+              ELSE (COALESCE(ROUND(100.0 * (y24.s - y23.s) / NULLIF(y23.s,0), 1), 0.0)::TEXT || '% -') 
+            END
           FROM y23, y24;
 
       SL4_p_9:
@@ -476,7 +507,14 @@ slides:
             WHERE REGION_CD = CAST(:REGION_CD AS VARCHAR)
               AND STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
           )
-          SELECT COALESCE(ROUND(100.0 * (y25.s - y24.s) / NULLIF(y24.s,0), 1), 0.0)
+          SELECT 
+            CASE 
+              WHEN COALESCE(ROUND(100.0 * (y25.s - y24.s) / NULLIF(y24.s,0), 1), 0.0) > 0 
+                THEN (COALESCE(ROUND(100.0 * (y25.s - y24.s) / NULLIF(y24.s,0), 1), 0.0)::TEXT || '% ▲')
+              WHEN COALESCE(ROUND(100.0 * (y25.s - y24.s) / NULLIF(y24.s,0), 1), 0.0) < 0
+                THEN ABS(COALESCE(ROUND(100.0 * (y25.s - y24.s) / NULLIF(y24.s,0), 1), 0.0))::TEXT || '% ▼' 
+              ELSE (COALESCE(ROUND(100.0 * (y25.s - y24.s) / NULLIF(y24.s,0), 1), 0.0)::TEXT || '% -') 
+            END
           FROM y24, y25;
     
     charts:
@@ -636,8 +674,16 @@ slides:
                   to_char(to_date(:DATE_FROM,'YYYYMMDD') - INTERVAL '1 year','YYYYMMDD')
               AND to_char(to_date(:DATE_TO  ,'YYYYMMDD') - INTERVAL '1 year','YYYYMMDD')
           )
-          SELECT COALESCE(ROUND(100.0 * (cur.v - prev.v) / NULLIF(prev.v,0), 1), 0.0)
+          SELECT 
+            CASE 
+              WHEN COALESCE(ROUND(100.0 * (cur.v - prev.v) / NULLIF(prev.v,0), 1), 0.0) > 0 
+                THEN (COALESCE(ROUND(100.0 * (cur.v - prev.v) / NULLIF(prev.v,0), 1), 0.0)::TEXT || '% ▲')
+              WHEN COALESCE(ROUND(100.0 * (cur.v - prev.v) / NULLIF(prev.v,0), 1), 0.0) < 0
+                THEN ABS(COALESCE(ROUND(100.0 * (cur.v - prev.v) / NULLIF(prev.v,0), 1), 0.0))::TEXT || '% ▼' 
+              ELSE (COALESCE(ROUND(100.0 * (cur.v - prev.v) / NULLIF(prev.v,0), 1), 0.0)::TEXT || '% -') 
+            END
           FROM cur, prev;
+
 
       SL5_p_3:
         sql: | # 최다 방문일(예: 10월 15일)
@@ -1216,10 +1262,14 @@ slides:
 
       SL6_m:
         sql: | # 전년대비 남성 방문인구 수 증감율
-          SELECT ROUND(
-                   (cur.male - COALESCE(yoy.male_prev,0))
-                   * 100.0 / NULLIF(yoy.male_prev,0), 1
-                 )
+          SELECT 
+            CASE
+              WHEN (cur.male - COALESCE(yoy.male_prev,0)) * 100.0 / NULLIF(yoy.male_prev,0) > 0
+                THEN ROUND((cur.male - COALESCE(yoy.male_prev,0)) * 100.0 / NULLIF(yoy.male_prev,0), 1)::TEXT || '% ▲'
+              WHEN (cur.male - COALESCE(yoy.male_prev,0)) * 100.0 / NULLIF(yoy.male_prev,0) < 0
+                THEN ABS(ROUND((cur.male - COALESCE(yoy.male_prev,0)) * 100.0 / NULLIF(yoy.male_prev,0), 1))::TEXT || '% ▼'
+              ELSE COALESCE(ROUND((cur.male - COALESCE(yoy.male_prev,0)) * 100.0 / NULLIF(yoy.male_prev,0), 1), 0.0)::TEXT || '% -'
+            END
           FROM (
             SELECT SUM(MVIPOP) AS male
             FROM regionmonitor.tb_sexdstn_visit_popltn
@@ -1238,10 +1288,14 @@ slides:
 
       SL6_f:
         sql: | # 전년대비 여성 방문인구 수 증감율
-          SELECT ROUND(
-                   (cur.female - COALESCE(yoy.female_prev,0))
-                   * 100.0 / NULLIF(yoy.female_prev,0), 1
-                 )
+          SELECT 
+            CASE
+              WHEN (cur.female - COALESCE(yoy.female_prev,0)) * 100.0 / NULLIF(yoy.female_prev,0) > 0
+                THEN ROUND((cur.female - COALESCE(yoy.female_prev,0)) * 100.0 / NULLIF(yoy.female_prev,0), 1)::TEXT || '% ▲'
+              WHEN (cur.female - COALESCE(yoy.female_prev,0)) * 100.0 / NULLIF(yoy.female_prev,0) < 0
+                THEN ABS(ROUND((cur.female - COALESCE(yoy.female_prev,0)) * 100.0 / NULLIF(yoy.female_prev,0), 1))::TEXT || '% ▼'
+              ELSE COALESCE(ROUND((cur.female - COALESCE(yoy.female_prev,0)) * 100.0 / NULLIF(yoy.female_prev,0), 1), 0.0)::TEXT || '% -'
+            END
           FROM (
             SELECT SUM(FVIPOP) AS female
             FROM regionmonitor.tb_sexdstn_visit_popltn
@@ -1408,7 +1462,7 @@ slides:
             WHERE REGION_CD = CAST(:REGION_CD AS VARCHAR)
               AND STDR_YMD BETWEEN
                 to_char(to_date(:DATE_FROM,'YYYYMMDD') - INTERVAL '1 year','YYYYMMDD')
-              AND to_char(to_date(:DATE_TO  ,'YYYYMMDD') - INTERVAL '1 year','YYYYMMDD')
+              AND to_char(to_date(:DATE_TO,'YYYYMMDD') - INTERVAL '1 year','YYYYMMDD')
           ),
           u AS (
             SELECT '20대' AS age, A20 AS c, (SELECT A20 FROM prv) AS p FROM cur UNION ALL
@@ -1417,10 +1471,21 @@ slides:
             SELECT '50대', A50, (SELECT A50 FROM prv) FROM cur UNION ALL
             SELECT '60대', A60, (SELECT A60 FROM prv) FROM cur UNION ALL
             SELECT '70대', A70, (SELECT A70 FROM prv) FROM cur
+          ),
+          calc AS (
+              SELECT 
+                  age, 
+                  COALESCE(ROUND(100.0*(c-p)/NULLIF(p,0),1), 0.0) AS rate
+              FROM u
           )
-          SELECT COALESCE(ROUND(100.0*(c-p)/NULLIF(p,0),1), 0.0)
-          FROM u
-          ORDER BY COALESCE(ROUND(100.0*(c-p)/NULLIF(p,0),1), 0.0) DESC, age
+          SELECT
+              CASE
+                  WHEN rate > 0 THEN rate::TEXT || '% ▲'
+                  WHEN rate < 0 THEN ABS(rate)::TEXT || '% ▼' 
+                  ELSE rate::TEXT || '% -'
+              END
+          FROM calc
+          ORDER BY rate DESC, age
           LIMIT 1;
 
       SL7_p_5:
@@ -1493,7 +1558,7 @@ slides:
             WHERE REGION_CD = CAST(:REGION_CD AS VARCHAR)
               AND STDR_YMD BETWEEN
                 to_char(to_date(:DATE_FROM,'YYYYMMDD') - INTERVAL '1 year','YYYYMMDD')
-              AND to_char(to_date(:DATE_TO  ,'YYYYMMDD') - INTERVAL '1 year','YYYYMMDD')
+              AND to_char(to_date(:DATE_TO,'YYYYMMDD') - INTERVAL '1 year','YYYYMMDD')
           ),
           u AS (
             SELECT '20대' AS age, A20 AS c, (SELECT A20 FROM prv) AS p FROM cur UNION ALL
@@ -1502,10 +1567,21 @@ slides:
             SELECT '50대', A50, (SELECT A50 FROM prv) FROM cur UNION ALL
             SELECT '60대', A60, (SELECT A60 FROM prv) FROM cur UNION ALL
             SELECT '70대', A70, (SELECT A70 FROM prv) FROM cur
+          ),
+          calc AS (
+              SELECT 
+                  age, 
+                  COALESCE(ROUND(100.0*(c-p)/NULLIF(p,0),1), 0.0) AS rate
+              FROM u
           )
-          SELECT COALESCE(ROUND(100.0*(c-p)/NULLIF(p,0),1), 0.0)
-          FROM u
-          ORDER BY COALESCE(ROUND(100.0*(c-p)/NULLIF(p,0),1), 0.0) ASC, age
+          SELECT
+              CASE
+                  WHEN rate > 0 THEN rate::TEXT || '% ▲'
+                  WHEN rate < 0 THEN ABS(rate)::TEXT || '% ▼' 
+                  ELSE rate::TEXT || '% -'
+              END
+          FROM calc
+          ORDER BY rate ASC, age
           LIMIT 1;
 
     charts:
@@ -2081,7 +2157,14 @@ slides:
                   to_char(to_date(:DATE_FROM,'YYYYMMDD') - INTERVAL '1 year','YYYYMMDD')
               AND to_char(to_date(:DATE_TO  ,'YYYYMMDD') - INTERVAL '1 year','YYYYMMDD')
           )
-          SELECT COALESCE(ROUND(100.0*(cur.v - yoy.v)/NULLIF(yoy.v,0),1), 0.0)
+          SELECT 
+            CASE
+              WHEN COALESCE(ROUND(100.0*(cur.v - yoy.v)/NULLIF(yoy.v,0),1), 0.0) > 0
+                THEN COALESCE(ROUND(100.0*(cur.v - yoy.v)/NULLIF(yoy.v,0),1), 0.0)::TEXT || '% ▲'
+              WHEN COALESCE(ROUND(100.0*(cur.v - yoy.v)/NULLIF(yoy.v,0),1), 0.0) < 0
+                THEN ABS(COALESCE(ROUND(100.0*(cur.v - yoy.v)/NULLIF(yoy.v,0),1), 0.0))::TEXT || '% ▼'
+              ELSE COALESCE(ROUND(100.0*(cur.v - yoy.v)/NULLIF(yoy.v,0),1), 0.0)::TEXT || '% -'
+            END
           FROM cur, yoy;
 
       SL10_4:
@@ -2107,7 +2190,14 @@ slides:
                   to_char(to_date(:DATE_FROM,'YYYYMMDD') - INTERVAL '1 year','YYYYMMDD')
               AND to_char(to_date(:DATE_TO  ,'YYYYMMDD') - INTERVAL '1 year','YYYYMMDD')
           )
-          SELECT COALESCE(ROUND(100.0*(cur.v - yoy.v)/NULLIF(yoy.v,0),1), 0.0)
+          SELECT 
+            CASE
+              WHEN COALESCE(ROUND(100.0*(cur.v - yoy.v)/NULLIF(yoy.v,0),1), 0.0) > 0
+                THEN COALESCE(ROUND(100.0*(cur.v - yoy.v)/NULLIF(yoy.v,0),1), 0.0)::TEXT || '% ▲'
+              WHEN COALESCE(ROUND(100.0*(cur.v - yoy.v)/NULLIF(yoy.v,0),1), 0.0) < 0
+                THEN ABS(COALESCE(ROUND(100.0*(cur.v - yoy.v)/NULLIF(yoy.v,0),1), 0.0))::TEXT || '% ▼'
+              ELSE COALESCE(ROUND(100.0*(cur.v - yoy.v)/NULLIF(yoy.v,0),1), 0.0)::TEXT || '% -'
+            END
           FROM cur, yoy;
 
       SL10_6:
@@ -2133,7 +2223,15 @@ slides:
                   to_char(to_date(:DATE_FROM,'YYYYMMDD') - INTERVAL '1 year','YYYYMMDD')
               AND to_char(to_date(:DATE_TO  ,'YYYYMMDD') - INTERVAL '1 year','YYYYMMDD')
           )
-          SELECT COALESCE(ROUND(100.0*(cur.v - yoy.v)/NULLIF(yoy.v,0),1), 0.0)
+          SELECT 
+            CASE
+              WHEN COALESCE(ROUND(100.0*(cur.v - yoy.v)/NULLIF(yoy.v,0),1), 0.0) > 0
+                THEN COALESCE(ROUND(100.0*(cur.v - yoy.v)/NULLIF(yoy.v,0),1), 0.0)::TEXT || '% ▲'
+              WHEN COALESCE(ROUND(100.0*(cur.v - yoy.v)/NULLIF(yoy.v,0),1), 0.0) < 0
+                THEN ABS(COALESCE(ROUND(100.0*(cur.v - yoy.v)/NULLIF(yoy.v,0),1), 0.0))::TEXT || '% ▼'
+              ELSE COALESCE(ROUND(100.0*(cur.v - yoy.v)/NULLIF(yoy.v,0),1), 0.0)::TEXT || '% -'
+            END
+
           FROM cur, yoy;
 
 
@@ -2230,7 +2328,14 @@ slides:
                   to_char(to_date(:DATE_FROM,'YYYYMMDD') - INTERVAL '1 year','YYYYMMDD')
               AND to_char(to_date(:DATE_TO  ,'YYYYMMDD') - INTERVAL '1 year','YYYYMMDD')
           )
-          SELECT COALESCE(ROUND(100.0*(cur.v - yoy.v)/NULLIF(yoy.v,0),1), 0.0)
+          SELECT 
+            CASE
+              WHEN COALESCE(ROUND(100.0*(cur.v - yoy.v)/NULLIF(yoy.v,0),1), 0.0) > 0
+                THEN COALESCE(ROUND(100.0*(cur.v - yoy.v)/NULLIF(yoy.v,0),1), 0.0)::TEXT || '% ▲'
+              WHEN COALESCE(ROUND(100.0*(cur.v - yoy.v)/NULLIF(yoy.v,0),1), 0.0) < 0
+                THEN ABS(COALESCE(ROUND(100.0*(cur.v - yoy.v)/NULLIF(yoy.v,0),1), 0.0))::TEXT || '% ▼'
+              ELSE COALESCE(ROUND(100.0*(cur.v - yoy.v)/NULLIF(yoy.v,0),1), 0.0)::TEXT || '% -'
+            END
           FROM cur, yoy;
 
       SL11_5:
@@ -2256,7 +2361,14 @@ slides:
                   to_char(to_date(:DATE_FROM,'YYYYMMDD') - INTERVAL '1 year','YYYYMMDD')
               AND to_char(to_date(:DATE_TO  ,'YYYYMMDD') - INTERVAL '1 year','YYYYMMDD')
           )
-          SELECT COALESCE(ROUND(100.0*(cur.v - yoy.v)/NULLIF(yoy.v,0),1), 0.0)
+          SELECT 
+            CASE
+              WHEN COALESCE(ROUND(100.0*(cur.v - yoy.v)/NULLIF(yoy.v,0),1), 0.0) > 0
+                THEN COALESCE(ROUND(100.0*(cur.v - yoy.v)/NULLIF(yoy.v,0),1), 0.0)::TEXT || '% ▲'
+              WHEN COALESCE(ROUND(100.0*(cur.v - yoy.v)/NULLIF(yoy.v,0),1), 0.0) < 0
+                THEN ABS(COALESCE(ROUND(100.0*(cur.v - yoy.v)/NULLIF(yoy.v,0),1), 0.0))::TEXT || '% ▼'
+              ELSE COALESCE(ROUND(100.0*(cur.v - yoy.v)/NULLIF(yoy.v,0),1), 0.0)::TEXT || '% -'
+            END
           FROM cur, yoy;
 
     charts:
@@ -2334,7 +2446,14 @@ slides:
                   to_char(to_date(:DATE_FROM,'YYYYMMDD') - INTERVAL '1 year','YYYYMMDD')
               AND to_char(to_date(:DATE_TO  ,'YYYYMMDD') - INTERVAL '1 year','YYYYMMDD')
           )
-          SELECT COALESCE(ROUND(100.0 * (cur.v - prv.v) / NULLIF(prv.v,0), 1), 0.0)
+          SELECT 
+            CASE
+              WHEN COALESCE(ROUND(100.0*(cur.v - prv.v)/NULLIF(prv.v,0),1), 0.0) > 0
+                THEN COALESCE(ROUND(100.0*(cur.v - prv.v)/NULLIF(prv.v,0),1), 0.0)::TEXT || '% ▲'
+              WHEN COALESCE(ROUND(100.0*(cur.v - prv.v)/NULLIF(prv.v,0),1), 0.0) < 0
+                THEN ABS(COALESCE(ROUND(100.0*(cur.v - prv.v)/NULLIF(prv.v,0),1), 0.0))::TEXT || '% ▼'
+              ELSE COALESCE(ROUND(100.0*(cur.v - prv.v)/NULLIF(prv.v,0),1), 0.0)::TEXT || '% -'
+            END
           FROM cur, prv;
 
       # 2) 1인당 평균 매출 (= 총매출 / 방문인구)
@@ -2383,7 +2502,14 @@ slides:
                 to_char(to_date(:DATE_FROM,'YYYYMMDD') - INTERVAL '1 year','YYYYMMDD')
                 AND to_char(to_date(:DATE_TO  ,'YYYYMMDD') - INTERVAL '1 year','YYYYMMDD')
           )
-          SELECT COALESCE(ROUND(100.0 * ((cur.s/NULLIF(cur.v,0)) - (prv.s/NULLIF(prv.v,0))) / NULLIF((prv.s/NULLIF(prv.v,0)),0), 1), 0.0)
+          SELECT 
+            CASE
+              WHEN COALESCE(ROUND(100.0 * ((cur.s/NULLIF(cur.v,0)) - (prv.s/NULLIF(prv.v,0))) / NULLIF((prv.s/NULLIF(prv.v,0)),0), 1), 0.0) > 0
+                THEN COALESCE(ROUND(100.0 * ((cur.s/NULLIF(cur.v,0)) - (prv.s/NULLIF(prv.v,0))) / NULLIF((prv.s/NULLIF(prv.v,0)),0), 1), 0.0)::TEXT || '% ▲'
+              WHEN COALESCE(ROUND(100.0 * ((cur.s/NULLIF(cur.v,0)) - (prv.s/NULLIF(prv.v,0))) / NULLIF((prv.s/NULLIF(prv.v,0)),0), 1), 0.0) < 0
+                THEN ABS(COALESCE(ROUND(100.0 * ((cur.s/NULLIF(cur.v,0)) - (prv.s/NULLIF(prv.v,0))) / NULLIF((prv.s/NULLIF(prv.v,0)),0), 1), 0.0))::TEXT || '% ▼'
+              ELSE COALESCE(ROUND(100.0 * ((cur.s/NULLIF(cur.v,0)) - (prv.s/NULLIF(prv.v,0))) / NULLIF((prv.s/NULLIF(prv.v,0)),0), 1), 0.0)::TEXT || '% -'
+            END
           FROM cur, prv;
 
       # 3) 최다 소비 집단(성·연령) + 그 집단의 전년대비 증감률

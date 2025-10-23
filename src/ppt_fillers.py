@@ -3,6 +3,7 @@ import re
 from pptx import Presentation
 from pptx.chart.data import ChartData
 from pptx.enum.shapes import MSO_SHAPE_TYPE
+from pptx.dml.color import RGBColor
 
 # ---------------------------
 # 🔹 Text / Chart Utilities
@@ -189,6 +190,26 @@ def add_images_to_presentation(prs: Presentation, image_map: dict):
                 print(f"❌ 이미지 삽입 중 오류 발생 ({img_path}): {e}")
 
 
+def colorize_arrows(prs):
+    """
+    PowerPoint 전체 순회하며,
+    문단 내에 ▲(상승) 있으면 문단 전체 빨강,
+    ▼(하락) 있으면 문단 전체 파랑.
+    """
+    for slide in prs.slides:
+        for shp in iter_shapes(slide):
+            if not getattr(shp, "has_text_frame", False):
+                continue
+            for p in shp.text_frame.paragraphs:
+                full_text = "".join(r.text for r in p.runs)
+                if "▲" in full_text:
+                    for r in p.runs:
+                        r.font.color.rgb = RGBColor(231, 76, 60)       # 빨강
+                elif "▼" in full_text:
+                    for r in p.runs:
+                        r.font.color.rgb = RGBColor(0, 112, 192)     # 파랑
+
+
 # ---------------------------
 # 🔹 Helper (한 번에 실행용)
 # ---------------------------
@@ -201,6 +222,8 @@ def apply_tokens_and_charts(prs_path, out_path, token_map, chart_map=None, image
     prs = Presentation(prs_path)
 
     replace_text_tokens(prs, token_map)
+
+    colorize_arrows(prs)
 
     if chart_map:
         for cname, (cats, sdict) in chart_map.items():
