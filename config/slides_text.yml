@@ -28,6 +28,7 @@ slides:
             SELECT SUM(TOT_VIPOP) AS tot_prev
             FROM regionmonitor.TB_SEXDSTN_VISIT_POPLTN
             WHERE STDR_YMD BETWEEN
+            
                   to_char(to_date(CAST(:DATE_FROM AS text),'YYYYMMDD') - INTERVAL '1 year','YYYYMMDD')
               AND to_char(to_date(CAST(:DATE_TO   AS text),'YYYYMMDD') - INTERVAL '1 year','YYYYMMDD')
               AND REGION_CD = :REGION_CD
@@ -35,7 +36,7 @@ slides:
 
       SL3_p_3:
         sql: | # 총 매출액
-          SELECT to_char(ROUND(SUM(TOT_SALAMT)/100000000.0, 1), 'FM999,999,999.0') || '억'
+          SELECT to_char(ROUND(SUM(TOT_SALAMT)/100000000, 0), 'FM999,999,999') || '억'
           FROM regionmonitor.tb_sexdstn_selng
           WHERE STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
             AND REGION_CD = CAST(:REGION_CD AS VARCHAR);
@@ -349,7 +350,7 @@ slides:
   - name : "4: 3개년 비교 분석"
     tokens:
       SL4_p_1:
-        sql: | # 2023년 방문인구 (전전년도)
+        sql: | # 전전년도 방문인구
           SELECT to_char(COALESCE(SUM(TOT_VIPOP),0), 'FM999,999,999,999')
           FROM regionmonitor.tb_sexdstn_visit_popltn
           WHERE REGION_CD = CAST(:REGION_CD AS VARCHAR)
@@ -358,7 +359,7 @@ slides:
             AND to_char(to_date(:DATE_TO  ,'YYYYMMDD') - INTERVAL '2 year','YYYYMMDD');
 
       SL4_p_2:
-        sql: | # 2024년 방문인구 (전년도)
+        sql: | # 전년도 방문인구
           SELECT to_char(COALESCE(SUM(TOT_VIPOP),0), 'FM999,999,999,999')
           FROM regionmonitor.tb_sexdstn_visit_popltn
           WHERE REGION_CD = CAST(:REGION_CD AS VARCHAR)
@@ -367,7 +368,7 @@ slides:
             AND to_char(to_date(:DATE_TO  ,'YYYYMMDD') - INTERVAL '1 year','YYYYMMDD');
 
       SL4_p_3:
-        sql: | # 2024 vs 2023 방문인구 증감율(%)
+        sql: | # 전년도 vs 전전년도 방문인구 증감률(%)
           WITH y23 AS (
             SELECT COALESCE(SUM(TOT_VIPOP),0) AS v
             FROM regionmonitor.tb_sexdstn_visit_popltn
@@ -388,14 +389,14 @@ slides:
           FROM y23, y24;
 
       SL4_p_4:
-        sql: | # 2025년 방문인구 (당해년도)
+        sql: | # 당해년도 방문인구 
           SELECT to_char(COALESCE(SUM(TOT_VIPOP),0), 'FM999,999,999,999')
           FROM regionmonitor.tb_sexdstn_visit_popltn
           WHERE REGION_CD = CAST(:REGION_CD AS VARCHAR)
             AND STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO;
 
       SL4_p_5:
-        sql: | # 2025 vs 2023 방문인구 증감율(%)
+        sql: | # 당해년도 vs 전전년도(기준년도) 방문인구 증감율(%)
           WITH y24 AS (
             SELECT COALESCE(SUM(TOT_VIPOP),0) AS v
             FROM regionmonitor.tb_sexdstn_visit_popltn
@@ -415,7 +416,7 @@ slides:
 
       SL4_p_6:
         sql: | # 2023년 매출액
-          SELECT to_char(ROUND(SUM(TOT_SALAMT)/100000000.0, 1), 'FM999,999,999.0') || '억'
+          SELECT to_char(ROUND(SUM(TOT_SALAMT)/100000000.0, 0), 'FM999,999,999') || '억'
           FROM regionmonitor.tb_sexdstn_selng
           WHERE REGION_CD = CAST(:REGION_CD AS VARCHAR)
             AND STDR_YMD BETWEEN
@@ -424,7 +425,7 @@ slides:
 
       SL4_p_7:
         sql: | # 2024년 매출액
-          SELECT to_char(ROUND(SUM(TOT_SALAMT)/100000000.0, 1), 'FM999,999,999.0') || '억'
+          SELECT to_char(ROUND(SUM(TOT_SALAMT)/100000000.0, 0), 'FM999,999,999') || '억'
           FROM regionmonitor.tb_sexdstn_selng
           WHERE REGION_CD = CAST(:REGION_CD AS VARCHAR)
             AND STDR_YMD BETWEEN
@@ -454,13 +455,13 @@ slides:
 
       SL4_p_9:
         sql: | # 2025년 매출액
-          SELECT to_char(ROUND(SUM(TOT_SALAMT)/100000000.0, 1), 'FM999,999,999.0') || '억'
+          SELECT to_char(ROUND(SUM(TOT_SALAMT)/100000000.0, 0), 'FM999,999,999') || '억'
           FROM regionmonitor.tb_sexdstn_selng
           WHERE REGION_CD = CAST(:REGION_CD AS VARCHAR)
             AND STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO;
 
       SL4_p_10:
-        sql: | # 2025 vs 2023 매출 증감율(%)
+        sql: | # 2025 vs 2023 매출 증감률(%)
           WITH y24 AS (
             SELECT COALESCE(SUM(TOT_SALAMT),0) AS s
             FROM regionmonitor.tb_sexdstn_selng
@@ -535,10 +536,10 @@ slides:
               SELECT 1 ord, 0.0::NUMERIC AS r
               UNION ALL
               SELECT 2, CASE WHEN (SELECT v FROM y23)=0 THEN 0
-                            ELSE ((SELECT v FROM y24)-(SELECT v FROM y23))/(SELECT v FROM y23) END
+                            ELSE ROUND(((SELECT v FROM y24)-(SELECT v FROM y23))/(SELECT v FROM y23) * 100, 2) END
               UNION ALL
               SELECT 3, CASE WHEN (SELECT v FROM y24)=0 THEN 0
-                            ELSE ((SELECT v FROM y25)-(SELECT v FROM y24))/(SELECT v FROM y24) END
+                            ELSE ROUND(((SELECT v FROM y25)-(SELECT v FROM y24))/(SELECT v FROM y24) * 100, 2) END
             ) s
             ORDER BY ord;
 
@@ -601,21 +602,19 @@ slides:
               SELECT 1 ord, 0.0::NUMERIC AS r
               UNION ALL
               SELECT 2, CASE WHEN (SELECT v FROM y23)=0 THEN 0
-                            ELSE ((SELECT v FROM y24)-(SELECT v FROM y23))/(SELECT v FROM y23) END
+                            ELSE ROUND(((SELECT v FROM y24)-(SELECT v FROM y23))/(SELECT v FROM y23) * 100, 2) END
               UNION ALL
               SELECT 3, CASE WHEN (SELECT v FROM y24)=0 THEN 0
-                            ELSE ((SELECT v FROM y25)-(SELECT v FROM y24))/(SELECT v FROM y24) END
+                            ELSE ROUND(((SELECT v FROM y25)-(SELECT v FROM y24))/(SELECT v FROM y24) * 100, 2) END
             ) s
             ORDER BY ord;
     
 
 
-
-
   - name : "5 : 방문인구 분석 요약"
     tokens:
       SL5_p_1:
-        sql: | # 총 방문인구(콤마)
+        sql: | # 총 방문인구
           SELECT to_char(COALESCE(SUM(TOT_VIPOP), 0), 'FM999,999,999,999')
           FROM regionmonitor.TB_SEXDSTN_VISIT_POPLTN
           WHERE REGION_CD = CAST(:REGION_CD AS VARCHAR)
@@ -1062,7 +1061,7 @@ slides:
             ) t
             ORDER BY lbl;
 
-      # 5) 일자별 방문인구 (꺾은선) — X축: YYYY-MM-DD
+      # 5) 일자별 방문인구 (꺾은선)
       SL5_chart_5:
         category_sql: |
           WITH d AS (
@@ -1515,7 +1514,7 @@ slides:
           SELECT lbl
           FROM (VALUES ('20대'), ('30대'), ('40대'), ('50대'), ('60대'), ('70대')) v(lbl);
         series:
-          방문인구(명): |
+          방문인구(만명): |
             WITH p AS (
               SELECT :REGION_CD rc,
                      :DATE_FROM dfrom, :DATE_TO dto
@@ -1540,6 +1539,7 @@ slides:
               FROM regionmonitor.TB_SEXDSTN_VISIT_POPLTN t, p
               WHERE t.REGION_CD=p.rc AND t.STDR_YMD BETWEEN p.dfrom AND p.dto
             ) x ORDER BY lbl;
+
           전년 대비 증감률(%): |
             WITH p AS (
               SELECT :REGION_CD rc,
@@ -1563,9 +1563,10 @@ slides:
               UNION ALL SELECT '60대', SUM(GNR60_MVIPOP+GNR60_FVIPOP) FROM regionmonitor.TB_SEXDSTN_VISIT_POPLTN t, p WHERE t.REGION_CD=p.rc AND t.STDR_YMD BETWEEN p.pfrom AND p.pto
               UNION ALL SELECT '70대', SUM(GNR70_MVIPOP+GNR70_FVIPOP) FROM regionmonitor.TB_SEXDSTN_VISIT_POPLTN t, p WHERE t.REGION_CD=p.rc AND t.STDR_YMD BETWEEN p.pfrom AND p.pto
             )
-            SELECT CASE WHEN p.v IS NULL OR p.v=0 THEN 0 ELSE (c.v - p.v)/p.v END
+            SELECT CASE WHEN p.v IS NULL OR p.v=0 THEN 0 ELSE ROUND(((c.v - p.v)/p.v)*100, 2) END
             FROM cur c LEFT JOIN prv p USING(lbl)
             ORDER BY lbl;
+
 
   - name: "8: 일자별 방문인구 수"
     tokens:
@@ -1713,7 +1714,7 @@ slides:
 
     charts:
       SL8_chart:   
-        # X축: YYYYMMDD 범위를 하루 단위로 생성해 'M월 D일' 라벨로 표시
+        # X축: YYYYMMDD 범위를 하루 단위로 생성
         category_sql: |
           WITH d AS (
             SELECT gs::date AS dte
@@ -2276,7 +2277,7 @@ slides:
               UNION ALL SELECT 3, y   FROM p
             )
             SELECT (
-              SELECT COALESCE(SUM(t.FRGNR_VIPOP),0)::NUMERIC/10000
+              SELECT COALESCE(SUM(t.FRGNR_VIPOP),0)::NUMERIC/100000
               FROM regionmonitor.TB_NATION_VISIT_POPLTN t
               WHERE t.REGION_CD = :REGION_CD
                 AND t.STDR_YMD BETWEEN (yy::TEXT||'0101') AND (yy::TEXT||'1231')
@@ -2291,7 +2292,7 @@ slides:
               UNION ALL SELECT 3, y   FROM p
             )
             SELECT (
-              SELECT COALESCE(SUM(t.NATIVE_VIPOP),0)::NUMERIC/10000
+              SELECT COALESCE(SUM(t.NATIVE_VIPOP),0)::NUMERIC/100000
               FROM regionmonitor.TB_NATION_VISIT_POPLTN t
               WHERE t.REGION_CD = :REGION_CD
                 AND t.STDR_YMD BETWEEN (yy::TEXT||'0101') AND (yy::TEXT||'1231')
@@ -2304,8 +2305,8 @@ slides:
     tokens:
       # 1) 총 소비금액 & 소비건수
       SL12_p_1:
-        sql: | # 총 소비금액(억원 단위, 소수1자리. 예: 40.7억원)
-          SELECT to_char(ROUND(COALESCE(SUM(TOT_SALAMT),0) / 100000000.0, 1), 'FM999,999,990D9') || '억원'
+        sql: | # 총 소비금액(억원 단위
+          SELECT to_char(ROUND(COALESCE(SUM(TOT_SALAMT),0) / 100000000.0, 0), 'FM999,999,999') || '억원'
           FROM regionmonitor.TB_SEXDSTN_SELNG
           WHERE REGION_CD = CAST(:REGION_CD AS VARCHAR)
             AND STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO;
