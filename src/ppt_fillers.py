@@ -1,3 +1,4 @@
+import os
 import re
 from pptx import Presentation
 from pptx.chart.data import ChartData
@@ -132,20 +133,85 @@ FORMATTERS = {
 
 
 # ---------------------------
+#  트리맵, 히트맵 이미지 삽입
+# ---------------------------
+def add_images_to_presentation(prs: Presentation, image_map: dict):
+    """
+    image_map: { "도형이름": "이미지경로", ... }
+    - 모든 슬라이드를 반복하며, image_map에 있는 도형 이름과 일치하는 
+      도형을 찾아 이미지를 삽입합니다.
+    """
+    import io
+    
+    # ⭐️ TARGET_SLIDE_INDEX 대신 모든 슬라이드를 반복합니다.
+    # prs.slides는 인덱스 0부터 시작합니다.
+    for slide_idx, slide in enumerate(prs.slides):
+        idx_to_replace = []
+        
+        # 현재 슬라이드의 모든 도형을 확인
+        for i, shp in enumerate(slide.shapes):
+            name = shp.name
+            # image_map에 현재 도형 이름이 있는지 확인
+            if name in image_map:
+                # 위치와 크기 정보를 가져옵니다.
+                left = shp.left
+                top = shp.top
+                width = shp.width
+                height = shp.height
+                idx_to_replace.append((i, name, left, top, width, height))
+
+        # 현재 슬라이드에서 대체할 도형이 있다면 처리
+        if not idx_to_replace:
+            continue
+
+        print(f"INFO: 슬라이드 {slide_idx+1} ({len(idx_to_replace)}개 차트) 이미지 삽입 시작")
+        
+        # 뒤에서부터 삭제(인덱스 보존) 및 이미지 삽입
+        for i, name, left, top, width, height in reversed(idx_to_replace):
+            shp = slide.shapes[i]
+            
+            # 템플릿 도형(Placeholder) 제거
+            slide.shapes._spTree.remove(shp._element)
+            
+            # 이미지 파일을 바이너리 스트림으로 읽어 삽입 (이전 수정사항 유지)
+            img_path = image_map[name]
+            
+            try:
+                with open(img_path, 'rb') as f:
+                    image_stream = io.BytesIO(f.read())
+                
+                # 스트림을 add_picture 함수의 첫 번째 인수로 전달
+                slide.shapes.add_picture(image_stream, left, top, width=width, height=height)
+                
+            except FileNotFoundError:
+                print(f"⚠️ 경고: 이미지 파일 경로를 찾을 수 없습니다: {img_path}")
+            except Exception as e:
+                print(f"❌ 이미지 삽입 중 오류 발생 ({img_path}): {e}")
+
+
+# ---------------------------
 # 🔹 Helper (한 번에 실행용)
 # ---------------------------
-def apply_tokens_and_charts(prs_path, out_path, token_map, chart_map=None):
+def apply_tokens_and_charts(prs_path, out_path, token_map, chart_map=None, image_map=None):
     """
     PPT에 토큰/차트 모두 반영하고 저장
     token_map: {TOKEN: 값}
     chart_map: {chart_name: (categories, series_dict)}
     """
     prs = Presentation(prs_path)
+
     replace_text_tokens(prs, token_map)
+
     if chart_map:
         for cname, (cats, sdict) in chart_map.items():
             ch = find_chart(prs, cname)
             if ch:
                 replace_chart_data(ch, cats, sdict)
+    
+
+    if image_map:
+        # out_path -> out_path 로 제자리 저장 (같은 경로 덮어씀)
+        add_images_to_presentation(prs, image_map)
+
     prs.save(out_path)
     return out_path

@@ -1073,7 +1073,7 @@ slides:
               interval '1 day'
             ) gs
           )
-          SELECT to_char(dte, 'FMMM"월 "FMDD"일"') FROM d ORDER BY dte;
+          SELECT to_char(dte, 'MM.DD') FROM d ORDER BY dte;
 
         series:
           방문인구(만 명): |
@@ -1097,6 +1097,10 @@ slides:
             FROM d
             LEFT JOIN agg a USING (dte)
             ORDER BY d.dte;
+
+      SL5_chart_6:
+
+
 
 
   - name: "6 : 성별 방문인구"
@@ -1195,13 +1199,13 @@ slides:
             SELECT val
             FROM (
               SELECT '남자' AS lbl,
-                     SUM(MVIPOP)::NUMERIC / 10000.0 AS val
+                     ROUND(SUM(MVIPOP)::numeric / 10000, 0)::TEXT || '만명' AS val
               FROM regionmonitor.TB_SEXDSTN_VISIT_POPLTN
               WHERE REGION_CD = :REGION_CD
                 AND STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
               UNION ALL
               SELECT '여자',
-                     SUM(FVIPOP)::NUMERIC / 10000.0
+                     ROUND(SUM(FVIPOP)::numeric / 10000, 0)::TEXT || '만명'
               FROM regionmonitor.TB_SEXDSTN_VISIT_POPLTN
               WHERE REGION_CD = :REGION_CD
                 AND STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
@@ -1650,7 +1654,7 @@ slides:
               interval '1 day'
             ) gs
           )
-          SELECT to_char(dte, 'FMMM"월 "FMDD"일"')
+          SELECT to_char(dte, 'MM.DD')
           FROM d
           ORDER BY dte;
 
@@ -3461,7 +3465,44 @@ slides:
             WHERE REGION_CD = CAST(:REGION_CD AS VARCHAR) AND STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
           ) SELECT ROUND(100.0 * v / NULLIF(t,0), 1) FROM a;
 
-
+    charts:
+      SL15_heatmap:  # 임의 키 (실제 도형명 아님)
+        shape: "SL15_heatmap"          # PPT 도형 이름
+        outfile: "out/img/SL15_heatmap.png" # 저장할 이미지 경로
+        heatmap_sql: |-
+          WITH s AS (
+            SELECT
+              t.SVC_INDUTY_SCLAS_CD AS cd,
+              SUM(COALESCE(t.GNR20_MSALAMT,0) + COALESCE(t.GNR20_FSALAMT,0)) AS a20,
+              SUM(COALESCE(t.GNR30_MSALAMT,0) + COALESCE(t.GNR30_FSALAMT,0)) AS a30,
+              SUM(COALESCE(t.GNR40_MSALAMT,0) + COALESCE(t.GNR40_FSALAMT,0)) AS a40,
+              SUM(COALESCE(t.GNR50_MSALAMT,0) + COALESCE(t.GNR50_FSALAMT,0)) AS a50,
+              SUM(COALESCE(t.GNR60_MSALAMT,0) + COALESCE(t.GNR60_FSALAMT,0)) AS a60,
+              SUM(COALESCE(t.GNR70_MSALAMT,0) + COALESCE(t.GNR70_FSALAMT,0)) AS a70
+            FROM regionmonitor.TB_SEXDSTN_SELNG t
+            WHERE t.REGION_CD = CAST(:REGION_CD AS VARCHAR)
+              AND t.STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
+            GROUP BY t.SVC_INDUTY_SCLAS_CD
+          ),
+          st AS (
+            SELECT cd, (a20+a30+a40+a50+a60+a70) AS tot,
+                  a20, a30, a40, a50, a60, a70,
+                  ROW_NUMBER() OVER (ORDER BY (a20+a30+a40+a50+a60+a70) DESC) AS rnk
+            FROM s
+          )
+          SELECT
+            i.svc_induty_sclas_cd_nm AS industry,
+            ROUND(100.0 * a20 / NULLIF(tot,0), 0) AS "20대",
+            ROUND(100.0 * a30 / NULLIF(tot,0), 0) AS "30대",
+            ROUND(100.0 * a40 / NULLIF(tot,0), 0) AS "40대",
+            ROUND(100.0 * a50 / NULLIF(tot,0), 0) AS "50대",
+            ROUND(100.0 * a60 / NULLIF(tot,0), 0) AS "60대",
+            ROUND(100.0 * a70 / NULLIF(tot,0), 0) AS "70대"
+          FROM st
+          LEFT JOIN regionmonitor.tb_svc_induty_sclas i
+                ON st.cd = i.svc_induty_sclas_cd
+          WHERE st.rnk <= 10
+          ORDER BY industry;
 
 
   - name: "16: 매출 피크타임(금액 기준)"
@@ -4786,36 +4827,39 @@ slides:
           ) SELECT to_char(a/NULLIF(c,0),'FM999,999,999,999') FROM x;
 
 
-    # charts:
-    #   SL19_chart_1:
-    #     headers: ["구분", "업종명", "소비금액"]        # 엑셀 시트의 1행
-    #     chart_data_sql: |-
-    #       SELECT
-    #         '외국인' AS "구분",
-    #         i.svc_induty_sclas_cd_nm AS "업종명",
-    #         ROUND(SUM(t.FRGNR_SALAMT)/1e8, 2) AS "소비금액"   -- 억원
-    #       FROM regionmonitor.TB_NATION_SELNG t
-    #       JOIN regionmonitor.tb_svc_induty_sclas i
-    #         ON t.SVC_INDUTY_SCLAS_CD = i.svc_induty_sclas_cd
-    #       WHERE t.REGION_CD = :REGION_CD
-    #         AND t.STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
-    #       GROUP BY i.svc_induty_sclas_cd_nm
-    #       ORDER BY SUM(t.FRGNR_SALAMT) DESC
-    #       LIMIT 7;
+    charts:
+      SL19_treemap_fr:  # 임의 키 (실제 도형명 아님)
+        shape: "SL19_treemap_1"          # PPT 도형 이름
+        outfile: "out/img/SL19_fr.png" # 저장할 트리맵 이미지 경로
+        color_hex: "#E74C3C"
+        treemap_sql: |-
+          SELECT
+            i.svc_induty_sclas_cd_nm AS nm,
+            SUM(t.FRGNR_SALAMT)/1e8     AS val_eok
+          FROM regionmonitor.TB_NATION_SELNG t
+          JOIN regionmonitor.tb_svc_induty_sclas i
+            ON t.SVC_INDUTY_SCLAS_CD = i.svc_induty_sclas_cd
+          WHERE t.REGION_CD = :REGION_CD
+            AND t.STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
+          GROUP BY i.svc_induty_sclas_cd_nm
+          ORDER BY SUM(t.FRGNR_SALAMT) DESC
+          LIMIT 8;
 
-    #     SL19_chart_2:
-    #       headers: ["구분", "업종명", "소비금액"]
-    #       chart_data_sql: |-
-    #         SELECT
-    #           '내국인' AS "구분",
-    #           i.svc_induty_sclas_cd_nm AS "업종명",
-    #           ROUND(SUM(t.KORN_SALAMT)/1e8, 2) AS "소비금액"
-    #         FROM regionmonitor.TB_NATION_SELNG t
-    #         JOIN regionmonitor.tb_svc_induty_sclas i
-    #           ON t.SVC_INDUTY_SCLAS_CD = i.svc_induty_sclas_cd
-    #         WHERE t.REGION_CD = :REGION_CD
-    #           AND t.STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
-    #         GROUP BY i.svc_induty_sclas_cd_nm
-    #         ORDER BY SUM(t.KORN_SALAMT) DESC
-    #         LIMIT 7;
+
+      SL19_treemap_kr:
+        shape: "SL19_treemap_2"
+        outfile: "out/img/SL19_kr.png"
+        color_hex: "#1F4E79"
+        treemap_sql: |-
+          SELECT
+            i.svc_induty_sclas_cd_nm AS nm,
+            SUM(t.NATIVE_SALAMT)/1e8   AS val_eok
+          FROM regionmonitor.TB_NATION_SELNG t
+          JOIN regionmonitor.tb_svc_induty_sclas i
+            ON t.SVC_INDUTY_SCLAS_CD = i.svc_induty_sclas_cd
+          WHERE t.REGION_CD = :REGION_CD
+            AND t.STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
+          GROUP BY i.svc_induty_sclas_cd_nm
+          ORDER BY SUM(t.NATIVE_SALAMT) DESC
+          LIMIT 8;
 
