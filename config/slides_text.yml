@@ -1655,7 +1655,7 @@ slides:
               AND STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
             GROUP BY STDR_YMD
           )
-          SELECT to_char(to_date(STDR_YMD,'YYYYMMDD'), 'FMMM"월"FMDD"일"')
+          SELECT to_char(to_date(STDR_YMD,'YYYYMMDD'), 'FMMM"월 "FMDD"일"')
           FROM daily
           ORDER BY v DESC, STDR_YMD
           LIMIT 1;
@@ -1683,7 +1683,7 @@ slides:
               AND STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
             GROUP BY STDR_YMD
           )
-          SELECT to_char(to_date(STDR_YMD,'YYYYMMDD'), 'FMMM"월"FMDD"일"')
+          SELECT to_char(to_date(STDR_YMD,'YYYYMMDD'), 'FMMM"월 "FMDD"일"')
           FROM daily
           ORDER BY v ASC, STDR_YMD
           LIMIT 1;
@@ -3688,12 +3688,12 @@ slides:
           )
           SELECT
             i.svc_induty_sclas_cd_nm AS industry,
-            ROUND(100.0 * a20 / NULLIF(tot,0), 0) AS "20대",
-            ROUND(100.0 * a30 / NULLIF(tot,0), 0) AS "30대",
-            ROUND(100.0 * a40 / NULLIF(tot,0), 0) AS "40대",
-            ROUND(100.0 * a50 / NULLIF(tot,0), 0) AS "50대",
-            ROUND(100.0 * a60 / NULLIF(tot,0), 0) AS "60대",
-            ROUND(100.0 * a70 / NULLIF(tot,0), 0) AS "70대"
+            COALESCE(ROUND(100.0 * a20 / NULLIF(tot,0), 1), 0.0) AS "20대",
+            COALESCE(ROUND(100.0 * a30 / NULLIF(tot,0), 1), 0.0) AS "30대",
+            COALESCE(ROUND(100.0 * a40 / NULLIF(tot,0), 1), 0.0) AS "40대",
+            COALESCE(ROUND(100.0 * a50 / NULLIF(tot,0), 1), 0.0) AS "50대",
+            COALESCE(ROUND(100.0 * a60 / NULLIF(tot,0), 1), 0.0) AS "60대",
+            COALESCE(ROUND(100.0 * a70 / NULLIF(tot,0), 1), 0.0) AS "70대"
           FROM st
           LEFT JOIN regionmonitor.tb_svc_induty_sclas i
                 ON st.cd = i.svc_induty_sclas_cd

@@ -97,24 +97,27 @@ def generate_heatmap_image(data_df, out_path, title=None, font_family="Malgun Go
     # 1. Figure 생성 및 초기화
     fig, ax = plt.subplots(figsize=(8, 6))
     fig.set_facecolor('none')
+
+    annot_data = data_df.applymap(lambda x: f'{x:.1f}%') # 숫자를 문자열로 포맷팅
+    annot_data[data_df.isna()] = "" # NaN 값은 주석에서 제거
     
     # 2. Seaborn 히트맵 생성
     # annot=True: 값 표시, fmt=".1f": 소수점 첫째 자리까지 표시
     # cmap="YlGnBu": 색상 맵 (원하는 색상 계열로 변경 가능)
     sns.heatmap(data_df, 
-                annot=True, 
-                fmt=".1f", 
+                annot=annot_data, 
+                fmt="", 
                 linewidths=.5, 
                 linecolor='lightgray',
                 cmap="Blues",
                 cbar_kws={'shrink': .8}, # 컬러바 크기 조절
                 ax=ax,
-                alpha=0.7,
-                annot_kws={"fontweight": "bold", "fontsize": 10})
+                alpha=0.8,
+                annot_kws={"fontweight": 600, "fontsize": 10})
     
     # 3. 축 레이블 회전 및 설정
-    ax.tick_params(axis='x', rotation=0) # X축 레이블 유지
-    ax.tick_params(axis='y', rotation=0) # Y축 레이블 유지
+    ax.tick_params(axis='x', rotation=0, colors='#404040', labelsize=9) 
+    ax.tick_params(axis='y', rotation=0, colors='#404040', labelsize=9) 
 
     ax.set_xlabel('')
     ax.set_ylabel('')
@@ -214,7 +217,7 @@ print(f"DEBUG: 최종 Image Map: {image_map}")
 
 apply_tokens_and_charts(
     prs_path="template/master.pptx",
-    out_path="out/report_test_색상테스트1453끝.pptx",
+    out_path="out/report_test_히트맵수정2.pptx",
     token_map=token_values,
     chart_map=chart_data,
     image_map=image_map
