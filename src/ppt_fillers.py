@@ -210,6 +210,21 @@ def colorize_arrows(prs):
                         r.font.color.rgb = RGBColor(0, 112, 192)     # 파랑
 
 
+
+def highlight_max_point_only(chart, series_idx=0, max_idx=0,
+                             color=RGBColor(231, 76, 60)):
+    """
+    chart.series[series_idx]의 특정 point(=max_idx)만 강조색 적용.
+    나머지 포인트는 건드리지 않아 기존 색 유지됨.
+    """
+    series = chart.series[series_idx]
+    if max_idx < 0 or max_idx >= len(series.points):
+        return
+    pt = series.points[max_idx]
+    fill = pt.format.fill
+    fill.solid()
+    fill.fore_color.rgb = color
+
 # ---------------------------
 # 🔹 Helper (한 번에 실행용)
 # ---------------------------
@@ -230,6 +245,26 @@ def apply_tokens_and_charts(prs_path, out_path, token_map, chart_map=None, image
             ch = find_chart(prs, cname)
             if ch:
                 replace_chart_data(ch, cats, sdict)
+
+                if cname == "SL5_chart_2":
+                    try:
+                        # 첫 번째 시리즈의 값 리스트 추출
+                        vals = next(iter(sdict.values()))
+                        if vals:
+                            max_idx = vals.index(max(vals))
+                            highlight_max_point_only(ch, series_idx=0, max_idx=max_idx, color=RGBColor(231, 76, 60))
+                    except Exception as e:
+                        print(f"⚠️ SL5_chart_2 강조 처리 실패: {e}")
+
+                if cname == "SL7_chart":
+                    try:
+                        # 첫 번째 시리즈의 값 리스트 추출
+                        vals = next(iter(sdict.values()))
+                        if vals:
+                            max_idx = vals.index(max(vals))
+                            highlight_max_point_only(ch, series_idx=0, max_idx=max_idx, color=RGBColor(91, 155, 213))
+                    except Exception as e:
+                        print(f"⚠️ SL7_chart 강조 처리 실패: {e}")
     
 
     if image_map:
