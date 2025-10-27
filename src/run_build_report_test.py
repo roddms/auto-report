@@ -147,7 +147,7 @@ engine = create_engine(
 )
 
 
-with open("config/slides_text.yml", encoding="utf-8") as f:
+with open("config/slides_tokens.yml", encoding="utf-8") as f:
     cfg = yaml.safe_load(f)
 
 token_values = {}
@@ -217,7 +217,7 @@ print(f"DEBUG: 최종 Image Map: {image_map}")
 
 apply_tokens_and_charts(
     prs_path="template/master.pptx",
-    out_path="out/report_test_히트맵수정2.pptx",
+    out_path="out/커밋전테스트.pptx",
     token_map=token_values,
     chart_map=chart_data,
     image_map=image_map

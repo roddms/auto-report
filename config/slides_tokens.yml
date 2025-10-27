@@ -4,6 +4,14 @@ params:
   DATE_TO:   "20250131"
 
 slides:
+  - name: "1: 표지"
+    tokens:
+      SL1_p_1:
+        sql: |-
+          SELECT region_nm
+          FROM public.region
+          WHERE region_cd = CAST(:REGION_CD AS VARCHAR);
+
   - name: "3 : 행사 전체요약"
     tokens:
       SL3_p_1:
@@ -931,41 +939,49 @@ slides:
           FROM base JOIN day_total USING (d);
 
 
+      # 최다 유입 지역
       SL5_p_11:
         sql: |
           WITH o AS (
             SELECT
-              COALESCE(SUM(WHTHRC_VIPOP) + SUM(NEARBY_VIPOP), 0) AS in_v,
-              COALESCE(SUM(OUTHRC_VIPOP), 0)                     AS out_v
+              COALESCE(SUM(WHTHRC_VIPOP), 0) AS in_v,
+              COALESCE(SUM(NEARBY_VIPOP), 0) AS near_v,
+              COALESCE(SUM(OUTHRC_VIPOP), 0) AS out_v 
             FROM regionmonitor.TB_INFLOW_VISIT_POPLTN
             WHERE REGION_CD = CAST(:REGION_CD AS VARCHAR)
               AND STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
           ),
           u AS (
-            SELECT '관내' AS nm, in_v  AS v FROM o
+            SELECT '관내'::text AS nm, in_v  AS v FROM o
             UNION ALL
-            SELECT '관외'      , out_v AS v FROM o
+            SELECT '관외'        AS nm, out_v AS v FROM o
+            UNION ALL
+            SELECT '인접지역'     AS nm, near_v AS v FROM o
           )
           SELECT nm
           FROM u
           ORDER BY v DESC, nm
           LIMIT 1;
 
+
       # 최다 유입 지역 비중(%)
       SL5_p_12:
         sql: |
           WITH o AS (
             SELECT
-              COALESCE(SUM(WHTHRC_VIPOP) + SUM(NEARBY_VIPOP), 0) AS in_v,
-              COALESCE(SUM(OUTHRC_VIPOP), 0)                     AS out_v
+              COALESCE(SUM(WHTHRC_VIPOP), 0) AS in_v,
+              COALESCE(SUM(NEARBY_VIPOP), 0) AS near_v,
+              COALESCE(SUM(OUTHRC_VIPOP), 0) AS out_v
             FROM regionmonitor.TB_INFLOW_VISIT_POPLTN
             WHERE REGION_CD = CAST(:REGION_CD AS VARCHAR)
               AND STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
           ),
           u AS (
-            SELECT '관내' AS nm, in_v  AS v FROM o
+            SELECT '관내'::text AS nm, in_v  AS v FROM o
             UNION ALL
-            SELECT '관외'      , out_v AS v FROM o
+            SELECT '관외'        AS nm, out_v AS v FROM o
+            UNION ALL
+            SELECT '인접지역'     AS nm, near_v AS v FROM o
           )
           SELECT ROUND(100.0 * v / NULLIF(SUM(v) OVER (), 0), 1)
           FROM u
@@ -1025,7 +1041,7 @@ slides:
       SL5_chart_2:
         category_sql: |
           SELECT lbl
-          FROM (VALUES ('20대'), ('30대'), ('40대'), ('50대'), ('60대'), ('70대 이상')) v(lbl);
+          FROM (VALUES ('20대'), ('30대'), ('40대'), ('50대'), ('60대'), ('70대')) v(lbl);
         series:
           방문인구(만 명): |
             SELECT val
@@ -1084,8 +1100,7 @@ slides:
                      SUM(OUTHRC_VIPOP)::NUMERIC / 10000.0
               FROM regionmonitor.TB_INFLOW_VISIT_POPLTN
               WHERE REGION_CD = :REGION_CD AND STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
-            ) t
-            ORDER BY lbl;
+            ) t;
 
       # 4) 내외국인 분포 (원형) — 내국인/외국인
       SL5_chart_4:
@@ -2293,7 +2308,7 @@ slides:
           SELECT CASE WHEN nat >= frn THEN '내국인' ELSE '외국인' END FROM base;
 
       SL11_2:
-        sql: | # 더 많은 쪽이 상대보다 몇 % 더 많은지
+        sql: | # 내외국인 방문인구 비율 차이
           WITH base AS (
             SELECT
               COALESCE(SUM(NATIVE_VIPOP),0) AS nat,
@@ -2302,8 +2317,9 @@ slides:
             WHERE REGION_CD = CAST(:REGION_CD AS VARCHAR)
               AND STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
           )
-          SELECT ROUND(100.0 * ABS(nat - frn) / NULLIF(LEAST(nat, frn), 0), 1)
+          SELECT ROUND(ABS((nat::numeric / NULLIF(nat + frn, 0)) - (frn::numeric / NULLIF(nat + frn, 0))) * 100, 1)
           FROM base;
+
 
       SL11_3:
         sql: | # 내국인 방문객수(콤마)
@@ -2696,21 +2712,24 @@ slides:
           ORDER BY v DESC, STDR_YMD
           LIMIT 1;
 
-      # 6) 최대 소비 유입지(관내/관외) + 비중
+      # 6) 최대 소비 유입지 + 비중
       SL12_p_12:
-        sql: | # 최대 소비 유입지 라벨('관내' 또는 '관외')
+        sql: | # 최대 소비 유입지 라벨('관내'/'인접'/'관외')
           WITH b AS (
             SELECT
-              COALESCE(SUM(WHTHRC_SALAMT) + SUM(NEARBY_SALAMT), 0) AS in_local,
+              COALESCE(SUM(WHTHRC_SALAMT), 0) AS in_local,
+              COALESCE(SUM(NEARBY_SALAMT), 0) AS near_local,
               COALESCE(SUM(OUTHRC_SALAMT), 0) AS out_local
             FROM regionmonitor.TB_INFLOW_SELNG
             WHERE REGION_CD = CAST(:REGION_CD AS VARCHAR)
               AND STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
           ),
           u AS (
-            SELECT '관내' AS gb, in_local  AS v FROM b
+            SELECT '관내'  AS gb, in_local   AS v FROM b
             UNION ALL
-            SELECT '관외',     out_local AS v FROM b
+            SELECT '인접'  AS gb, near_local AS v FROM b
+            UNION ALL
+            SELECT '관외'  AS gb, out_local  AS v FROM b
           )
           SELECT gb
           FROM u
@@ -2721,18 +2740,21 @@ slides:
         sql: | # 최대 소비 유입지 비중(%)
           WITH b AS (
             SELECT
-              COALESCE(SUM(WHTHRC_SALAMT) + SUM(NEARBY_SALAMT), 0) AS in_local,
+              COALESCE(SUM(WHTHRC_SALAMT), 0) AS in_local,
+              COALESCE(SUM(NEARBY_SALAMT), 0) AS near_local,
               COALESCE(SUM(OUTHRC_SALAMT), 0) AS out_local
             FROM regionmonitor.TB_INFLOW_SELNG
             WHERE REGION_CD = CAST(:REGION_CD AS VARCHAR)
               AND STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
           ),
           u AS (
-            SELECT '관내' AS gb, in_local  AS v FROM b
+            SELECT '관내' AS gb, in_local   AS v FROM b
             UNION ALL
-            SELECT '관외',     out_local AS v FROM b
+            SELECT '인접' AS gb, near_local AS v FROM b
+            UNION ALL
+            SELECT '관외' AS gb, out_local  AS v FROM b
           )
-          SELECT ROUND(100.0 * v / NULLIF(SUM(v) OVER (),0), 1)
+          SELECT ROUND(100.0 * v / NULLIF(SUM(v) OVER (), 0), 1)
           FROM u
           ORDER BY v DESC, gb
           LIMIT 1;
@@ -3265,7 +3287,7 @@ slides:
                   ROW_NUMBER() OVER (ORDER BY m_amt DESC, SVC_INDUTY_SCLAS_CD) rn
             FROM g
           )
-          SELECT ROUND(100.0 * m_amt / NULLIF(tot,0), 2) FROM r WHERE rn = 1;
+          SELECT ROUND(100.0 * m_amt / NULLIF(tot,0), 1) FROM r WHERE rn = 1;
 
       SL14_3:
         sql: | # 남성 소비금액 2위 업종명
@@ -3298,7 +3320,7 @@ slides:
                   ROW_NUMBER() OVER (ORDER BY m_amt DESC, SVC_INDUTY_SCLAS_CD) rn
             FROM g
           )
-          SELECT ROUND(100.0 * m_amt / NULLIF(tot,0), 2) FROM r WHERE rn = 2;
+          SELECT ROUND(100.0 * m_amt / NULLIF(tot,0), 1) FROM r WHERE rn = 2;
 
       SL14_5:
         sql: | # 남성 소비금액 3위 업종명
@@ -3331,7 +3353,7 @@ slides:
                   ROW_NUMBER() OVER (ORDER BY m_amt DESC, SVC_INDUTY_SCLAS_CD) rn
             FROM g
           )
-          SELECT ROUND(100.0 * m_amt / NULLIF(tot,0), 2) FROM r WHERE rn = 3;
+          SELECT ROUND(100.0 * m_amt / NULLIF(tot,0), 1) FROM r WHERE rn = 3;
 
       # [여성 소비 TOP3]
       SL14_7:
@@ -3365,7 +3387,7 @@ slides:
                   ROW_NUMBER() OVER (ORDER BY f_amt DESC, SVC_INDUTY_SCLAS_CD) rn
             FROM g
           )
-          SELECT ROUND(100.0 * f_amt / NULLIF(tot,0), 2) FROM r WHERE rn = 1;
+          SELECT ROUND(100.0 * f_amt / NULLIF(tot,0), 1) FROM r WHERE rn = 1;
 
       SL14_9:
         sql: | # 여성 소비금액 2위 업종명
@@ -3398,7 +3420,7 @@ slides:
                   ROW_NUMBER() OVER (ORDER BY f_amt DESC, SVC_INDUTY_SCLAS_CD) rn
             FROM g
           )
-          SELECT ROUND(100.0 * f_amt / NULLIF(tot,0), 2) FROM r WHERE rn = 2;
+          SELECT ROUND(100.0 * f_amt / NULLIF(tot,0), 1) FROM r WHERE rn = 2;
 
       SL14_11:
         sql: | # 여성 소비금액 3위 업종명
@@ -3431,7 +3453,7 @@ slides:
                   ROW_NUMBER() OVER (ORDER BY f_amt DESC, SVC_INDUTY_SCLAS_CD) rn
             FROM g
           )
-          SELECT ROUND(100.0 * f_amt / NULLIF(tot,0), 2) FROM r WHERE rn = 3;
+          SELECT ROUND(100.0 * f_amt / NULLIF(tot,0), 1) FROM r WHERE rn = 3;
 
     charts:
       SL14_chart:
@@ -4001,6 +4023,91 @@ slides:
           ORDER BY amt DESC, hr
           LIMIT 1;
 
+      SL16_nm_1:
+        sql: |-
+          WITH top5 AS (
+            SELECT i.svc_induty_sclas_cd AS cd,
+                  i.svc_induty_sclas_cd_nm AS nm,
+                  SUM(t.TOT_SALAMT) AS amt
+            FROM regionmonitor.TB_TMZON_SELNG t
+            JOIN regionmonitor.tb_svc_induty_sclas i
+              ON t.SVC_INDUTY_SCLAS_CD = i.svc_induty_sclas_cd
+            WHERE t.REGION_CD = :REGION_CD
+              AND t.STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
+            GROUP BY 1,2
+            ORDER BY amt DESC
+            LIMIT 5
+          )
+          SELECT nm FROM top5 ORDER BY amt DESC LIMIT 1 OFFSET 0;
+
+      SL16_nm_2:
+        sql: |-
+          WITH top5 AS (
+            SELECT i.svc_induty_sclas_cd AS cd,
+                  i.svc_induty_sclas_cd_nm AS nm,
+                  SUM(t.TOT_SALAMT) AS amt
+            FROM regionmonitor.TB_TMZON_SELNG t
+            JOIN regionmonitor.tb_svc_induty_sclas i
+              ON t.SVC_INDUTY_SCLAS_CD = i.svc_induty_sclas_cd
+            WHERE t.REGION_CD = :REGION_CD
+              AND t.STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
+            GROUP BY 1,2
+            ORDER BY amt DESC
+            LIMIT 5
+          )
+          SELECT nm FROM top5 ORDER BY amt DESC LIMIT 1 OFFSET 1;
+
+      SL16_nm_3:
+        sql: |-
+          WITH top5 AS (
+            SELECT i.svc_induty_sclas_cd AS cd,
+                  i.svc_induty_sclas_cd_nm AS nm,
+                  SUM(t.TOT_SALAMT) AS amt
+            FROM regionmonitor.TB_TMZON_SELNG t
+            JOIN regionmonitor.tb_svc_induty_sclas i
+              ON t.SVC_INDUTY_SCLAS_CD = i.svc_induty_sclas_cd
+            WHERE t.REGION_CD = :REGION_CD
+              AND t.STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
+            GROUP BY 1,2
+            ORDER BY amt DESC
+            LIMIT 5
+          )
+          SELECT nm FROM top5 ORDER BY amt DESC LIMIT 1 OFFSET 2;
+
+      SL16_nm_4:
+        sql: |-
+          WITH top5 AS (
+            SELECT i.svc_induty_sclas_cd AS cd,
+                  i.svc_induty_sclas_cd_nm AS nm,
+                  SUM(t.TOT_SALAMT) AS amt
+            FROM regionmonitor.TB_TMZON_SELNG t
+            JOIN regionmonitor.tb_svc_induty_sclas i
+              ON t.SVC_INDUTY_SCLAS_CD = i.svc_induty_sclas_cd
+            WHERE t.REGION_CD = :REGION_CD
+              AND t.STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
+            GROUP BY 1,2
+            ORDER BY amt DESC
+            LIMIT 5
+          )
+          SELECT nm FROM top5 ORDER BY amt DESC LIMIT 1 OFFSET 3;
+
+      SL16_nm_5:
+        sql: |-
+          WITH top5 AS (
+            SELECT i.svc_induty_sclas_cd AS cd,
+                  i.svc_induty_sclas_cd_nm AS nm,
+                  SUM(t.TOT_SALAMT) AS amt
+            FROM regionmonitor.TB_TMZON_SELNG t
+            JOIN regionmonitor.tb_svc_induty_sclas i
+              ON t.SVC_INDUTY_SCLAS_CD = i.svc_induty_sclas_cd
+            WHERE t.REGION_CD = :REGION_CD
+              AND t.STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
+            GROUP BY 1,2
+            ORDER BY amt DESC
+            LIMIT 5
+          )
+          SELECT nm FROM top5 ORDER BY amt DESC LIMIT 1 OFFSET 4;
+
     charts:
       SL16_chart:
         category_sql: |-
@@ -4496,6 +4603,91 @@ slides:
             FROM s JOIN top USING (SVC_INDUTY_SCLAS_CD)
           ) x ORDER BY cnt DESC, hr LIMIT 1;
 
+      SL17_nm_1:
+        sql: |-
+          WITH top5 AS (
+            SELECT i.svc_induty_sclas_cd AS cd,
+                  i.svc_induty_sclas_cd_nm AS nm,
+                  SUM(t.TOT_DCNT) AS amt
+            FROM regionmonitor.TB_TMZON_SELNG t
+            JOIN regionmonitor.tb_svc_induty_sclas i
+              ON t.SVC_INDUTY_SCLAS_CD = i.svc_induty_sclas_cd
+            WHERE t.REGION_CD = :REGION_CD
+              AND t.STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
+            GROUP BY 1,2
+            ORDER BY amt DESC
+            LIMIT 5
+          )
+          SELECT nm FROM top5 ORDER BY amt DESC LIMIT 1 OFFSET 0;
+
+      SL17_nm_2:
+        sql: |-
+          WITH top5 AS (
+            SELECT i.svc_induty_sclas_cd AS cd,
+                  i.svc_induty_sclas_cd_nm AS nm,
+                  SUM(t.TOT_DCNT) AS amt
+            FROM regionmonitor.TB_TMZON_SELNG t
+            JOIN regionmonitor.tb_svc_induty_sclas i
+              ON t.SVC_INDUTY_SCLAS_CD = i.svc_induty_sclas_cd
+            WHERE t.REGION_CD = :REGION_CD
+              AND t.STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
+            GROUP BY 1,2
+            ORDER BY amt DESC
+            LIMIT 5
+          )
+          SELECT nm FROM top5 ORDER BY amt DESC LIMIT 1 OFFSET 1;
+
+      SL17_nm_3:
+        sql: |-
+          WITH top5 AS (
+            SELECT i.svc_induty_sclas_cd AS cd,
+                  i.svc_induty_sclas_cd_nm AS nm,
+                  SUM(t.TOT_DCNT) AS amt
+            FROM regionmonitor.TB_TMZON_SELNG t
+            JOIN regionmonitor.tb_svc_induty_sclas i
+              ON t.SVC_INDUTY_SCLAS_CD = i.svc_induty_sclas_cd
+            WHERE t.REGION_CD = :REGION_CD
+              AND t.STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
+            GROUP BY 1,2
+            ORDER BY amt DESC
+            LIMIT 5
+          )
+          SELECT nm FROM top5 ORDER BY amt DESC LIMIT 1 OFFSET 2;
+
+      SL17_nm_4:
+        sql: |-
+          WITH top5 AS (
+            SELECT i.svc_induty_sclas_cd AS cd,
+                  i.svc_induty_sclas_cd_nm AS nm,
+                  SUM(t.TOT_DCNT) AS amt
+            FROM regionmonitor.TB_TMZON_SELNG t
+            JOIN regionmonitor.tb_svc_induty_sclas i
+              ON t.SVC_INDUTY_SCLAS_CD = i.svc_induty_sclas_cd
+            WHERE t.REGION_CD = :REGION_CD
+              AND t.STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
+            GROUP BY 1,2
+            ORDER BY amt DESC
+            LIMIT 5
+          )
+          SELECT nm FROM top5 ORDER BY amt DESC LIMIT 1 OFFSET 3;
+
+      SL17_nm_5:
+        sql: |-
+          WITH top5 AS (
+            SELECT i.svc_induty_sclas_cd AS cd,
+                  i.svc_induty_sclas_cd_nm AS nm,
+                  SUM(t.TOT_DCNT) AS amt
+            FROM regionmonitor.TB_TMZON_SELNG t
+            JOIN regionmonitor.tb_svc_induty_sclas i
+              ON t.SVC_INDUTY_SCLAS_CD = i.svc_induty_sclas_cd
+            WHERE t.REGION_CD = :REGION_CD
+              AND t.STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
+            GROUP BY 1,2
+            ORDER BY amt DESC
+            LIMIT 5
+          )
+          SELECT nm FROM top5 ORDER BY amt DESC LIMIT 1 OFFSET 4;
+
     charts:
       SL17_chart:
         category_sql: |-
@@ -4507,32 +4699,201 @@ slides:
             ('22시'), ('23시')
           ) v(lbl);
 
-
         series:
-          소비건수(건): |-
+          업종1: |-
+            WITH top5 AS (
+              SELECT i.svc_induty_sclas_cd AS cd,
+                    i.svc_induty_sclas_cd_nm AS nm,
+                    SUM(t.TOT_DCNT) AS amt
+              FROM regionmonitor.TB_TMZON_SELNG t
+              JOIN regionmonitor.tb_svc_induty_sclas i
+                ON t.SVC_INDUTY_SCLAS_CD = i.svc_induty_sclas_cd
+              WHERE t.REGION_CD = :REGION_CD
+                AND t.STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
+              GROUP BY i.svc_induty_sclas_cd, i.svc_induty_sclas_cd_nm
+              ORDER BY amt DESC
+              LIMIT 5
+            )
             SELECT UNNEST(ARRAY[
-              COALESCE(SUM(t.T0_T6_DCNT),0),
-              COALESCE(SUM(t.T7_DCNT),0),
-              COALESCE(SUM(t.T8_DCNT),0),
-              COALESCE(SUM(t.T9_DCNT),0),
-              COALESCE(SUM(t.T10_DCNT),0),
-              COALESCE(SUM(t.T11_DCNT),0),
-              COALESCE(SUM(t.T12_DCNT),0),
-              COALESCE(SUM(t.T13_DCNT),0),
-              COALESCE(SUM(t.T14_DCNT),0),
-              COALESCE(SUM(t.T15_DCNT),0),
-              COALESCE(SUM(t.T16_DCNT),0),
-              COALESCE(SUM(t.T17_DCNT),0),
-              COALESCE(SUM(t.T18_DCNT),0),
-              COALESCE(SUM(t.T19_DCNT),0),
-              COALESCE(SUM(t.T20_DCNT),0),
-              COALESCE(SUM(t.T21_DCNT),0),
-              COALESCE(SUM(t.T22_DCNT),0),
-              COALESCE(SUM(t.T23_DCNT),0)
+              COALESCE(SUM(t.T0_T6_SALAMT),0),
+              COALESCE(SUM(t.T7_SALAMT),0),
+              COALESCE(SUM(t.T8_SALAMT),0),
+              COALESCE(SUM(t.T9_SALAMT),0),
+              COALESCE(SUM(t.T10_SALAMT),0),
+              COALESCE(SUM(t.T11_SALAMT),0),
+              COALESCE(SUM(t.T12_SALAMT),0),
+              COALESCE(SUM(t.T13_SALAMT),0),
+              COALESCE(SUM(t.T14_SALAMT),0),
+              COALESCE(SUM(t.T15_SALAMT),0),
+              COALESCE(SUM(t.T16_SALAMT),0),
+              COALESCE(SUM(t.T17_SALAMT),0),
+              COALESCE(SUM(t.T18_SALAMT),0),
+              COALESCE(SUM(t.T19_SALAMT),0),
+              COALESCE(SUM(t.T20_SALAMT),0),
+              COALESCE(SUM(t.T21_SALAMT),0),
+              COALESCE(SUM(t.T22_SALAMT),0),
+              COALESCE(SUM(t.T23_SALAMT),0)
             ])
             FROM regionmonitor.TB_TMZON_SELNG t
             WHERE t.REGION_CD = :REGION_CD
-              AND t.STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO;
+              AND t.STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
+              AND t.SVC_INDUTY_SCLAS_CD = (SELECT cd FROM top5 ORDER BY amt DESC LIMIT 1 OFFSET 0);
+
+          업종2: |-
+            WITH top5 AS (
+              SELECT i.svc_induty_sclas_cd AS cd,
+                    i.svc_induty_sclas_cd_nm AS nm,
+                    SUM(t.TOT_DCNT) AS amt
+              FROM regionmonitor.TB_TMZON_SELNG t
+              JOIN regionmonitor.tb_svc_induty_sclas i
+                ON t.SVC_INDUTY_SCLAS_CD = i.svc_induty_sclas_cd
+              WHERE t.REGION_CD = :REGION_CD
+                AND t.STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
+              GROUP BY i.svc_induty_sclas_cd, i.svc_induty_sclas_cd_nm
+              ORDER BY amt DESC
+              LIMIT 5
+            )
+            SELECT UNNEST(ARRAY[
+              COALESCE(SUM(t.T0_T6_SALAMT),0),
+              COALESCE(SUM(t.T7_SALAMT),0),
+              COALESCE(SUM(t.T8_SALAMT),0),
+              COALESCE(SUM(t.T9_SALAMT),0),
+              COALESCE(SUM(t.T10_SALAMT),0),
+              COALESCE(SUM(t.T11_SALAMT),0),
+              COALESCE(SUM(t.T12_SALAMT),0),
+              COALESCE(SUM(t.T13_SALAMT),0),
+              COALESCE(SUM(t.T14_SALAMT),0),
+              COALESCE(SUM(t.T15_SALAMT),0),
+              COALESCE(SUM(t.T16_SALAMT),0),
+              COALESCE(SUM(t.T17_SALAMT),0),
+              COALESCE(SUM(t.T18_SALAMT),0),
+              COALESCE(SUM(t.T19_SALAMT),0),
+              COALESCE(SUM(t.T20_SALAMT),0),
+              COALESCE(SUM(t.T21_SALAMT),0),
+              COALESCE(SUM(t.T22_SALAMT),0),
+              COALESCE(SUM(t.T23_SALAMT),0)
+            ])
+            FROM regionmonitor.TB_TMZON_SELNG t
+            WHERE t.REGION_CD = :REGION_CD
+              AND t.STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
+              AND t.SVC_INDUTY_SCLAS_CD = (SELECT cd FROM top5 ORDER BY amt DESC LIMIT 1 OFFSET 1);
+
+          업종3: |-
+            WITH top5 AS (
+              SELECT i.svc_induty_sclas_cd AS cd,
+                    i.svc_induty_sclas_cd_nm AS nm,
+                    SUM(t.TOT_DCNT) AS amt
+              FROM regionmonitor.TB_TMZON_SELNG t
+              JOIN regionmonitor.tb_svc_induty_sclas i
+                ON t.SVC_INDUTY_SCLAS_CD = i.svc_induty_sclas_cd
+              WHERE t.REGION_CD = :REGION_CD
+                AND t.STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
+              GROUP BY i.svc_induty_sclas_cd, i.svc_induty_sclas_cd_nm
+              ORDER BY amt DESC
+              LIMIT 5
+            )
+            SELECT UNNEST(ARRAY[
+              COALESCE(SUM(t.T0_T6_SALAMT),0),
+              COALESCE(SUM(t.T7_SALAMT),0),
+              COALESCE(SUM(t.T8_SALAMT),0),
+              COALESCE(SUM(t.T9_SALAMT),0),
+              COALESCE(SUM(t.T10_SALAMT),0),
+              COALESCE(SUM(t.T11_SALAMT),0),
+              COALESCE(SUM(t.T12_SALAMT),0),
+              COALESCE(SUM(t.T13_SALAMT),0),
+              COALESCE(SUM(t.T14_SALAMT),0),
+              COALESCE(SUM(t.T15_SALAMT),0),
+              COALESCE(SUM(t.T16_SALAMT),0),
+              COALESCE(SUM(t.T17_SALAMT),0),
+              COALESCE(SUM(t.T18_SALAMT),0),
+              COALESCE(SUM(t.T19_SALAMT),0),
+              COALESCE(SUM(t.T20_SALAMT),0),
+              COALESCE(SUM(t.T21_SALAMT),0),
+              COALESCE(SUM(t.T22_SALAMT),0),
+              COALESCE(SUM(t.T23_SALAMT),0)
+            ])
+            FROM regionmonitor.TB_TMZON_SELNG t
+            WHERE t.REGION_CD = :REGION_CD
+              AND t.STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
+              AND t.SVC_INDUTY_SCLAS_CD = (SELECT cd FROM top5 ORDER BY amt DESC LIMIT 1 OFFSET 2);
+
+          업종4: |-
+            WITH top5 AS (
+              SELECT i.svc_induty_sclas_cd AS cd,
+                    i.svc_induty_sclas_cd_nm AS nm,
+                    SUM(t.TOT_DCNT) AS amt
+              FROM regionmonitor.TB_TMZON_SELNG t
+              JOIN regionmonitor.tb_svc_induty_sclas i
+                ON t.SVC_INDUTY_SCLAS_CD = i.svc_induty_sclas_cd
+              WHERE t.REGION_CD = :REGION_CD
+                AND t.STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
+              GROUP BY i.svc_induty_sclas_cd, i.svc_induty_sclas_cd_nm
+              ORDER BY amt DESC
+              LIMIT 5
+            )
+            SELECT UNNEST(ARRAY[
+              COALESCE(SUM(t.T0_T6_SALAMT),0),
+              COALESCE(SUM(t.T7_SALAMT),0),
+              COALESCE(SUM(t.T8_SALAMT),0),
+              COALESCE(SUM(t.T9_SALAMT),0),
+              COALESCE(SUM(t.T10_SALAMT),0),
+              COALESCE(SUM(t.T11_SALAMT),0),
+              COALESCE(SUM(t.T12_SALAMT),0),
+              COALESCE(SUM(t.T13_SALAMT),0),
+              COALESCE(SUM(t.T14_SALAMT),0),
+              COALESCE(SUM(t.T15_SALAMT),0),
+              COALESCE(SUM(t.T16_SALAMT),0),
+              COALESCE(SUM(t.T17_SALAMT),0),
+              COALESCE(SUM(t.T18_SALAMT),0),
+              COALESCE(SUM(t.T19_SALAMT),0),
+              COALESCE(SUM(t.T20_SALAMT),0),
+              COALESCE(SUM(t.T21_SALAMT),0),
+              COALESCE(SUM(t.T22_SALAMT),0),
+              COALESCE(SUM(t.T23_SALAMT),0)
+            ])
+            FROM regionmonitor.TB_TMZON_SELNG t
+            WHERE t.REGION_CD = :REGION_CD
+              AND t.STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
+              AND t.SVC_INDUTY_SCLAS_CD = (SELECT cd FROM top5 ORDER BY amt DESC LIMIT 1 OFFSET 3);
+
+          업종5: |-
+            WITH top5 AS (
+              SELECT i.svc_induty_sclas_cd AS cd,
+                    i.svc_induty_sclas_cd_nm AS nm,
+                    SUM(t.TOT_SALAMT) AS amt
+              FROM regionmonitor.TB_TMZON_SELNG t
+              JOIN regionmonitor.tb_svc_induty_sclas i
+                ON t.SVC_INDUTY_SCLAS_CD = i.svc_induty_sclas_cd
+              WHERE t.REGION_CD = :REGION_CD
+                AND t.STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
+              GROUP BY i.svc_induty_sclas_cd, i.svc_induty_sclas_cd_nm
+              ORDER BY amt DESC
+              LIMIT 5
+            )
+            SELECT UNNEST(ARRAY[
+              COALESCE(SUM(t.T0_T6_SALAMT),0),
+              COALESCE(SUM(t.T7_SALAMT),0),
+              COALESCE(SUM(t.T8_SALAMT),0),
+              COALESCE(SUM(t.T9_SALAMT),0),
+              COALESCE(SUM(t.T10_SALAMT),0),
+              COALESCE(SUM(t.T11_SALAMT),0),
+              COALESCE(SUM(t.T12_SALAMT),0),
+              COALESCE(SUM(t.T13_SALAMT),0),
+              COALESCE(SUM(t.T14_SALAMT),0),
+              COALESCE(SUM(t.T15_SALAMT),0),
+              COALESCE(SUM(t.T16_SALAMT),0),
+              COALESCE(SUM(t.T17_SALAMT),0),
+              COALESCE(SUM(t.T18_SALAMT),0),
+              COALESCE(SUM(t.T19_SALAMT),0),
+              COALESCE(SUM(t.T20_SALAMT),0),
+              COALESCE(SUM(t.T21_SALAMT),0),
+              COALESCE(SUM(t.T22_SALAMT),0),
+              COALESCE(SUM(t.T23_SALAMT),0)
+            ])
+            FROM regionmonitor.TB_TMZON_SELNG t
+            WHERE t.REGION_CD = :REGION_CD
+              AND t.STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
+              AND t.SVC_INDUTY_SCLAS_CD = (SELECT cd FROM top5 ORDER BY amt DESC LIMIT 1 OFFSET 4);
         
 
 
@@ -4788,7 +5149,7 @@ slides:
             ORDER BY amt DESC, SVC_INDUTY_SCLAS_CD
             LIMIT 1
           )
-          SELECT ROUND(100.0 * (SELECT amt FROM pick) / NULLIF((SELECT total FROM tot),0), 3);
+          SELECT ROUND(100.0 * (SELECT amt FROM pick) / NULLIF((SELECT total FROM tot),0), 1);
 
       SL19_3:
         sql: | # 외국인 2위 업종(코드)
@@ -4825,7 +5186,7 @@ slides:
             ORDER BY amt DESC, SVC_INDUTY_SCLAS_CD
             LIMIT 1 OFFSET 1
           )
-          SELECT ROUND(100.0 * (SELECT amt FROM pick) / NULLIF((SELECT total FROM tot),0), 3);
+          SELECT ROUND(100.0 * (SELECT amt FROM pick) / NULLIF((SELECT total FROM tot),0), 1);
 
       SL19_5:
         sql: | # 외국인 3위 업종(코드)
@@ -4862,7 +5223,7 @@ slides:
             ORDER BY amt DESC, SVC_INDUTY_SCLAS_CD
             LIMIT 1 OFFSET 2
           )
-          SELECT ROUND(100.0 * (SELECT amt FROM pick) / NULLIF((SELECT total FROM tot),0), 3);
+          SELECT ROUND(100.0 * (SELECT amt FROM pick) / NULLIF((SELECT total FROM tot),0), 1);
 
       # 내국인 TOP3 업종 + 비중(%)
       SL19_7:
@@ -4900,7 +5261,7 @@ slides:
             ORDER BY amt DESC, SVC_INDUTY_SCLAS_CD
             LIMIT 1
           )
-          SELECT ROUND(100.0 * (SELECT amt FROM pick) / NULLIF((SELECT total FROM tot),0), 3);
+          SELECT ROUND(100.0 * (SELECT amt FROM pick) / NULLIF((SELECT total FROM tot),0), 1);
 
       SL19_9:
         sql: | # 내국인 2위 업종(코드)
@@ -4937,7 +5298,7 @@ slides:
             ORDER BY amt DESC, SVC_INDUTY_SCLAS_CD
             LIMIT 1 OFFSET 1
           )
-          SELECT ROUND(100.0 * (SELECT amt FROM pick) / NULLIF((SELECT total FROM tot),0), 3);
+          SELECT ROUND(100.0 * (SELECT amt FROM pick) / NULLIF((SELECT total FROM tot),0), 1);
 
       SL19_11:
         sql: | # 내국인 3위 업종
@@ -4973,7 +5334,7 @@ slides:
             ORDER BY amt DESC, SVC_INDUTY_SCLAS_CD
             LIMIT 1 OFFSET 2
           )
-          SELECT ROUND(100.0 * (SELECT amt FROM pick) / NULLIF((SELECT total FROM tot),0), 3);
+          SELECT ROUND(100.0 * (SELECT amt FROM pick) / NULLIF((SELECT total FROM tot),0), 1);
 
       # 총액/건수/1건당 평균
       SL19_13:
