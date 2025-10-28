@@ -1,30 +1,27 @@
 # src/run_build_report.py
 import os
+import time
 import yaml
+import pandas as pd
 from sqlalchemy import create_engine, text
 from dotenv import load_dotenv, find_dotenv
-from ppt_fillers import apply_tokens_and_charts
-import time
-import pandas as pd
 
+from ppt_fillers import apply_tokens_and_charts, update_treemap_chart
 
-# === 트리맵 이미지 생성 유틸 ===
+# ---------------------------------
+# (옵션) 트리맵/히트맵 이미지 유틸
+#   * PPT 내부 트리맵만 쓰려면 treemap 이미지 분기는 스킵해도 됨
+# ---------------------------------
 def generate_treemap_image(data, out_path, color_hex, title=None, font_family="Malgun Gothic"):
-    """
-    data: list[tuple[str, float]] # [(업종명, 억원값)]
-    out_path: 이미지 저장 경로
-    """
     import os, math
     import matplotlib.pyplot as plt
     import squarify
 
-    # 0) 폰트 설정 (실패해도 진행)
     try:
         plt.rcParams["font.family"] = font_family
     except Exception:
         pass
 
-    # 1) 값 정리: NaN/None → 제외, 0/음수 → 제외 (squarify가 0에서 ZeroDivisionError 발생)
     cleaned = []
     for k, v in (data or []):
         try:
@@ -34,7 +31,6 @@ def generate_treemap_image(data, out_path, color_hex, title=None, font_family="M
         if x is not None and not math.isnan(x) and x > 0:
             cleaned.append((k, x))
 
-    # 2) 모두 0/NaN/음수라서 남은 게 없으면 플레이스홀더 저장
     if not cleaned:
         fig = plt.figure(figsize=(7, 4.5))
         fig.set_facecolor('none')
@@ -48,30 +44,24 @@ def generate_treemap_image(data, out_path, color_hex, title=None, font_family="M
         plt.close(fig)
         return
 
-    # 3) 정렬 (내림차순)
     cleaned.sort(key=lambda item: item[1], reverse=True)
-
-    # 4) 라벨/사이즈 생성 (값 표시는 1자리 소수)
     labels = [f"{k}\n{v:.1f}억" for k, v in cleaned]
     sizes  = [v for _, v in cleaned]
-
-    # 5) 색상: 단일색 반복
     colors = [color_hex] * len(sizes)
 
-    # 6) 그리기
     fig = plt.figure(figsize=(7, 4.5))
     fig.set_facecolor('none')
+    import matplotlib.pyplot as plt
     plt.clf()
 
     squarify.plot(
         sizes=sizes,
         label=labels,
         color=colors,
-        bar_kwargs={"linewidth": 2, "edgecolor": "white"},   # 경계선
-        text_kwargs={"fontsize": 11, "color": "white", "fontweight": "bold"},  # 텍스트
+        bar_kwargs={"linewidth": 2, "edgecolor": "white"},
+        text_kwargs={"fontsize": 11, "color": "white", "fontweight": "bold"},
         pad=True
     )
-
     plt.axis("off")
     if title:
         plt.title(title, pad=10, fontsize=12, fontweight='bold')
@@ -82,133 +72,115 @@ def generate_treemap_image(data, out_path, color_hex, title=None, font_family="M
     plt.close()
 
 
-# === 히트맵 이미지 생성 유틸 ===
 def generate_heatmap_image(data_df, out_path, title=None, font_family="Malgun Gothic"):
-    """
-    data_df: pandas DataFrame (행/열 이름과 값 포함)
-    out_path: 이미지 저장 경로
-    """
     import matplotlib.pyplot as plt
     import seaborn as sns
     import os
-    
-    # 폰트 설정
+
     try:
         plt.rcParams["font.family"] = font_family
         plt.rcParams["axes.unicode_minus"] = False
     except Exception:
         pass
 
-    # 1. Figure 생성 및 초기화
     fig, ax = plt.subplots(figsize=(8, 6))
     fig.set_facecolor('none')
 
-    annot_data = data_df.applymap(lambda x: f'{x:.1f}%') # 숫자를 문자열로 포맷팅
-    annot_data[data_df.isna()] = "" # NaN 값은 주석에서 제거
-    
-    # 2. Seaborn 히트맵 생성
-    # annot=True: 값 표시, fmt=".1f": 소수점 첫째 자리까지 표시
-    # cmap="YlGnBu": 색상 맵 (원하는 색상 계열로 변경 가능)
-    sns.heatmap(data_df, 
-                annot=annot_data, 
-                fmt="", 
-                linewidths=.5, 
-                linecolor='lightgray',
-                cmap="Blues",
-                cbar_kws={'shrink': .8}, # 컬러바 크기 조절
-                ax=ax,
-                alpha=0.8,
-                annot_kws={"fontweight": 600, "fontsize": 10})
-    
-    # 3. 축 레이블 회전 및 설정
-    ax.tick_params(axis='x', rotation=0, colors='#404040', labelsize=9) 
-    ax.tick_params(axis='y', rotation=0, colors='#404040', labelsize=9) 
+    annot_data = data_df.applymap(lambda x: f'{x:.1f}%')
+    annot_data[data_df.isna()] = ""
 
+    sns.heatmap(
+        data_df,
+        annot=annot_data,
+        fmt="",
+        linewidths=.5,
+        linecolor='lightgray',
+        cmap="Blues",
+        cbar_kws={'shrink': .8},
+        ax=ax,
+        alpha=0.8,
+        annot_kws={"fontweight": 600, "fontsize": 10}
+    )
+
+    ax.tick_params(axis='x', rotation=0, colors='#404040', labelsize=9)
+    ax.tick_params(axis='y', rotation=0, colors='#404040', labelsize=9)
     ax.set_xlabel('')
     ax.set_ylabel('')
-    
-    # 4. 제목 설정
+
     if title:
         ax.set_title(title, pad=10, fontsize=12, fontweight='bold')
-    
-    # 5. 레이아웃 조정 및 저장
+
     plt.tight_layout()
-    
     os.makedirs(os.path.dirname(out_path), exist_ok=True)
-    
-    # 여백을 최소화하여 저장
     plt.savefig(out_path, dpi=300, bbox_inches='tight', pad_inches=0.1, transparent=True)
-    plt.close(fig) # Figure 객체 닫기
+    plt.close(fig)
 
 
-
+# ------------------------------
+# 환경/DB 설정
+# ------------------------------
 load_dotenv(find_dotenv(), override=True)
-
 db_url = os.getenv("DB_URL")
 
 engine = create_engine(
-    db_url, 
+    db_url,
     connect_args={"options": "-csearch_path=regionmonitor"}
 )
 
-
 with open("config/slides_tokens.yml", encoding="utf-8") as f:
     cfg = yaml.safe_load(f)
+
+OUTPUT_PPT = "out/treemap_test.pptx"
+TEMPLATE_PPT = "template/master.pptx"
 
 token_values = {}
 chart_data = {}
 image_map = {}
 
+# ------------------------------
+# 토큰 / 일반 차트 / (옵션) 이미지 차트 생성
+# ------------------------------
 for s in cfg["slides"]:
+    # 텍스트 토큰
     for token, meta in s.get("tokens", {}).items():
         with engine.connect() as conn:
             val = conn.execute(text(meta["sql"]), cfg["params"]).scalar()
             token_values[token] = val
 
+    # 차트
     for chart_name, chart_conf in s.get("charts", {}).items():
+        # (옵션) 이미지 트리맵 생성 분기 — PPT 내부 트리맵만 쓸 거면 이 분기 자체를 제거해도 됩니다.
         if "treemap_sql" in chart_conf:
             with engine.connect() as conn:
                 rows = conn.execute(text(chart_conf["treemap_sql"]), cfg["params"]).fetchall()
-                # rows: [(업종명, 억원값), ...]
                 data = [(r[0], float(r[1]) if r[1] is not None else 0.0) for r in rows]
 
             outfile = chart_conf["outfile"]
             title = chart_conf.get("title", None)
             color_hex = chart_conf.get("color_hex", "#4682B4")
             generate_treemap_image(data, outfile, color_hex=color_hex, title=title)
+            time.sleep(0.5)
 
-            time.sleep(1.0)
-
-            # PPT 도형 이름에 이 이미지를 꽂아라
             shape_name = chart_conf["shape"]
             image_map[shape_name] = outfile
-            continue  # 다음 차트로
+            continue
 
+        # (옵션) 히트맵 이미지
         if "heatmap_sql" in chart_conf:
             with engine.connect() as conn:
-                # pandas를 사용하여 SQL 결과를 DataFrame으로 로드
-                df = pd.read_sql(text(chart_conf["heatmap_sql"]), 
-                                 conn, 
-                                 params=cfg["params"])
-                
-                # 수정: 첫 번째 컬럼('industry')을 인덱스로 설정
-                # 쿼리가 이미 피벗된 형태이므로, 인덱스만 설정
-                data_df = df.set_index(df.columns[0]) 
-            
+                df = pd.read_sql(text(chart_conf["heatmap_sql"]), conn, params=cfg["params"])
+                data_df = df.set_index(df.columns[0])
+
             outfile = chart_conf["outfile"]
             title = chart_conf.get("title", None)
-            color_hex = chart_conf.get("color_hex", "#4682B4") 
-            
-            # 히트맵 이미지 생성 (수정된 data_df 전달)
             generate_heatmap_image(data_df, outfile, title=title)
-            
-            time.sleep(1.0) # 파일 I/O 충돌 방지
-            
-            # PPT 도형 이름에 이 이미지를 꽂아라
+            time.sleep(0.5)
+
             shape_name = chart_conf["shape"]
             image_map[shape_name] = outfile
-            continue # 다음 차트로
+            continue
 
+        # 일반 카테고리/시리즈 차트
         if "category_sql" in chart_conf:
             with engine.connect() as conn:
                 categories = [r[0] for r in conn.execute(text(chart_conf["category_sql"]), cfg["params"]).fetchall()]
@@ -217,15 +189,88 @@ for s in cfg["slides"]:
                     series[sname] = [r[0] for r in conn.execute(text(ssql), cfg["params"]).fetchall()]
                 chart_data[chart_name] = (categories, series)
 
-
 print(f"DEBUG: 최종 Image Map: {image_map}")
 
+# ------------------------------
+# PPT 저장 (토큰/일반차트/이미지 적용)
+# ------------------------------
 apply_tokens_and_charts(
-    prs_path="template/master.pptx",
-    out_path="out/쿼리수정2.pptx",
+    prs_path=TEMPLATE_PPT,
+    out_path=OUTPUT_PPT,
     token_map=token_values,
     chart_map=chart_data,
     image_map=image_map
 )
 
-print("✅ 테스트 슬라이드 생성 완료")
+import os, time
+ppt_abs = os.path.abspath(OUTPUT_PPT)
+if not os.path.exists(ppt_abs):
+    raise FileNotFoundError(f"PPT not found: {ppt_abs}")
+time.sleep(0.5)  # 방금 저장한 파일 I/O 안정화
+
+# ------------------------------
+# PPT 내부 트리맵 차트 (Win32 COM) 갱신
+#   - 이미지 트리맵 대신, 벡터 품질 유지
+# ------------------------------
+params = {
+    "REGION_CD": cfg["params"]["REGION_CD"],
+    "DATE_FROM": cfg["params"]["DATE_FROM"],
+    "DATE_TO":   cfg["params"]["DATE_TO"],
+}
+
+sql_treemap_foreigner = """
+WITH topk AS (
+  SELECT i.svc_induty_sclas_cd_nm AS child, SUM(t.FRGNR_SALAMT) AS amt
+  FROM regionmonitor.TB_NATION_SELNG t
+  JOIN regionmonitor.tb_svc_induty_sclas i
+    ON i.svc_induty_sclas_cd = t.SVC_INDUTY_SCLAS_CD
+  WHERE t.REGION_CD = CAST(:REGION_CD AS VARCHAR)
+    AND t.STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
+  GROUP BY i.svc_induty_sclas_cd_nm
+  ORDER BY amt DESC, i.svc_induty_sclas_cd_nm
+  LIMIT 10
+)
+SELECT '업종별 매출금액(만원)' AS series, '외국인' AS parent, child, ROUND(amt/10000, 1) AS value FROM topk;
+"""
+
+sql_treemap_native = """
+WITH topk AS (
+  SELECT i.svc_induty_sclas_cd_nm AS child, SUM(t.NATIVE_SALAMT) AS amt
+  FROM regionmonitor.TB_NATION_SELNG t
+  JOIN regionmonitor.tb_svc_induty_sclas i
+    ON i.svc_induty_sclas_cd = t.SVC_INDUTY_SCLAS_CD
+  WHERE t.REGION_CD = CAST(:REGION_CD AS VARCHAR)
+    AND t.STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
+  GROUP BY i.svc_induty_sclas_cd_nm
+  ORDER BY amt DESC, i.svc_induty_sclas_cd_nm
+  LIMIT 10
+)
+SELECT '업종별 매출금액(만원)' AS series, '내국인' AS parent, child, ROUND(amt/10000, 1) AS value FROM topk;
+"""
+
+with engine.connect() as conn:
+    rows_f = conn.execute(text(sql_treemap_foreigner), params).fetchall()
+    rows_foreigner = [(r.series, r.parent, r.child, float(r.value or 0)) for r in rows_f]
+
+    rows_n = conn.execute(text(sql_treemap_native), params).fetchall()
+    rows_native = [(r.series, r.parent, r.child, float(r.value or 0)) for r in rows_n]
+
+# 실제 PPT 파일(OUTPUT_PPT)을 열어 차트 시트에 4열 입력
+# ⚠️ PowerPoint에서 도형 이름이 정확히 일치해야 함
+update_treemap_chart(
+    ppt_path=ppt_abs,   # <-- 절대경로
+    out_path=ppt_abs,
+    shape_name="SL19_chart_foreigner",
+    rows=rows_foreigner,
+    value_header="억원"
+)
+update_treemap_chart(
+    ppt_path=ppt_abs,
+    out_path=ppt_abs,
+    shape_name="SL19_chart_native",
+    rows=rows_native,
+    value_header="억원"
+)
+
+
+print("✅ 보고서 생성 완료:", OUTPUT_PPT)

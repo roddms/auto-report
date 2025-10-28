@@ -5320,3 +5320,35 @@ slides:
           ORDER BY SUM(t.NATIVE_SALAMT) DESC
           LIMIT 8;
 
+
+
+  - name: "21: 시설물 정보"
+    charts:
+      SL21_map_facility:
+        map_sql: |
+          SELECT
+            FCLTY_NM AS name,
+            FCLTY_SCLAS_CD AS type,
+            X_CRDNT AS x,
+            Y_CRDNT AS y
+          FROM regionmonitor.TB_MAIN_FCLTY_INFO
+          LIMIT 5;
+        outfile: "out/maps/facility_map.png"
+        shape: "SL21_map_facility"
+        title: "주요 시설 위치"
+
+  - name: "22: 주차장 지도"
+    charts:
+      SL22_map_parking:
+        map_sql: |
+          SELECT
+            PRKPLCE_NM AS name,
+            FCLTY_SCLAS_CD AS type,
+            PRKCMPRT_CO AS slots,
+            X_CRDNT AS x,
+            Y_CRDNT AS y
+          FROM regionmonitor.TB_PRKPLCE_INFO
+          LIMIT 5;
+        outfile: "out/maps/parking_map.png"
+        shape: "SL22_map_parking"
+        title: "주차장 위치"
