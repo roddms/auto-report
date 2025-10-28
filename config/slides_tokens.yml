@@ -1,7 +1,7 @@
 params:
   REGION_CD: "00000001"
-  DATE_FROM: "20250101"
-  DATE_TO:   "20250131"
+  DATE_FROM: "20250901"
+  DATE_TO:   "20250910"
 
 slides:
   - name: "1: 표지"
@@ -286,84 +286,60 @@ slides:
 
 
       SL3_p_13:
-        sql: | # 매출 최상위 성별·연령 라벨
-            WITH base AS (
-              SELECT
-                COALESCE(SUM(GNR20_MSALAMT),0) AS M20,
-                COALESCE(SUM(GNR30_MSALAMT),0) AS M30,
-                COALESCE(SUM(GNR40_MSALAMT),0) AS M40,
-                COALESCE(SUM(GNR50_MSALAMT),0) AS M50,
-                COALESCE(SUM(GNR60_MSALAMT),0) AS M60,
-                COALESCE(SUM(GNR70_MSALAMT),0) AS M70,
-                COALESCE(SUM(GNR20_FSALAMT),0) AS F20,
-                COALESCE(SUM(GNR30_FSALAMT),0) AS F30,
-                COALESCE(SUM(GNR40_FSALAMT),0) AS F40,
-                COALESCE(SUM(GNR50_FSALAMT),0) AS F50,
-                COALESCE(SUM(GNR60_FSALAMT),0) AS F60,
-                COALESCE(SUM(GNR70_FSALAMT),0) AS F70,
-                COALESCE(SUM(TOT_SALAMT),0)    AS TOT
-              FROM regionmonitor.TB_SEXDSTN_SELNG
-              WHERE REGION_CD = CAST(:REGION_CD AS VARCHAR)
-                AND STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
-            ),
-            unpivot AS (
-              SELECT '20대 남성' AS seg, M20 AS v FROM base UNION ALL
-              SELECT '30대 남성', M30 FROM base UNION ALL
-              SELECT '40대 남성', M40 FROM base UNION ALL
-              SELECT '50대 남성', M50 FROM base UNION ALL
-              SELECT '60대 남성', M60 FROM base UNION ALL
-              SELECT '70대 남성', M70 FROM base UNION ALL
-              SELECT '20대 여성', F20 FROM base UNION ALL
-              SELECT '30대 여성', F30 FROM base UNION ALL
-              SELECT '40대 여성', F40 FROM base UNION ALL
-              SELECT '50대 여성', F50 FROM base UNION ALL
-              SELECT '60대 여성', F60 FROM base UNION ALL
-              SELECT '70대 여성', F70 FROM base
-            )
-            SELECT seg
-            FROM unpivot
-            ORDER BY v DESC, seg
-            LIMIT 1;
-
-      SL3_p_14:
-        sql: | # 매출 최상위 성·연령 비중(%)
+        sql: | # 매출 최상위 연령대 라벨
           WITH base AS (
             SELECT
-              COALESCE(SUM(GNR20_MSALAMT),0) AS M20,
-              COALESCE(SUM(GNR30_MSALAMT),0) AS M30,
-              COALESCE(SUM(GNR40_MSALAMT),0) AS M40,
-              COALESCE(SUM(GNR50_MSALAMT),0) AS M50,
-              COALESCE(SUM(GNR60_MSALAMT),0) AS M60,
-              COALESCE(SUM(GNR70_MSALAMT),0) AS M70,
-              COALESCE(SUM(GNR20_FSALAMT),0) AS F20,
-              COALESCE(SUM(GNR30_FSALAMT),0) AS F30,
-              COALESCE(SUM(GNR40_FSALAMT),0) AS F40,
-              COALESCE(SUM(GNR50_FSALAMT),0) AS F50,
-              COALESCE(SUM(GNR60_FSALAMT),0) AS F60,
-              COALESCE(SUM(GNR70_FSALAMT),0) AS F70,
-              COALESCE(SUM(TOT_SALAMT),0)    AS TOT
-            FROM regionmonitor.TB_SEXDSTN_SELNG
+              COALESCE(SUM(GNR20_SALAMT),0) AS a20,
+              COALESCE(SUM(GNR30_SALAMT),0) AS a30,
+              COALESCE(SUM(GNR40_SALAMT),0) AS a40,
+              COALESCE(SUM(GNR50_SALAMT),0) AS a50,
+              COALESCE(SUM(GNR60_SALAMT),0) AS a60,
+              COALESCE(SUM(GNR70_SALAMT),0) AS a70
+            FROM regionmonitor.TB_AGRDE_SELNG
             WHERE REGION_CD = CAST(:REGION_CD AS VARCHAR)
               AND STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
           ),
           unpivot AS (
-            SELECT '20대 남성' AS seg, M20 AS v, TOT FROM base UNION ALL
-            SELECT '30대 남성', M30, TOT FROM base UNION ALL
-            SELECT '40대 남성', M40, TOT FROM base UNION ALL
-            SELECT '50대 남성', M50, TOT FROM base UNION ALL
-            SELECT '60대 남성', M60, TOT FROM base UNION ALL
-            SELECT '70대 남성', M70, TOT FROM base UNION ALL
-            SELECT '20대 여성', F20, TOT FROM base UNION ALL
-            SELECT '30대 여성', F30, TOT FROM base UNION ALL
-            SELECT '40대 여성', F40, TOT FROM base UNION ALL
-            SELECT '50대 여성', F50, TOT FROM base UNION ALL
-            SELECT '60대 여성', F60, TOT FROM base UNION ALL
-            SELECT '70대 여성', F70, TOT FROM base
+            SELECT '20대' AS seg, a20 AS v FROM base UNION ALL
+            SELECT '30대', a30 FROM base UNION ALL
+            SELECT '40대', a40 FROM base UNION ALL
+            SELECT '50대', a50 FROM base UNION ALL
+            SELECT '60대', a60 FROM base UNION ALL
+            SELECT '70대', a70 FROM base
           )
-          SELECT COALESCE(ROUND(100.0 * v / NULLIF(TOT, 0), 1), 0.0)
+          SELECT seg
           FROM unpivot
           ORDER BY v DESC, seg
           LIMIT 1;
+
+
+      SL3_p_14:
+        sql: | # 매출 최상위 연령대 비중(%)
+          WITH base AS (
+            SELECT
+              COALESCE(SUM(GNR20_SALAMT),0) AS a20,
+              COALESCE(SUM(GNR30_SALAMT),0) AS a30,
+              COALESCE(SUM(GNR40_SALAMT),0) AS a40,
+              COALESCE(SUM(GNR50_SALAMT),0) AS a50,
+              COALESCE(SUM(GNR60_SALAMT),0) AS a60,
+              COALESCE(SUM(GNR70_SALAMT),0) AS a70
+            FROM regionmonitor.TB_AGRDE_SELNG
+            WHERE REGION_CD = CAST(:REGION_CD AS VARCHAR)
+              AND STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
+          ),
+          u AS (
+            SELECT '20대' AS seg, a20 AS v FROM base UNION ALL
+            SELECT '30대', a30 FROM base UNION ALL
+            SELECT '40대', a40 FROM base UNION ALL
+            SELECT '50대', a50 FROM base UNION ALL
+            SELECT '60대', a60 FROM base UNION ALL
+            SELECT '70대', a70 FROM base
+          )
+          SELECT ROUND(100.0 * v / NULLIF(SUM(v) OVER (), 0), 1)
+          FROM u
+          ORDER BY v DESC, seg
+          LIMIT 1;
+
 
   - name : "4: 3개년 비교 분석"
     tokens:
@@ -736,80 +712,57 @@ slides:
           LIMIT 1;
 
       SL5_p_6:
-        sql: | # 최다 방문 성연령(예: '여성 30대')
+        sql: | # 최다 방문 연령대
           WITH base AS (
             SELECT
-              COALESCE(SUM(GNR20_MVIPOP),0) AS M20,
-              COALESCE(SUM(GNR30_MVIPOP),0) AS M30,
-              COALESCE(SUM(GNR40_MVIPOP),0) AS M40,
-              COALESCE(SUM(GNR50_MVIPOP),0) AS M50,
-              COALESCE(SUM(GNR60_MVIPOP),0) AS M60,
-              COALESCE(SUM(GNR70_MVIPOP),0) AS M70,
-              COALESCE(SUM(GNR20_FVIPOP),0) AS F20,
-              COALESCE(SUM(GNR30_FVIPOP),0) AS F30,
-              COALESCE(SUM(GNR40_FVIPOP),0) AS F40,
-              COALESCE(SUM(GNR50_FVIPOP),0) AS F50,
-              COALESCE(SUM(GNR60_FVIPOP),0) AS F60,
-              COALESCE(SUM(GNR70_FVIPOP),0) AS F70
-            FROM regionmonitor.TB_SEXDSTN_VISIT_POPLTN
+              COALESCE(SUM(GNR20_VIPOP),0) AS a20,
+              COALESCE(SUM(GNR30_VIPOP),0) AS a30,
+              COALESCE(SUM(GNR40_VIPOP),0) AS a40,
+              COALESCE(SUM(GNR50_VIPOP),0) AS a50,
+              COALESCE(SUM(GNR60_VIPOP),0) AS a60,
+              COALESCE(SUM(GNR70_VIPOP),0) AS a70
+            FROM regionmonitor.TB_AGRDE_VISIT_POPLTN
             WHERE REGION_CD = CAST(:REGION_CD AS VARCHAR)
               AND STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
           ),
-          u AS (
-            SELECT '20대 남성' AS seg, M20 AS v FROM base UNION ALL
-            SELECT '30대 남성', M30 FROM base UNION ALL
-            SELECT '40대 남성', M40 FROM base UNION ALL
-            SELECT '50대 남성', M50 FROM base UNION ALL
-            SELECT '60대 남성', M60 FROM base UNION ALL
-            SELECT '70대 남성', M70 FROM base UNION ALL
-            SELECT '20대 여성', F20 FROM base UNION ALL
-            SELECT '30대 여성', F30 FROM base UNION ALL
-            SELECT '40대 여성', F40 FROM base UNION ALL
-            SELECT '50대 여성', F50 FROM base UNION ALL
-            SELECT '60대 여성', F60 FROM base UNION ALL
-            SELECT '70대 여성', F70 FROM base
+          unpivot AS (
+            SELECT '20대' AS seg, a20 AS v FROM base UNION ALL
+            SELECT '30대', a30 FROM base UNION ALL
+            SELECT '40대', a40 FROM base UNION ALL
+            SELECT '50대', a50 FROM base UNION ALL
+            SELECT '60대', a60 FROM base UNION ALL
+            SELECT '70대', a70 FROM base
           )
           SELECT seg
-          FROM u
+          FROM unpivot
           ORDER BY v DESC, seg
           LIMIT 1;
+
 
       SL5_p_7:
         sql: | # 최다 방문 성연령 비중
           WITH base AS (
             SELECT
-              COALESCE(SUM(GNR20_MVIPOP),0) AS M20,
-              COALESCE(SUM(GNR30_MVIPOP),0) AS M30,
-              COALESCE(SUM(GNR40_MVIPOP),0) AS M40,
-              COALESCE(SUM(GNR50_MVIPOP),0) AS M50,
-              COALESCE(SUM(GNR60_MVIPOP),0) AS M60,
-              COALESCE(SUM(GNR70_MVIPOP),0) AS M70,
-              COALESCE(SUM(GNR20_FVIPOP),0) AS F20,
-              COALESCE(SUM(GNR30_FVIPOP),0) AS F30,
-              COALESCE(SUM(GNR40_FVIPOP),0) AS F40,
-              COALESCE(SUM(GNR50_FVIPOP),0) AS F50,
-              COALESCE(SUM(GNR60_FVIPOP),0) AS F60,
-              COALESCE(SUM(GNR70_FVIPOP),0) AS F70
-            FROM regionmonitor.TB_SEXDSTN_VISIT_POPLTN
+              COALESCE(SUM(GNR20_VIPOP),0) AS a20,
+              COALESCE(SUM(GNR30_VIPOP),0) AS a30,
+              COALESCE(SUM(GNR40_VIPOP),0) AS a40,
+              COALESCE(SUM(GNR50_VIPOP),0) AS a50,
+              COALESCE(SUM(GNR60_VIPOP),0) AS a60,
+              COALESCE(SUM(GNR70_VIPOP),0) AS a70
+            FROM regionmonitor.TB_AGRDE_VISIT_POPLTN
             WHERE REGION_CD = CAST(:REGION_CD AS VARCHAR)
               AND STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
           ),
-          u AS (
-            SELECT '20대 남성' AS seg, M20 AS v FROM base UNION ALL
-            SELECT '30대 남성', M30 FROM base UNION ALL
-            SELECT '40대 남성', M40 FROM base UNION ALL
-            SELECT '50대 남성', M50 FROM base UNION ALL
-            SELECT '60대 남성', M60 FROM base UNION ALL
-            SELECT '70대 남성', M70 FROM base UNION ALL
-            SELECT '20대 여성', F20 FROM base UNION ALL
-            SELECT '30대 여성', F30 FROM base UNION ALL
-            SELECT '40대 여성', F40 FROM base UNION ALL
-            SELECT '50대 여성', F50 FROM base UNION ALL
-            SELECT '60대 여성', F60 FROM base UNION ALL
-            SELECT '70대 여성', F70 FROM base
+          unpivot AS (
+            SELECT '20대' AS seg, a20 AS v FROM base UNION ALL
+            SELECT '30대', a30 FROM base UNION ALL
+            SELECT '40대', a40 FROM base UNION ALL
+            SELECT '50대', a50 FROM base UNION ALL
+            SELECT '60대', a60 FROM base UNION ALL
+            SELECT '70대', a70 FROM base
           )
           SELECT ROUND(100.0 * v / NULLIF(SUM(v) OVER (), 0), 1)
-          FROM u
+          FROM unpivot
           ORDER BY v DESC, seg
           LIMIT 1;
 
@@ -1047,33 +1000,33 @@ slides:
             SELECT val
             FROM (
               SELECT '20대' AS lbl,
-                     SUM(GNR20_MVIPOP + GNR20_FVIPOP)::NUMERIC / 10000.0 AS val
-              FROM regionmonitor.TB_SEXDSTN_VISIT_POPLTN
+                     SUM(GNR20_VIPOP)::NUMERIC / 10000.0 AS val
+              FROM regionmonitor.TB_AGRDE_VISIT_POPLTN
               WHERE REGION_CD = :REGION_CD AND STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
               UNION ALL
               SELECT '30대',
-                     SUM(GNR30_MVIPOP + GNR30_FVIPOP)::NUMERIC / 10000.0
-              FROM regionmonitor.TB_SEXDSTN_VISIT_POPLTN
+                     SUM(GNR30_VIPOP)::NUMERIC / 10000.0
+              FROM regionmonitor.TB_AGRDE_VISIT_POPLTN
               WHERE REGION_CD = :REGION_CD AND STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
               UNION ALL
               SELECT '40대',
-                     SUM(GNR40_MVIPOP + GNR40_FVIPOP)::NUMERIC / 10000.0
-              FROM regionmonitor.TB_SEXDSTN_VISIT_POPLTN
+                     SUM(GNR40_VIPOP)::NUMERIC / 10000.0
+              FROM regionmonitor.TB_AGRDE_VISIT_POPLTN
               WHERE REGION_CD = :REGION_CD AND STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
               UNION ALL
               SELECT '50대',
-                     SUM(GNR50_MVIPOP + GNR50_FVIPOP)::NUMERIC / 10000.0
-              FROM regionmonitor.TB_SEXDSTN_VISIT_POPLTN
+                     SUM(GNR50_VIPOP)::NUMERIC / 10000.0
+              FROM regionmonitor.TB_AGRDE_VISIT_POPLTN
               WHERE REGION_CD = :REGION_CD AND STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
               UNION ALL
               SELECT '60대',
-                     SUM(GNR60_MVIPOP + GNR60_FVIPOP)::NUMERIC / 10000.0
-              FROM regionmonitor.TB_SEXDSTN_VISIT_POPLTN
+                     SUM(GNR60_VIPOP)::NUMERIC / 10000.0
+              FROM regionmonitor.TB_AGRDE_VISIT_POPLTN
               WHERE REGION_CD = :REGION_CD AND STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
               UNION ALL
               SELECT '70대',
-                     SUM(GNR70_MVIPOP + GNR70_FVIPOP)::NUMERIC / 10000.0
-              FROM regionmonitor.TB_SEXDSTN_VISIT_POPLTN
+                     SUM(GNR70_VIPOP)::NUMERIC / 10000.0
+              FROM regionmonitor.TB_AGRDE_VISIT_POPLTN
               WHERE REGION_CD = :REGION_CD AND STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
             ) t
             ORDER BY lbl;
@@ -1356,13 +1309,13 @@ slides:
         sql: | # 최다 방문 연령대
           WITH cur AS (
             SELECT
-              COALESCE(SUM(GNR20_MVIPOP)+SUM(GNR20_FVIPOP),0) AS A20,
-              COALESCE(SUM(GNR30_MVIPOP)+SUM(GNR30_FVIPOP),0) AS A30,
-              COALESCE(SUM(GNR40_MVIPOP)+SUM(GNR40_FVIPOP),0) AS A40,
-              COALESCE(SUM(GNR50_MVIPOP)+SUM(GNR50_FVIPOP),0) AS A50,
-              COALESCE(SUM(GNR60_MVIPOP)+SUM(GNR60_FVIPOP),0) AS A60,
-              COALESCE(SUM(GNR70_MVIPOP)+SUM(GNR70_FVIPOP),0) AS A70
-            FROM regionmonitor.TB_SEXDSTN_VISIT_POPLTN
+              COALESCE(SUM(GNR20_VIPOP),0) AS A20,
+              COALESCE(SUM(GNR30_VIPOP),0) AS A30,
+              COALESCE(SUM(GNR40_VIPOP),0) AS A40,
+              COALESCE(SUM(GNR50_VIPOP),0) AS A50,
+              COALESCE(SUM(GNR60_VIPOP),0) AS A60,
+              COALESCE(SUM(GNR70_VIPOP),0) AS A70
+            FROM regionmonitor.TB_AGRDE_VISIT_POPLTN
             WHERE REGION_CD = CAST(:REGION_CD AS VARCHAR)
               AND STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
           ),
@@ -1383,13 +1336,13 @@ slides:
         sql: | # 최소 방문 연령대 (예: '60대')
           WITH cur AS (
             SELECT
-              COALESCE(SUM(GNR20_MVIPOP)+SUM(GNR20_FVIPOP),0) AS A20,
-              COALESCE(SUM(GNR30_MVIPOP)+SUM(GNR30_FVIPOP),0) AS A30,
-              COALESCE(SUM(GNR40_MVIPOP)+SUM(GNR40_FVIPOP),0) AS A40,
-              COALESCE(SUM(GNR50_MVIPOP)+SUM(GNR50_FVIPOP),0) AS A50,
-              COALESCE(SUM(GNR60_MVIPOP)+SUM(GNR60_FVIPOP),0) AS A60,
-              COALESCE(SUM(GNR70_MVIPOP)+SUM(GNR70_FVIPOP),0) AS A70
-            FROM regionmonitor.TB_SEXDSTN_VISIT_POPLTN
+              COALESCE(SUM(GNR20_VIPOP),0) AS A20,
+              COALESCE(SUM(GNR30_VIPOP),0) AS A30,
+              COALESCE(SUM(GNR40_VIPOP),0) AS A40,
+              COALESCE(SUM(GNR50_VIPOP),0) AS A50,
+              COALESCE(SUM(GNR60_VIPOP),0) AS A60,
+              COALESCE(SUM(GNR70_VIPOP),0) AS A70
+            FROM regionmonitor.TB_AGRDE_VISIT_POPLTN
             WHERE REGION_CD = CAST(:REGION_CD AS VARCHAR)
               AND STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
           ),
@@ -1408,28 +1361,28 @@ slides:
 
       # ───────── 전년 대비 최대 증가/감소 연령층 (라벨 & 증감률%) ─────────
       SL7_p_3:
-        sql: | # 전년 대비 '최대 증가' 연령층 라벨
+        sql: | # 전년 대비 '최대 증감' 연령층 라벨
           WITH cur AS (
             SELECT
-              COALESCE(SUM(GNR20_MVIPOP)+SUM(GNR20_FVIPOP),0) AS A20,
-              COALESCE(SUM(GNR30_MVIPOP)+SUM(GNR30_FVIPOP),0) AS A30,
-              COALESCE(SUM(GNR40_MVIPOP)+SUM(GNR40_FVIPOP),0) AS A40,
-              COALESCE(SUM(GNR50_MVIPOP)+SUM(GNR50_FVIPOP),0) AS A50,
-              COALESCE(SUM(GNR60_MVIPOP)+SUM(GNR60_FVIPOP),0) AS A60,
-              COALESCE(SUM(GNR70_MVIPOP)+SUM(GNR70_FVIPOP),0) AS A70
-            FROM regionmonitor.TB_SEXDSTN_VISIT_POPLTN
+              COALESCE(SUM(GNR20_VIPOP),0) AS A20,
+              COALESCE(SUM(GNR30_VIPOP),0) AS A30,
+              COALESCE(SUM(GNR40_VIPOP),0) AS A40,
+              COALESCE(SUM(GNR50_VIPOP),0) AS A50,
+              COALESCE(SUM(GNR60_VIPOP),0) AS A60,
+              COALESCE(SUM(GNR70_VIPOP),0) AS A70
+            FROM regionmonitor.TB_AGRDE_VISIT_POPLTN
             WHERE REGION_CD = CAST(:REGION_CD AS VARCHAR)
               AND STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
           ),
           prv AS (
             SELECT
-              COALESCE(SUM(GNR20_MVIPOP)+SUM(GNR20_FVIPOP),0) AS A20,
-              COALESCE(SUM(GNR30_MVIPOP)+SUM(GNR30_FVIPOP),0) AS A30,
-              COALESCE(SUM(GNR40_MVIPOP)+SUM(GNR40_FVIPOP),0) AS A40,
-              COALESCE(SUM(GNR50_MVIPOP)+SUM(GNR50_FVIPOP),0) AS A50,
-              COALESCE(SUM(GNR60_MVIPOP)+SUM(GNR60_FVIPOP),0) AS A60,
-              COALESCE(SUM(GNR70_MVIPOP)+SUM(GNR70_FVIPOP),0) AS A70
-            FROM regionmonitor.TB_SEXDSTN_VISIT_POPLTN
+              COALESCE(SUM(GNR20_VIPOP),0) AS A20,
+              COALESCE(SUM(GNR30_VIPOP),0) AS A30,
+              COALESCE(SUM(GNR40_VIPOP),0) AS A40,
+              COALESCE(SUM(GNR50_VIPOP),0) AS A50,
+              COALESCE(SUM(GNR60_VIPOP),0) AS A60,
+              COALESCE(SUM(GNR70_VIPOP),0) AS A70
+            FROM regionmonitor.TB_AGRDE_VISIT_POPLTN
             WHERE REGION_CD = CAST(:REGION_CD AS VARCHAR)
               AND STDR_YMD BETWEEN
                 to_char(to_date(:DATE_FROM,'YYYYMMDD') - INTERVAL '1 year','YYYYMMDD')
@@ -1452,32 +1405,32 @@ slides:
           LIMIT 1;
 
       SL7_p_4:
-        sql: | # 전년 대비 '최대 증가' 연령층 증감률(%)
+        sql: | # 전년 대비 '최대 증감' 연령층 증감률(%)
           WITH cur AS (
             SELECT
-              COALESCE(SUM(GNR20_MVIPOP)+SUM(GNR20_FVIPOP),0) AS A20,
-              COALESCE(SUM(GNR30_MVIPOP)+SUM(GNR30_FVIPOP),0) AS A30,
-              COALESCE(SUM(GNR40_MVIPOP)+SUM(GNR40_FVIPOP),0) AS A40,
-              COALESCE(SUM(GNR50_MVIPOP)+SUM(GNR50_FVIPOP),0) AS A50,
-              COALESCE(SUM(GNR60_MVIPOP)+SUM(GNR60_FVIPOP),0) AS A60,
-              COALESCE(SUM(GNR70_MVIPOP)+SUM(GNR70_FVIPOP),0) AS A70
-            FROM regionmonitor.TB_SEXDSTN_VISIT_POPLTN
+              COALESCE(SUM(GNR20_VIPOP),0) AS A20,
+              COALESCE(SUM(GNR30_VIPOP),0) AS A30,
+              COALESCE(SUM(GNR40_VIPOP),0) AS A40,
+              COALESCE(SUM(GNR50_VIPOP),0) AS A50,
+              COALESCE(SUM(GNR60_VIPOP),0) AS A60,
+              COALESCE(SUM(GNR70_VIPOP),0) AS A70
+            FROM regionmonitor.TB_AGRDE_VISIT_POPLTN
             WHERE REGION_CD = CAST(:REGION_CD AS VARCHAR)
               AND STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
           ),
           prv AS (
             SELECT
-              COALESCE(SUM(GNR20_MVIPOP)+SUM(GNR20_FVIPOP),0) AS A20,
-              COALESCE(SUM(GNR30_MVIPOP)+SUM(GNR30_FVIPOP),0) AS A30,
-              COALESCE(SUM(GNR40_MVIPOP)+SUM(GNR40_FVIPOP),0) AS A40,
-              COALESCE(SUM(GNR50_MVIPOP)+SUM(GNR50_FVIPOP),0) AS A50,
-              COALESCE(SUM(GNR60_MVIPOP)+SUM(GNR60_FVIPOP),0) AS A60,
-              COALESCE(SUM(GNR70_MVIPOP)+SUM(GNR70_FVIPOP),0) AS A70
-            FROM regionmonitor.TB_SEXDSTN_VISIT_POPLTN
+              COALESCE(SUM(GNR20_VIPOP),0) AS A20,
+              COALESCE(SUM(GNR30_VIPOP),0) AS A30,
+              COALESCE(SUM(GNR40_VIPOP),0) AS A40,
+              COALESCE(SUM(GNR50_VIPOP),0) AS A50,
+              COALESCE(SUM(GNR60_VIPOP),0) AS A60,
+              COALESCE(SUM(GNR70_VIPOP),0) AS A70
+            FROM regionmonitor.TB_AGRDE_VISIT_POPLTN
             WHERE REGION_CD = CAST(:REGION_CD AS VARCHAR)
               AND STDR_YMD BETWEEN
                 to_char(to_date(:DATE_FROM,'YYYYMMDD') - INTERVAL '1 year','YYYYMMDD')
-              AND to_char(to_date(:DATE_TO,'YYYYMMDD') - INTERVAL '1 year','YYYYMMDD')
+              AND to_char(to_date(:DATE_TO  ,'YYYYMMDD') - INTERVAL '1 year','YYYYMMDD')
           ),
           u AS (
             SELECT '20대' AS age, A20 AS c, (SELECT A20 FROM prv) AS p FROM cur UNION ALL
@@ -1504,28 +1457,28 @@ slides:
           LIMIT 1;
 
       SL7_p_5:
-        sql: | # 전년 대비 '최대 감소' 연령층 라벨
+        sql: | # 전년 대비 '최소 증감' 연령층 라벨
           WITH cur AS (
             SELECT
-              COALESCE(SUM(GNR20_MVIPOP)+SUM(GNR20_FVIPOP),0) AS A20,
-              COALESCE(SUM(GNR30_MVIPOP)+SUM(GNR30_FVIPOP),0) AS A30,
-              COALESCE(SUM(GNR40_MVIPOP)+SUM(GNR40_FVIPOP),0) AS A40,
-              COALESCE(SUM(GNR50_MVIPOP)+SUM(GNR50_FVIPOP),0) AS A50,
-              COALESCE(SUM(GNR60_MVIPOP)+SUM(GNR60_FVIPOP),0) AS A60,
-              COALESCE(SUM(GNR70_MVIPOP)+SUM(GNR70_FVIPOP),0) AS A70
-            FROM regionmonitor.TB_SEXDSTN_VISIT_POPLTN
+              COALESCE(SUM(GNR20_VIPOP),0) AS A20,
+              COALESCE(SUM(GNR30_VIPOP),0) AS A30,
+              COALESCE(SUM(GNR40_VIPOP),0) AS A40,
+              COALESCE(SUM(GNR50_VIPOP),0) AS A50,
+              COALESCE(SUM(GNR60_VIPOP),0) AS A60,
+              COALESCE(SUM(GNR70_VIPOP),0) AS A70
+            FROM regionmonitor.TB_AGRDE_VISIT_POPLTN
             WHERE REGION_CD = CAST(:REGION_CD AS VARCHAR)
               AND STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
           ),
           prv AS (
             SELECT
-              COALESCE(SUM(GNR20_MVIPOP)+SUM(GNR20_FVIPOP),0) AS A20,
-              COALESCE(SUM(GNR30_MVIPOP)+SUM(GNR30_FVIPOP),0) AS A30,
-              COALESCE(SUM(GNR40_MVIPOP)+SUM(GNR40_FVIPOP),0) AS A40,
-              COALESCE(SUM(GNR50_MVIPOP)+SUM(GNR50_FVIPOP),0) AS A50,
-              COALESCE(SUM(GNR60_MVIPOP)+SUM(GNR60_FVIPOP),0) AS A60,
-              COALESCE(SUM(GNR70_MVIPOP)+SUM(GNR70_FVIPOP),0) AS A70
-            FROM regionmonitor.TB_SEXDSTN_VISIT_POPLTN
+              COALESCE(SUM(GNR20_VIPOP),0) AS A20,
+              COALESCE(SUM(GNR30_VIPOP),0) AS A30,
+              COALESCE(SUM(GNR40_VIPOP),0) AS A40,
+              COALESCE(SUM(GNR50_VIPOP),0) AS A50,
+              COALESCE(SUM(GNR60_VIPOP),0) AS A60,
+              COALESCE(SUM(GNR70_VIPOP),0) AS A70
+            FROM regionmonitor.TB_AGRDE_VISIT_POPLTN
             WHERE REGION_CD = CAST(:REGION_CD AS VARCHAR)
               AND STDR_YMD BETWEEN
                 to_char(to_date(:DATE_FROM,'YYYYMMDD') - INTERVAL '1 year','YYYYMMDD')
@@ -1548,32 +1501,32 @@ slides:
           LIMIT 1;
 
       SL7_p_6:
-        sql: | # 전년 대비 '최대 감소' 연령층 증감률(%)
+        sql: | # 전년 대비 '최소 증감' 연령층 증감률(%)
           WITH cur AS (
             SELECT
-              COALESCE(SUM(GNR20_MVIPOP)+SUM(GNR20_FVIPOP),0) AS A20,
-              COALESCE(SUM(GNR30_MVIPOP)+SUM(GNR30_FVIPOP),0) AS A30,
-              COALESCE(SUM(GNR40_MVIPOP)+SUM(GNR40_FVIPOP),0) AS A40,
-              COALESCE(SUM(GNR50_MVIPOP)+SUM(GNR50_FVIPOP),0) AS A50,
-              COALESCE(SUM(GNR60_MVIPOP)+SUM(GNR60_FVIPOP),0) AS A60,
-              COALESCE(SUM(GNR70_MVIPOP)+SUM(GNR70_FVIPOP),0) AS A70
-            FROM regionmonitor.TB_SEXDSTN_VISIT_POPLTN
+              COALESCE(SUM(GNR20_VIPOP),0) AS A20,
+              COALESCE(SUM(GNR30_VIPOP),0) AS A30,
+              COALESCE(SUM(GNR40_VIPOP),0) AS A40,
+              COALESCE(SUM(GNR50_VIPOP),0) AS A50,
+              COALESCE(SUM(GNR60_VIPOP),0) AS A60,
+              COALESCE(SUM(GNR70_VIPOP),0) AS A70
+            FROM regionmonitor.TB_AGRDE_VISIT_POPLTN
             WHERE REGION_CD = CAST(:REGION_CD AS VARCHAR)
               AND STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
           ),
           prv AS (
             SELECT
-              COALESCE(SUM(GNR20_MVIPOP)+SUM(GNR20_FVIPOP),0) AS A20,
-              COALESCE(SUM(GNR30_MVIPOP)+SUM(GNR30_FVIPOP),0) AS A30,
-              COALESCE(SUM(GNR40_MVIPOP)+SUM(GNR40_FVIPOP),0) AS A40,
-              COALESCE(SUM(GNR50_MVIPOP)+SUM(GNR50_FVIPOP),0) AS A50,
-              COALESCE(SUM(GNR60_MVIPOP)+SUM(GNR60_FVIPOP),0) AS A60,
-              COALESCE(SUM(GNR70_MVIPOP)+SUM(GNR70_FVIPOP),0) AS A70
-            FROM regionmonitor.TB_SEXDSTN_VISIT_POPLTN
+              COALESCE(SUM(GNR20_VIPOP),0) AS A20,
+              COALESCE(SUM(GNR30_VIPOP),0) AS A30,
+              COALESCE(SUM(GNR40_VIPOP),0) AS A40,
+              COALESCE(SUM(GNR50_VIPOP),0) AS A50,
+              COALESCE(SUM(GNR60_VIPOP),0) AS A60,
+              COALESCE(SUM(GNR70_VIPOP),0) AS A70
+            FROM regionmonitor.TB_AGRDE_VISIT_POPLTN
             WHERE REGION_CD = CAST(:REGION_CD AS VARCHAR)
               AND STDR_YMD BETWEEN
                 to_char(to_date(:DATE_FROM,'YYYYMMDD') - INTERVAL '1 year','YYYYMMDD')
-              AND to_char(to_date(:DATE_TO,'YYYYMMDD') - INTERVAL '1 year','YYYYMMDD')
+              AND to_char(to_date(:DATE_TO  ,'YYYYMMDD') - INTERVAL '1 year','YYYYMMDD')
           ),
           u AS (
             SELECT '20대' AS age, A20 AS c, (SELECT A20 FROM prv) AS p FROM cur UNION ALL
@@ -1611,23 +1564,23 @@ slides:
                      :DATE_FROM dfrom, :DATE_TO dto
             )
             SELECT val FROM (
-              SELECT '20대' lbl, SUM(GNR20_MVIPOP+GNR20_FVIPOP)::NUMERIC AS val
-              FROM regionmonitor.TB_SEXDSTN_VISIT_POPLTN t, p
+              SELECT '20대' lbl, SUM(GNR20_VIPOP)::NUMERIC AS val
+              FROM regionmonitor.TB_AGRDE_VISIT_POPLTN t, p
               WHERE t.REGION_CD=p.rc AND t.STDR_YMD BETWEEN p.dfrom AND p.dto
-              UNION ALL SELECT '30대', SUM(GNR30_MVIPOP+GNR30_FVIPOP)
-              FROM regionmonitor.TB_SEXDSTN_VISIT_POPLTN t, p
+              UNION ALL SELECT '30대', SUM(GNR30_VIPOP)
+              FROM regionmonitor.TB_AGRDE_VISIT_POPLTN t, p
               WHERE t.REGION_CD=p.rc AND t.STDR_YMD BETWEEN p.dfrom AND p.dto
-              UNION ALL SELECT '40대', SUM(GNR40_MVIPOP+GNR40_FVIPOP)
-              FROM regionmonitor.TB_SEXDSTN_VISIT_POPLTN t, p
+              UNION ALL SELECT '40대', SUM(GNR40_VIPOP)
+              FROM regionmonitor.TB_AGRDE_VISIT_POPLTN t, p
               WHERE t.REGION_CD=p.rc AND t.STDR_YMD BETWEEN p.dfrom AND p.dto
-              UNION ALL SELECT '50대', SUM(GNR50_MVIPOP+GNR50_FVIPOP)
-              FROM regionmonitor.TB_SEXDSTN_VISIT_POPLTN t, p
+              UNION ALL SELECT '50대', SUM(GNR50_VIPOP)
+              FROM regionmonitor.TB_AGRDE_VISIT_POPLTN t, p
               WHERE t.REGION_CD=p.rc AND t.STDR_YMD BETWEEN p.dfrom AND p.dto
-              UNION ALL SELECT '60대', SUM(GNR60_MVIPOP+GNR60_FVIPOP)
-              FROM regionmonitor.TB_SEXDSTN_VISIT_POPLTN t, p
+              UNION ALL SELECT '60대', SUM(GNR60_VIPOP)
+              FROM regionmonitor.TB_AGRDE_VISIT_POPLTN t, p
               WHERE t.REGION_CD=p.rc AND t.STDR_YMD BETWEEN p.dfrom AND p.dto
-              UNION ALL SELECT '70대', SUM(GNR70_MVIPOP+GNR70_FVIPOP)
-              FROM regionmonitor.TB_SEXDSTN_VISIT_POPLTN t, p
+              UNION ALL SELECT '70대', SUM(GNR70_VIPOP)
+              FROM regionmonitor.TB_AGRDE_VISIT_POPLTN t, p
               WHERE t.REGION_CD=p.rc AND t.STDR_YMD BETWEEN p.dfrom AND p.dto
             ) x ORDER BY lbl;
 
@@ -1639,20 +1592,20 @@ slides:
                      to_char(to_date(:DATE_TO,'YYYYMMDD') - interval '1 year','YYYYMMDD') pto
             ),
             cur AS (
-              SELECT '20대' lbl, SUM(GNR20_MVIPOP+GNR20_FVIPOP)::NUMERIC v FROM regionmonitor.TB_SEXDSTN_VISIT_POPLTN t, p WHERE t.REGION_CD=p.rc AND t.STDR_YMD BETWEEN p.dfrom AND p.dto
-              UNION ALL SELECT '30대', SUM(GNR30_MVIPOP+GNR30_FVIPOP) FROM regionmonitor.TB_SEXDSTN_VISIT_POPLTN t, p WHERE t.REGION_CD=p.rc AND t.STDR_YMD BETWEEN p.dfrom AND p.dto
-              UNION ALL SELECT '40대', SUM(GNR40_MVIPOP+GNR40_FVIPOP) FROM regionmonitor.TB_SEXDSTN_VISIT_POPLTN t, p WHERE t.REGION_CD=p.rc AND t.STDR_YMD BETWEEN p.dfrom AND p.dto
-              UNION ALL SELECT '50대', SUM(GNR50_MVIPOP+GNR50_FVIPOP) FROM regionmonitor.TB_SEXDSTN_VISIT_POPLTN t, p WHERE t.REGION_CD=p.rc AND t.STDR_YMD BETWEEN p.dfrom AND p.dto
-              UNION ALL SELECT '60대', SUM(GNR60_MVIPOP+GNR60_FVIPOP) FROM regionmonitor.TB_SEXDSTN_VISIT_POPLTN t, p WHERE t.REGION_CD=p.rc AND t.STDR_YMD BETWEEN p.dfrom AND p.dto
-              UNION ALL SELECT '70대', SUM(GNR70_MVIPOP+GNR70_FVIPOP) FROM regionmonitor.TB_SEXDSTN_VISIT_POPLTN t, p WHERE t.REGION_CD=p.rc AND t.STDR_YMD BETWEEN p.dfrom AND p.dto
+              SELECT '20대' lbl, SUM(GNR20_VIPOP)::NUMERIC v FROM regionmonitor.TB_AGRDE_VISIT_POPLTN t, p WHERE t.REGION_CD=p.rc AND t.STDR_YMD BETWEEN p.dfrom AND p.dto
+              UNION ALL SELECT '30대', SUM(GNR30_VIPOP) FROM regionmonitor.TB_AGRDE_VISIT_POPLTN t, p WHERE t.REGION_CD=p.rc AND t.STDR_YMD BETWEEN p.dfrom AND p.dto
+              UNION ALL SELECT '40대', SUM(GNR40_VIPOP) FROM regionmonitor.TB_AGRDE_VISIT_POPLTN t, p WHERE t.REGION_CD=p.rc AND t.STDR_YMD BETWEEN p.dfrom AND p.dto
+              UNION ALL SELECT '50대', SUM(GNR50_VIPOP) FROM regionmonitor.TB_AGRDE_VISIT_POPLTN t, p WHERE t.REGION_CD=p.rc AND t.STDR_YMD BETWEEN p.dfrom AND p.dto
+              UNION ALL SELECT '60대', SUM(GNR60_VIPOP) FROM regionmonitor.TB_AGRDE_VISIT_POPLTN t, p WHERE t.REGION_CD=p.rc AND t.STDR_YMD BETWEEN p.dfrom AND p.dto
+              UNION ALL SELECT '70대', SUM(GNR70_VIPOP) FROM regionmonitor.TB_AGRDE_VISIT_POPLTN t, p WHERE t.REGION_CD=p.rc AND t.STDR_YMD BETWEEN p.dfrom AND p.dto
             ),
             prv AS (
-              SELECT '20대' lbl, SUM(GNR20_MVIPOP+GNR20_FVIPOP)::NUMERIC v FROM regionmonitor.TB_SEXDSTN_VISIT_POPLTN t, p WHERE t.REGION_CD=p.rc AND t.STDR_YMD BETWEEN p.pfrom AND p.pto
-              UNION ALL SELECT '30대', SUM(GNR30_MVIPOP+GNR30_FVIPOP) FROM regionmonitor.TB_SEXDSTN_VISIT_POPLTN t, p WHERE t.REGION_CD=p.rc AND t.STDR_YMD BETWEEN p.pfrom AND p.pto
-              UNION ALL SELECT '40대', SUM(GNR40_MVIPOP+GNR40_FVIPOP) FROM regionmonitor.TB_SEXDSTN_VISIT_POPLTN t, p WHERE t.REGION_CD=p.rc AND t.STDR_YMD BETWEEN p.pfrom AND p.pto
-              UNION ALL SELECT '50대', SUM(GNR50_MVIPOP+GNR50_FVIPOP) FROM regionmonitor.TB_SEXDSTN_VISIT_POPLTN t, p WHERE t.REGION_CD=p.rc AND t.STDR_YMD BETWEEN p.pfrom AND p.pto
-              UNION ALL SELECT '60대', SUM(GNR60_MVIPOP+GNR60_FVIPOP) FROM regionmonitor.TB_SEXDSTN_VISIT_POPLTN t, p WHERE t.REGION_CD=p.rc AND t.STDR_YMD BETWEEN p.pfrom AND p.pto
-              UNION ALL SELECT '70대', SUM(GNR70_MVIPOP+GNR70_FVIPOP) FROM regionmonitor.TB_SEXDSTN_VISIT_POPLTN t, p WHERE t.REGION_CD=p.rc AND t.STDR_YMD BETWEEN p.pfrom AND p.pto
+              SELECT '20대' lbl, SUM(GNR20_VIPOP)::NUMERIC v FROM regionmonitor.TB_AGRDE_VISIT_POPLTN t, p WHERE t.REGION_CD=p.rc AND t.STDR_YMD BETWEEN p.pfrom AND p.pto
+              UNION ALL SELECT '30대', SUM(GNR30_VIPOP) FROM regionmonitor.TB_AGRDE_VISIT_POPLTN t, p WHERE t.REGION_CD=p.rc AND t.STDR_YMD BETWEEN p.pfrom AND p.pto
+              UNION ALL SELECT '40대', SUM(GNR40_VIPOP) FROM regionmonitor.TB_AGRDE_VISIT_POPLTN t, p WHERE t.REGION_CD=p.rc AND t.STDR_YMD BETWEEN p.pfrom AND p.pto
+              UNION ALL SELECT '50대', SUM(GNR50_VIPOP) FROM regionmonitor.TB_AGRDE_VISIT_POPLTN t, p WHERE t.REGION_CD=p.rc AND t.STDR_YMD BETWEEN p.pfrom AND p.pto
+              UNION ALL SELECT '60대', SUM(GNR60_VIPOP) FROM regionmonitor.TB_AGRDE_VISIT_POPLTN t, p WHERE t.REGION_CD=p.rc AND t.STDR_YMD BETWEEN p.pfrom AND p.pto
+              UNION ALL SELECT '70대', SUM(GNR70_VIPOP) FROM regionmonitor.TB_AGRDE_VISIT_POPLTN t, p WHERE t.REGION_CD=p.rc AND t.STDR_YMD BETWEEN p.pfrom AND p.pto
             )
             SELECT CASE WHEN p.v IS NULL OR p.v=0 THEN 0 ELSE ROUND(((c.v - p.v)/p.v)*100, 2) END
             FROM cur c LEFT JOIN prv p USING(lbl)
@@ -2528,34 +2481,28 @@ slides:
             END
           FROM cur, prv;
 
-      # 3) 최다 소비 집단(성·연령) + 그 집단의 전년대비 증감률
+      # 3) 최다 매출 집단(연령) + 그 집단의 비중
       SL12_p_6:
-        sql: | # 최다 소비 집단 라벨(예: '30대 여성')
-          WITH t AS (
+        sql: | # 최다 매출 연령대 라벨(예: '30대')
+          WITH a AS (
             SELECT
-              COALESCE(SUM(GNR20_MSALAMT),0) AS M20, COALESCE(SUM(GNR30_MSALAMT),0) AS M30,
-              COALESCE(SUM(GNR40_MSALAMT),0) AS M40, COALESCE(SUM(GNR50_MSALAMT),0) AS M50,
-              COALESCE(SUM(GNR60_MSALAMT),0) AS M60, COALESCE(SUM(GNR70_MSALAMT),0) AS M70,
-              COALESCE(SUM(GNR20_FSALAMT),0) AS F20, COALESCE(SUM(GNR30_FSALAMT),0) AS F30,
-              COALESCE(SUM(GNR40_FSALAMT),0) AS F40, COALESCE(SUM(GNR50_FSALAMT),0) AS F50,
-              COALESCE(SUM(GNR60_FSALAMT),0) AS F60, COALESCE(SUM(GNR70_FSALAMT),0) AS F70
-            FROM regionmonitor.TB_SEXDSTN_SELNG
+              COALESCE(SUM(GNR20_SALAMT),0) AS a20,
+              COALESCE(SUM(GNR30_SALAMT),0) AS a30,
+              COALESCE(SUM(GNR40_SALAMT),0) AS a40,
+              COALESCE(SUM(GNR50_SALAMT),0) AS a50,
+              COALESCE(SUM(GNR60_SALAMT),0) AS a60,
+              COALESCE(SUM(GNR70_SALAMT),0) AS a70
+            FROM regionmonitor.TB_AGRDE_SELNG
             WHERE REGION_CD = CAST(:REGION_CD AS VARCHAR)
               AND STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
           ),
           u AS (
-            SELECT '20대 남성' AS seg, M20 AS v FROM t UNION ALL
-            SELECT '30대 남성', M30 FROM t UNION ALL
-            SELECT '40대 남성', M40 FROM t UNION ALL
-            SELECT '50대 남성', M50 FROM t UNION ALL
-            SELECT '60대 남성', M60 FROM t UNION ALL
-            SELECT '70대 남성', M70 FROM t UNION ALL
-            SELECT '20대 여성', F20 FROM t UNION ALL
-            SELECT '30대 여성', F30 FROM t UNION ALL
-            SELECT '40대 여성', F40 FROM t UNION ALL
-            SELECT '50대 여성', F50 FROM t UNION ALL
-            SELECT '60대 여성', F60 FROM t UNION ALL
-            SELECT '70대 여성', F70 FROM t
+            SELECT '20대' AS seg, a20 AS v FROM a UNION ALL
+            SELECT '30대', a30 FROM a UNION ALL
+            SELECT '40대', a40 FROM a UNION ALL
+            SELECT '50대', a50 FROM a UNION ALL
+            SELECT '60대', a60 FROM a UNION ALL
+            SELECT '70대', a70 FROM a
           )
           SELECT seg
           FROM u
@@ -2563,90 +2510,43 @@ slides:
           LIMIT 1;
 
       SL12_p_7:
-        sql: | # (SL12_p_6에서 선택된 집단)의 전년대비 증감률(%)
+        sql: | # (SL12_p_6에서 선택된 연령대)의 전체 연령대 대비 비중(%)
           WITH cur AS (
-            SELECT
-              '20대 남성' AS seg, COALESCE(SUM(GNR20_MSALAMT),0) AS v FROM regionmonitor.TB_SEXDSTN_SELNG
-              WHERE REGION_CD = CAST(:REGION_CD AS VARCHAR) AND STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
-            UNION ALL SELECT '30대 남성', COALESCE(SUM(GNR30_MSALAMT),0) FROM regionmonitor.TB_SEXDSTN_SELNG
-              WHERE REGION_CD = CAST(:REGION_CD AS VARCHAR) AND STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
-            UNION ALL SELECT '40대 남성', COALESCE(SUM(GNR40_MSALAMT),0) FROM regionmonitor.TB_SEXDSTN_SELNG
-              WHERE REGION_CD = CAST(:REGION_CD AS VARCHAR) AND STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
-            UNION ALL SELECT '50대 남성', COALESCE(SUM(GNR50_MSALAMT),0) FROM regionmonitor.TB_SEXDSTN_SELNG
-              WHERE REGION_CD = CAST(:REGION_CD AS VARCHAR) AND STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
-            UNION ALL SELECT '60대 남성', COALESCE(SUM(GNR60_MSALAMT),0) FROM regionmonitor.TB_SEXDSTN_SELNG
-              WHERE REGION_CD = CAST(:REGION_CD AS VARCHAR) AND STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
-            UNION ALL SELECT '70대 남성', COALESCE(SUM(GNR70_MSALAMT),0) FROM regionmonitor.TB_SEXDSTN_SELNG
-              WHERE REGION_CD = CAST(:REGION_CD AS VARCHAR) AND STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
-            UNION ALL SELECT '20대 여성', COALESCE(SUM(GNR20_FSALAMT),0) FROM regionmonitor.TB_SEXDSTN_SELNG
-              WHERE REGION_CD = CAST(:REGION_CD AS VARCHAR) AND STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
-            UNION ALL SELECT '30대 여성', COALESCE(SUM(GNR30_FSALAMT),0) FROM regionmonitor.TB_SEXDSTN_SELNG
-              WHERE REGION_CD = CAST(:REGION_CD AS VARCHAR) AND STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
-            UNION ALL SELECT '40대 여성', COALESCE(SUM(GNR40_FSALAMT),0) FROM regionmonitor.TB_SEXDSTN_SELNG
-              WHERE REGION_CD = CAST(:REGION_CD AS VARCHAR) AND STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
-            UNION ALL SELECT '50대 여성', COALESCE(SUM(GNR50_FSALAMT),0) FROM regionmonitor.TB_SEXDSTN_SELNG
-              WHERE REGION_CD = CAST(:REGION_CD AS VARCHAR) AND STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
-            UNION ALL SELECT '60대 여성', COALESCE(SUM(GNR60_FSALAMT),0) FROM regionmonitor.TB_SEXDSTN_SELNG
-              WHERE REGION_CD = CAST(:REGION_CD AS VARCHAR) AND STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
-            UNION ALL SELECT '70대 여성', COALESCE(SUM(GNR70_FSALAMT),0) FROM regionmonitor.TB_SEXDSTN_SELNG
-              WHERE REGION_CD = CAST(:REGION_CD AS VARCHAR) AND STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
-          ),
-          prv AS (
-            SELECT
-              '20대 남성' AS seg, COALESCE(SUM(GNR20_MSALAMT),0) AS v FROM regionmonitor.TB_SEXDSTN_SELNG
-              WHERE REGION_CD = CAST(:REGION_CD AS VARCHAR) AND STDR_YMD BETWEEN
-                to_char(to_date(:DATE_FROM,'YYYYMMDD') - INTERVAL '1 year','YYYYMMDD')
-                AND to_char(to_date(:DATE_TO,'YYYYMMDD') - INTERVAL '1 year','YYYYMMDD')
-            UNION ALL SELECT '30대 남성', COALESCE(SUM(GNR30_MSALAMT),0) FROM regionmonitor.TB_SEXDSTN_SELNG
-              WHERE REGION_CD = CAST(:REGION_CD AS VARCHAR) AND STDR_YMD BETWEEN
-                to_char(to_date(:DATE_FROM,'YYYYMMDD') - INTERVAL '1 year','YYYYMMDD')
-                AND to_char(to_date(:DATE_TO,'YYYYMMDD') - INTERVAL '1 year','YYYYMMDD')
-            UNION ALL SELECT '40대 남성', COALESCE(SUM(GNR40_MSALAMT),0) FROM regionmonitor.TB_SEXDSTN_SELNG
-              WHERE REGION_CD = CAST(:REGION_CD AS VARCHAR) AND STDR_YMD BETWEEN
-                to_char(to_date(:DATE_FROM,'YYYYMMDD') - INTERVAL '1 year','YYYYMMDD')
-                AND to_char(to_date(:DATE_TO,'YYYYMMDD') - INTERVAL '1 year','YYYYMMDD')
-            UNION ALL SELECT '50대 남성', COALESCE(SUM(GNR50_MSALAMT),0) FROM regionmonitor.TB_SEXDSTN_SELNG
-              WHERE REGION_CD = CAST(:REGION_CD AS VARCHAR) AND STDR_YMD BETWEEN
-                to_char(to_date(:DATE_FROM,'YYYYMMDD') - INTERVAL '1 year','YYYYMMDD')
-                AND to_char(to_date(:DATE_TO,'YYYYMMDD') - INTERVAL '1 year','YYYYMMDD')
-            UNION ALL SELECT '60대 남성', COALESCE(SUM(GNR60_MSALAMT),0) FROM regionmonitor.TB_SEXDSTN_SELNG
-              WHERE REGION_CD = CAST(:REGION_CD AS VARCHAR) AND STDR_YMD BETWEEN
-                to_char(to_date(:DATE_FROM,'YYYYMMDD') - INTERVAL '1 year','YYYYMMDD')
-                AND to_char(to_date(:DATE_TO,'YYYYMMDD') - INTERVAL '1 year','YYYYMMDD')
-            UNION ALL SELECT '70대 남성', COALESCE(SUM(GNR70_MSALAMT),0) FROM regionmonitor.TB_SEXDSTN_SELNG
-              WHERE REGION_CD = CAST(:REGION_CD AS VARCHAR) AND STDR_YMD BETWEEN
-                to_char(to_date(:DATE_FROM,'YYYYMMDD') - INTERVAL '1 year','YYYYMMDD')
-                AND to_char(to_date(:DATE_TO,'YYYYMMDD') - INTERVAL '1 year','YYYYMMDD')
-            UNION ALL SELECT '20대 여성', COALESCE(SUM(GNR20_FSALAMT),0) FROM regionmonitor.TB_SEXDSTN_SELNG
-              WHERE REGION_CD = CAST(:REGION_CD AS VARCHAR) AND STDR_YMD BETWEEN
-                to_char(to_date(:DATE_FROM,'YYYYMMDD') - INTERVAL '1 year','YYYYMMDD')
-                AND to_char(to_date(:DATE_TO,'YYYYMMDD') - INTERVAL '1 year','YYYYMMDD')
-            UNION ALL SELECT '30대 여성', COALESCE(SUM(GNR30_FSALAMT),0) FROM regionmonitor.TB_SEXDSTN_SELNG
-              WHERE REGION_CD = CAST(:REGION_CD AS VARCHAR) AND STDR_YMD BETWEEN
-                to_char(to_date(:DATE_FROM,'YYYYMMDD') - INTERVAL '1 year','YYYYMMDD')
-                AND to_char(to_date(:DATE_TO,'YYYYMMDD') - INTERVAL '1 year','YYYYMMDD')
-            UNION ALL SELECT '40대 여성', COALESCE(SUM(GNR40_FSALAMT),0) FROM regionmonitor.TB_SEXDSTN_SELNG
-              WHERE REGION_CD = CAST(:REGION_CD AS VARCHAR) AND STDR_YMD BETWEEN
-                to_char(to_date(:DATE_FROM,'YYYYMMDD') - INTERVAL '1 year','YYYYMMDD')
-                AND to_char(to_date(:DATE_TO,'YYYYMMDD') - INTERVAL '1 year','YYYYMMDD')
-            UNION ALL SELECT '50대 여성', COALESCE(SUM(GNR50_FSALAMT),0) FROM regionmonitor.TB_SEXDSTN_SELNG
-              WHERE REGION_CD = CAST(:REGION_CD AS VARCHAR) AND STDR_YMD BETWEEN
-                to_char(to_date(:DATE_FROM,'YYYYMMDD') - INTERVAL '1 year','YYYYMMDD')
-                AND to_char(to_date(:DATE_TO,'YYYYMMDD') - INTERVAL '1 year','YYYYMMDD')
-            UNION ALL SELECT '60대 여성', COALESCE(SUM(GNR60_FSALAMT),0) FROM regionmonitor.TB_SEXDSTN_SELNG
-              WHERE REGION_CD = CAST(:REGION_CD AS VARCHAR) AND STDR_YMD BETWEEN
-                to_char(to_date(:DATE_FROM,'YYYYMMDD') - INTERVAL '1 year','YYYYMMDD')
-                AND to_char(to_date(:DATE_TO,'YYYYMMDD') - INTERVAL '1 year','YYYYMMDD')
-            UNION ALL SELECT '70대 여성', COALESCE(SUM(GNR70_FSALAMT),0) FROM regionmonitor.TB_SEXDSTN_SELNG
-              WHERE REGION_CD = CAST(:REGION_CD AS VARCHAR) AND STDR_YMD BETWEEN
-                to_char(to_date(:DATE_FROM,'YYYYMMDD') - INTERVAL '1 year','YYYYMMDD')
-                AND to_char(to_date(:DATE_TO,'YYYYMMDD') - INTERVAL '1 year','YYYYMMDD')
+            SELECT '20대' AS seg, COALESCE(SUM(GNR20_SALAMT),0) AS v
+            FROM regionmonitor.TB_AGRDE_SELNG
+            WHERE REGION_CD = CAST(:REGION_CD AS VARCHAR)
+              AND STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
+            UNION ALL
+            SELECT '30대', COALESCE(SUM(GNR30_SALAMT),0)
+            FROM regionmonitor.TB_AGRDE_SELNG
+            WHERE REGION_CD = CAST(:REGION_CD AS VARCHAR)
+              AND STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
+            UNION ALL
+            SELECT '40대', COALESCE(SUM(GNR40_SALAMT),0)
+            FROM regionmonitor.TB_AGRDE_SELNG
+            WHERE REGION_CD = CAST(:REGION_CD AS VARCHAR)
+              AND STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
+            UNION ALL
+            SELECT '50대', COALESCE(SUM(GNR50_SALAMT),0)
+            FROM regionmonitor.TB_AGRDE_SELNG
+            WHERE REGION_CD = CAST(:REGION_CD AS VARCHAR)
+              AND STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
+            UNION ALL
+            SELECT '60대', COALESCE(SUM(GNR60_SALAMT),0)
+            FROM regionmonitor.TB_AGRDE_SELNG
+            WHERE REGION_CD = CAST(:REGION_CD AS VARCHAR)
+              AND STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
+            UNION ALL
+            SELECT '70대', COALESCE(SUM(GNR70_SALAMT),0)
+            FROM regionmonitor.TB_AGRDE_SELNG
+            WHERE REGION_CD = CAST(:REGION_CD AS VARCHAR)
+              AND STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
           ),
           mx AS (SELECT seg FROM cur ORDER BY v DESC, seg LIMIT 1)
-          SELECT COALESCE(ROUND(100.0 * (c.v - p.v) / NULLIF(p.v,0), 1), 0.0)
-          FROM (SELECT seg, v FROM cur) c
-          JOIN (SELECT seg, v FROM prv) p USING (seg)
+          SELECT ROUND(100.0 * c.v / NULLIF((SELECT SUM(v) FROM cur), 0), 1)
+          FROM cur c
           JOIN mx ON mx.seg = c.seg;
+
 
       # 4) TOP 업종 + 비중
       SL12_p_8:
@@ -2779,56 +2679,56 @@ slides:
       SL12_chart_2:
         category_sql: |- # 매출금액 높은 연령대 top 3
           WITH age_sum AS (
-            SELECT '20대' AS lbl, COALESCE(SUM(GNR20_MSALAMT+GNR20_FSALAMT),0) AS amt
-              FROM regionmonitor.TB_SEXDSTN_SELNG
+            SELECT '20대' AS lbl, COALESCE(SUM(GNR20_SALAMT),0) AS amt
+              FROM regionmonitor.tb_agrde_selng
               WHERE REGION_CD=:REGION_CD AND STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
             UNION ALL
-            SELECT '30대', COALESCE(SUM(GNR30_MSALAMT+GNR30_FSALAMT),0)
-              FROM regionmonitor.TB_SEXDSTN_SELNG
+            SELECT '30대', COALESCE(SUM(GNR30_SALAMT),0)
+              FROM regionmonitor.tb_agrde_selng
               WHERE REGION_CD=:REGION_CD AND STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
             UNION ALL
-            SELECT '40대', COALESCE(SUM(GNR40_MSALAMT+GNR40_FSALAMT),0)
-              FROM regionmonitor.TB_SEXDSTN_SELNG
+            SELECT '40대', COALESCE(SUM(GNR40_SALAMT),0)
+              FROM regionmonitor.tb_agrde_selng
               WHERE REGION_CD=:REGION_CD AND STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
             UNION ALL
-            SELECT '50대', COALESCE(SUM(GNR50_MSALAMT+GNR50_FSALAMT),0)
-              FROM regionmonitor.TB_SEXDSTN_SELNG
+            SELECT '50대', COALESCE(SUM(GNR50_SALAMT),0)
+              FROM regionmonitor.tb_agrde_selng
               WHERE REGION_CD=:REGION_CD AND STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
             UNION ALL
-            SELECT '60대', COALESCE(SUM(GNR60_MSALAMT+GNR60_FSALAMT),0)
-              FROM regionmonitor.TB_SEXDSTN_SELNG
+            SELECT '60대', COALESCE(SUM(GNR60_SALAMT),0)
+              FROM regionmonitor.tb_agrde_selng
               WHERE REGION_CD=:REGION_CD AND STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
             UNION ALL
-            SELECT '70대', COALESCE(SUM(GNR70_MSALAMT+GNR70_FSALAMT),0)
-              FROM regionmonitor.TB_SEXDSTN_SELNG
+            SELECT '70대', COALESCE(SUM(GNR70_SALAMT),0)
+              FROM regionmonitor.tb_agrde_selng
               WHERE REGION_CD=:REGION_CD AND STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
           )
           SELECT lbl FROM age_sum ORDER BY amt DESC LIMIT 3;
         series:
           매출금액(억원): |-
             WITH age_sum AS (
-              SELECT '20대' AS lbl, COALESCE(SUM(GNR20_MSALAMT+GNR20_FSALAMT),0) AS amt
-                FROM regionmonitor.TB_SEXDSTN_SELNG
+              SELECT '20대' AS lbl, COALESCE(SUM(GNR20_SALAMT),0) AS amt
+                FROM regionmonitor.tb_agrde_selng
                 WHERE REGION_CD=:REGION_CD AND STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
               UNION ALL
-              SELECT '30대', COALESCE(SUM(GNR30_MSALAMT+GNR30_FSALAMT),0)
-                FROM regionmonitor.TB_SEXDSTN_SELNG
+              SELECT '30대', COALESCE(SUM(GNR30_SALAMT),0)
+                FROM regionmonitor.tb_agrde_selng
                 WHERE REGION_CD=:REGION_CD AND STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
               UNION ALL
-              SELECT '40대', COALESCE(SUM(GNR40_MSALAMT+GNR40_FSALAMT),0)
-                FROM regionmonitor.TB_SEXDSTN_SELNG
+              SELECT '40대', COALESCE(SUM(GNR40_SALAMT),0)
+                FROM regionmonitor.tb_agrde_selng
                 WHERE REGION_CD=:REGION_CD AND STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
               UNION ALL
-              SELECT '50대', COALESCE(SUM(GNR50_MSALAMT+GNR50_FSALAMT),0)
-                FROM regionmonitor.TB_SEXDSTN_SELNG
+              SELECT '50대', COALESCE(SUM(GNR50_SALAMT),0)
+                FROM regionmonitor.tb_agrde_selng
                 WHERE REGION_CD=:REGION_CD AND STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
               UNION ALL
-              SELECT '60대', COALESCE(SUM(GNR60_MSALAMT+GNR60_FSALAMT),0)
-                FROM regionmonitor.TB_SEXDSTN_SELNG
+              SELECT '60대', COALESCE(SUM(GNR60_SALAMT),0)
+                FROM regionmonitor.tb_agrde_selng
                 WHERE REGION_CD=:REGION_CD AND STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
               UNION ALL
-              SELECT '70대', COALESCE(SUM(GNR70_MSALAMT+GNR70_FSALAMT),0)
-                FROM regionmonitor.TB_SEXDSTN_SELNG
+              SELECT '70대', COALESCE(SUM(GNR70_SALAMT),0)
+                FROM regionmonitor.tb_agrde_selng
                 WHERE REGION_CD=:REGION_CD AND STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
             )
             SELECT amt/1e8 FROM age_sum ORDER BY amt DESC LIMIT 3;
@@ -3532,17 +3432,17 @@ slides:
       SL15_1:
         sql: | # 최다 연령 라벨('20대'..'70대')
           WITH a AS (
-            SELECT '20대' AS g, SUM(GNR20_MSALAMT+GNR20_FSALAMT) AS amt FROM regionmonitor.TB_SEXDSTN_SELNG
+            SELECT '20대' AS g, SUM(GNR20_SALAMT) AS amt FROM regionmonitor.TB_AGRDE_SELNG
             WHERE REGION_CD = CAST(:REGION_CD AS VARCHAR) AND STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
-            UNION ALL SELECT '30대', SUM(GNR30_MSALAMT+GNR30_FSALAMT) FROM regionmonitor.TB_SEXDSTN_SELNG
+            UNION ALL SELECT '30대', SUM(GNR30_SALAMT) FROM regionmonitor.TB_AGRDE_SELNG
             WHERE REGION_CD = CAST(:REGION_CD AS VARCHAR) AND STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
-            UNION ALL SELECT '40대', SUM(GNR40_MSALAMT+GNR40_FSALAMT) FROM regionmonitor.TB_SEXDSTN_SELNG
+            UNION ALL SELECT '40대', SUM(GNR40_SALAMT) FROM regionmonitor.TB_AGRDE_SELNG
             WHERE REGION_CD = CAST(:REGION_CD AS VARCHAR) AND STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
-            UNION ALL SELECT '50대', SUM(GNR50_MSALAMT+GNR50_FSALAMT) FROM regionmonitor.TB_SEXDSTN_SELNG
+            UNION ALL SELECT '50대', SUM(GNR50_SALAMT) FROM regionmonitor.TB_AGRDE_SELNG
             WHERE REGION_CD = CAST(:REGION_CD AS VARCHAR) AND STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
-            UNION ALL SELECT '60대', SUM(GNR60_MSALAMT+GNR60_FSALAMT) FROM regionmonitor.TB_SEXDSTN_SELNG
+            UNION ALL SELECT '60대', SUM(GNR60_SALAMT) FROM regionmonitor.TB_AGRDE_SELNG
             WHERE REGION_CD = CAST(:REGION_CD AS VARCHAR) AND STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
-            UNION ALL SELECT '70대', SUM(GNR70_MSALAMT+GNR70_FSALAMT) FROM regionmonitor.TB_SEXDSTN_SELNG
+            UNION ALL SELECT '70대', SUM(GNR70_SALAMT) FROM regionmonitor.TB_AGRDE_SELNG
             WHERE REGION_CD = CAST(:REGION_CD AS VARCHAR) AND STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
           )
           SELECT g FROM a ORDER BY amt DESC, g LIMIT 1;
@@ -3550,17 +3450,17 @@ slides:
       SL15_2:
         sql: | # 해당 연령 비중(%)
           WITH a AS (
-            SELECT '20대' AS g, SUM(GNR20_MSALAMT+GNR20_FSALAMT) AS amt FROM regionmonitor.TB_SEXDSTN_SELNG
+            SELECT '20대' AS g, SUM(GNR20_SALAMT) AS amt FROM regionmonitor.TB_AGRDE_SELNG
             WHERE REGION_CD = CAST(:REGION_CD AS VARCHAR) AND STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
-            UNION ALL SELECT '30대', SUM(GNR30_MSALAMT+GNR30_FSALAMT) FROM regionmonitor.TB_SEXDSTN_SELNG
+            UNION ALL SELECT '30대', SUM(GNR30_SALAMT) FROM regionmonitor.TB_AGRDE_SELNG
             WHERE REGION_CD = CAST(:REGION_CD AS VARCHAR) AND STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
-            UNION ALL SELECT '40대', SUM(GNR40_MSALAMT+GNR40_FSALAMT) FROM regionmonitor.TB_SEXDSTN_SELNG
+            UNION ALL SELECT '40대', SUM(GNR40_SALAMT) FROM regionmonitor.TB_AGRDE_SELNG
             WHERE REGION_CD = CAST(:REGION_CD AS VARCHAR) AND STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
-            UNION ALL SELECT '50대', SUM(GNR50_MSALAMT+GNR50_FSALAMT) FROM regionmonitor.TB_SEXDSTN_SELNG
+            UNION ALL SELECT '50대', SUM(GNR50_SALAMT) FROM regionmonitor.TB_AGRDE_SELNG
             WHERE REGION_CD = CAST(:REGION_CD AS VARCHAR) AND STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
-            UNION ALL SELECT '60대', SUM(GNR60_MSALAMT+GNR60_FSALAMT) FROM regionmonitor.TB_SEXDSTN_SELNG
+            UNION ALL SELECT '60대', SUM(GNR60_SALAMT) FROM regionmonitor.TB_AGRDE_SELNG
             WHERE REGION_CD = CAST(:REGION_CD AS VARCHAR) AND STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
-            UNION ALL SELECT '70대', SUM(GNR70_MSALAMT+GNR70_FSALAMT) FROM regionmonitor.TB_SEXDSTN_SELNG
+            UNION ALL SELECT '70대', SUM(GNR70_SALAMT) FROM regionmonitor.TB_AGRDE_SELNG
             WHERE REGION_CD = CAST(:REGION_CD AS VARCHAR) AND STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
           )
           SELECT ROUND(100.0 * amt / NULLIF(SUM(amt) OVER (),0), 1)
@@ -3570,8 +3470,8 @@ slides:
       SL15_3:
         sql: | # 20대 금액(원)
           WITH age AS (
-            SELECT SUM(GNR20_MSALAMT + GNR20_FSALAMT) AS v
-            FROM regionmonitor.TB_SEXDSTN_SELNG
+            SELECT SUM(GNR20_SALAMT) AS v
+            FROM regionmonitor.TB_AGRDE_SELNG
             WHERE REGION_CD = CAST(:REGION_CD AS VARCHAR)
               AND STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
           )
@@ -3581,17 +3481,17 @@ slides:
       SL15_4:
         sql: | # 20대 비중(%)
           WITH a AS (
-            SELECT SUM(GNR20_MSALAMT+GNR20_FSALAMT) AS v,
+            SELECT SUM(GNR20_SALAMT) AS v,
                   SUM(TOT_SALAMT) AS t
-            FROM regionmonitor.TB_SEXDSTN_SELNG
+            FROM regionmonitor.TB_AGRDE_SELNG
             WHERE REGION_CD = CAST(:REGION_CD AS VARCHAR) AND STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
           ) SELECT ROUND(100.0 * v / NULLIF(t,0), 1) FROM a;
 
       SL15_5:
         sql: | # 50대 금액(원)
           WITH age AS (
-            SELECT SUM(GNR50_MSALAMT + GNR50_FSALAMT) AS v
-            FROM regionmonitor.TB_SEXDSTN_SELNG
+            SELECT SUM(GNR50_SALAMT) AS v
+            FROM regionmonitor.TB_AGRDE_SELNG
             WHERE REGION_CD = CAST(:REGION_CD AS VARCHAR)
               AND STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
           )
@@ -3601,17 +3501,17 @@ slides:
       SL15_6:
         sql: | # 50대 비중(%)
           WITH a AS (
-            SELECT SUM(GNR50_MSALAMT+GNR50_FSALAMT) AS v,
+            SELECT SUM(GNR50_SALAMT) AS v,
                   SUM(TOT_SALAMT) AS t
-            FROM regionmonitor.TB_SEXDSTN_SELNG
+            FROM regionmonitor.TB_AGRDE_SELNG
             WHERE REGION_CD = CAST(:REGION_CD AS VARCHAR) AND STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
           ) SELECT ROUND(100.0 * v / NULLIF(t,0), 1) FROM a;
 
       SL15_7:
         sql: | # 30대 금액(원)
           WITH age AS (
-            SELECT SUM(GNR30_MSALAMT + GNR30_FSALAMT) AS v
-            FROM regionmonitor.TB_SEXDSTN_SELNG
+            SELECT SUM(GNR30_SALAMT) AS v
+            FROM regionmonitor.TB_AGRDE_SELNG
             WHERE REGION_CD = CAST(:REGION_CD AS VARCHAR)
               AND STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
           )
@@ -3621,16 +3521,16 @@ slides:
       SL15_8:
         sql: | # 30대 비중(%)
           WITH a AS (
-            SELECT SUM(GNR30_MSALAMT+GNR30_FSALAMT) AS v, SUM(TOT_SALAMT) AS t
-            FROM regionmonitor.TB_SEXDSTN_SELNG
+            SELECT SUM(GNR30_SALAMT) AS v, SUM(TOT_SALAMT) AS t
+            FROM regionmonitor.TB_AGRDE_SELNG
             WHERE REGION_CD = CAST(:REGION_CD AS VARCHAR) AND STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
           ) SELECT ROUND(100.0 * v / NULLIF(t,0), 1) FROM a;
 
       SL15_9:
         sql: | # 60대 금액(원)
           WITH age AS (
-            SELECT SUM(GNR60_MSALAMT + GNR60_FSALAMT) AS v
-            FROM regionmonitor.TB_SEXDSTN_SELNG
+            SELECT SUM(GNR60_SALAMT) AS v
+            FROM regionmonitor.TB_AGRDE_SELNG
             WHERE REGION_CD = CAST(:REGION_CD AS VARCHAR)
               AND STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
           )
@@ -3640,16 +3540,16 @@ slides:
       SL15_10:
         sql: | # 60대 비중(%)
           WITH a AS (
-            SELECT SUM(GNR60_MSALAMT+GNR60_FSALAMT) AS v, SUM(TOT_SALAMT) AS t
-            FROM regionmonitor.TB_SEXDSTN_SELNG
+            SELECT SUM(GNR60_SALAMT) AS v, SUM(TOT_SALAMT) AS t
+            FROM regionmonitor.TB_AGRDE_SELNG
             WHERE REGION_CD = CAST(:REGION_CD AS VARCHAR) AND STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
           ) SELECT ROUND(100.0 * v / NULLIF(t,0), 1) FROM a;
 
       SL15_11:
         sql: | # 40대 금액(원)
           WITH age AS (
-            SELECT SUM(GNR40_MSALAMT + GNR40_FSALAMT) AS v
-            FROM regionmonitor.TB_SEXDSTN_SELNG
+            SELECT SUM(GNR40_SALAMT) AS v
+            FROM regionmonitor.TB_AGRDE_SELNG
             WHERE REGION_CD = CAST(:REGION_CD AS VARCHAR)
               AND STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
           )
@@ -3659,16 +3559,16 @@ slides:
       SL15_12:
         sql: | # 40대 비중(%)
           WITH a AS (
-            SELECT SUM(GNR40_MSALAMT+GNR40_FSALAMT) AS v, SUM(TOT_SALAMT) AS t
-            FROM regionmonitor.TB_SEXDSTN_SELNG
+            SELECT SUM(GNR40_SALAMT) AS v, SUM(TOT_SALAMT) AS t
+            FROM regionmonitor.TB_AGRDE_SELNG
             WHERE REGION_CD = CAST(:REGION_CD AS VARCHAR) AND STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
           ) SELECT ROUND(100.0 * v / NULLIF(t,0), 1) FROM a;
 
       SL15_13:
         sql: | # 70대 금액(원)
           WITH age AS (
-            SELECT SUM(GNR70_MSALAMT + GNR70_FSALAMT) AS v
-            FROM regionmonitor.TB_SEXDSTN_SELNG
+            SELECT SUM(GNR70_SALAMT) AS v
+            FROM regionmonitor.TB_AGRDE_SELNG
             WHERE REGION_CD = CAST(:REGION_CD AS VARCHAR)
               AND STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
           )
@@ -3678,8 +3578,8 @@ slides:
       SL15_14:
         sql: | # 70대 비중(%)
           WITH a AS (
-            SELECT SUM(GNR70_MSALAMT+GNR70_FSALAMT) AS v, SUM(TOT_SALAMT) AS t
-            FROM regionmonitor.TB_SEXDSTN_SELNG
+            SELECT SUM(GNR70_SALAMT) AS v, SUM(TOT_SALAMT) AS t
+            FROM regionmonitor.TB_AGRDE_SELNG
             WHERE REGION_CD = CAST(:REGION_CD AS VARCHAR) AND STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
           ) SELECT ROUND(100.0 * v / NULLIF(t,0), 1) FROM a;
 
@@ -3691,13 +3591,13 @@ slides:
           WITH s AS (
             SELECT
               t.SVC_INDUTY_SCLAS_CD AS cd,
-              SUM(COALESCE(t.GNR20_MSALAMT,0) + COALESCE(t.GNR20_FSALAMT,0)) AS a20,
-              SUM(COALESCE(t.GNR30_MSALAMT,0) + COALESCE(t.GNR30_FSALAMT,0)) AS a30,
-              SUM(COALESCE(t.GNR40_MSALAMT,0) + COALESCE(t.GNR40_FSALAMT,0)) AS a40,
-              SUM(COALESCE(t.GNR50_MSALAMT,0) + COALESCE(t.GNR50_FSALAMT,0)) AS a50,
-              SUM(COALESCE(t.GNR60_MSALAMT,0) + COALESCE(t.GNR60_FSALAMT,0)) AS a60,
-              SUM(COALESCE(t.GNR70_MSALAMT,0) + COALESCE(t.GNR70_FSALAMT,0)) AS a70
-            FROM regionmonitor.TB_SEXDSTN_SELNG t
+              SUM(COALESCE(t.GNR20_SALAMT,0)) AS a20,
+              SUM(COALESCE(t.GNR30_SALAMT,0)) AS a30,
+              SUM(COALESCE(t.GNR40_SALAMT,0)) AS a40,
+              SUM(COALESCE(t.GNR50_SALAMT,0)) AS a50,
+              SUM(COALESCE(t.GNR60_SALAMT,0)) AS a60,
+              SUM(COALESCE(t.GNR70_SALAMT,0)) AS a70
+            FROM regionmonitor.TB_AGRDE_SELNG t
             WHERE t.REGION_CD = CAST(:REGION_CD AS VARCHAR)
               AND t.STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
             GROUP BY t.SVC_INDUTY_SCLAS_CD

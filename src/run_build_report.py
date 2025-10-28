@@ -7,75 +7,80 @@ from ppt_fillers import apply_tokens_and_charts
 import time
 import pandas as pd
 
+
 # === 트리맵 이미지 생성 유틸 ===
 def generate_treemap_image(data, out_path, color_hex, title=None, font_family="Malgun Gothic"):
     """
     data: list[tuple[str, float]] # [(업종명, 억원값)]
     out_path: 이미지 저장 경로
-    
-    디자인 목표: 
-    1. 폰트: Noto Sans KR 적용
-    2. 색상: 모든 타일 동일한
-    3. 경계선: 굵은 흰색 테두리
-    4. 텍스트: 흰색, 굵게
     """
+    import os, math
     import matplotlib.pyplot as plt
     import squarify
-    import os
-    
-    # 1. 데이터 준비 및 정렬
-    data.sort(key=lambda item: item[1], reverse=True) 
-    
-    labels = [f"{k}\n{v:.1f}억" for k, v in data]
-    sizes = [max(v, 0.0) for _, v in data]
 
-    # 2. 색상 설정 (단일 색상 코드 사용)
-    MONO_COLOR = color_hex # 전달받은 HEX 코드를 사용
-    
-    # 모든 타일에 동일한 색상을 적용하기 위해 리스트 생성
-    colors = [MONO_COLOR] * len(sizes) 
-
-    # 3. 폰트 설정
+    # 0) 폰트 설정 (실패해도 진행)
     try:
-        # Noto Sans KR 폰트 적용
         plt.rcParams["font.family"] = font_family
     except Exception:
-        # 폰트 설정을 실패하더라도 계속 진행
         pass
 
-    # 4. 트리맵 그리기
-    fig = plt.figure(figsize=(7, 4.5)) 
-    fig.set_facecolor('none')
+    # 1) 값 정리: NaN/None → 제외, 0/음수 → 제외 (squarify가 0에서 ZeroDivisionError 발생)
+    cleaned = []
+    for k, v in (data or []):
+        try:
+            x = float(v)
+        except Exception:
+            x = float("nan")
+        if x is not None and not math.isnan(x) and x > 0:
+            cleaned.append((k, x))
 
+    # 2) 모두 0/NaN/음수라서 남은 게 없으면 플레이스홀더 저장
+    if not cleaned:
+        fig = plt.figure(figsize=(7, 4.5))
+        fig.set_facecolor('none')
+        ax = fig.add_subplot(111)
+        ax.axis("off")
+        if title:
+            ax.set_title(title, pad=10, fontsize=12, fontweight='bold')
+        ax.text(0.5, 0.5, "데이터 없음", ha="center", va="center", fontsize=13, color="#777")
+        os.makedirs(os.path.dirname(out_path), exist_ok=True)
+        fig.savefig(out_path, dpi=300, bbox_inches='tight', pad_inches=0)
+        plt.close(fig)
+        return
+
+    # 3) 정렬 (내림차순)
+    cleaned.sort(key=lambda item: item[1], reverse=True)
+
+    # 4) 라벨/사이즈 생성 (값 표시는 1자리 소수)
+    labels = [f"{k}\n{v:.1f}억" for k, v in cleaned]
+    sizes  = [v for _, v in cleaned]
+
+    # 5) 색상: 단일색 반복
+    colors = [color_hex] * len(sizes)
+
+    # 6) 그리기
+    fig = plt.figure(figsize=(7, 4.5))
+    fig.set_facecolor('none')
     plt.clf()
-    
+
     squarify.plot(
-        sizes=sizes, 
-        label=labels, 
-        color=colors,         # 단일 색상 적용
-        # **경계선 설정: 굵고 흰색 테두리 적용**
-        bar_kwargs={
-            'linewidth': 2,       # 테두리 두께
-            'edgecolor': 'white'  # 테두리 색상
-        }, 
-        # **텍스트 속성 설정: 흰색, 굵은 글씨**
-        text_kwargs={
-            'fontsize': 11, 
-            'color': 'white',      
-            'fontweight': 'bold'   
-        } 
+        sizes=sizes,
+        label=labels,
+        color=colors,
+        bar_kwargs={"linewidth": 2, "edgecolor": "white"},   # 경계선
+        text_kwargs={"fontsize": 11, "color": "white", "fontweight": "bold"},  # 텍스트
+        pad=True
     )
-    
-    plt.axis("off") # 축 제거
-    
+
+    plt.axis("off")
     if title:
         plt.title(title, pad=10, fontsize=12, fontweight='bold')
-        
     plt.tight_layout(pad=0.0)
-    
+
     os.makedirs(os.path.dirname(out_path), exist_ok=True)
-    plt.savefig(out_path, dpi=300, bbox_inches='tight', pad_inches=0) # 고해상도 저장
+    plt.savefig(out_path, dpi=300, bbox_inches='tight', pad_inches=0)
     plt.close()
+
 
 # === 히트맵 이미지 생성 유틸 ===
 def generate_heatmap_image(data_df, out_path, title=None, font_family="Malgun Gothic"):
@@ -217,7 +222,7 @@ print(f"DEBUG: 최종 Image Map: {image_map}")
 
 apply_tokens_and_charts(
     prs_path="template/master.pptx",
-    out_path="out/커밋전.pptx",
+    out_path="out/쿼리수정2.pptx",
     token_map=token_values,
     chart_map=chart_data,
     image_map=image_map
