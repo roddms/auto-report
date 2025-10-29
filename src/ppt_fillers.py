@@ -7,6 +7,7 @@ from pptx.dml.color import RGBColor
 from pptx.enum.chart import XL_MARKER_STYLE
 import win32com.client as win32
 import pandas as pd
+import pythoncom
 
 # ---------------------------
 # 🔹 Text / Chart Utilities
@@ -229,54 +230,28 @@ def highlight_max_point_only(chart, series_idx=0, max_idx=0,
     fill.solid()
     fill.fore_color.rgb = color
 
-def color_sl20_chart_1(chart, series_dict):
-    """
-    chart: python-pptx Chart
-    series_dict: {'카드사용건수(건)': [...],
-                  '카드소비금액(천만원)_비축제': [...],
-                  '카드소비금액(천만원)_축제': [...],
-                  '_festival_flags': [0/1,...]}
-    """
-    # 시리즈 인덱스 매핑 (이름 순서로 생성되는 경우가 많지만 안전하게 찾아줌)
-    name2idx = {chart.series[i].name: i for i in range(len(chart.series))}
 
-    # 1) 막대(건수) 포인트 색칠
-    bar_name = "매출건수(건)"
-    if bar_name in name2idx and "_festival_flags" in series_dict:
-        flags = series_dict["_festival_flags"]
+def color_sl20_chart_1(chart, sdict):
+    # 시리즈명 매핑
+    name2idx = {chart.series[i].name: i for i in range(len(chart.series))}
+    flags = sdict.get("_festival_flags")
+
+    # 1) 막대(금액) 포인트별 색상: 축제=빨강, 비축제=파랑
+    bar_name = "매출금액(천만원)"
+    if flags and bar_name in name2idx:
         s = chart.series[name2idx[bar_name]]
         for i, pt in enumerate(s.points):
-            try:
-                fill = pt.format.fill
-                fill.solid()
-                fill.fore_color.rgb = RGBColor(231, 76, 60) if flags[i] == 1 else RGBColor(91, 155, 213)
-            except Exception as e:
-                print("bar color err:", e)
+            fill = pt.format.fill
+            fill.solid()
+            fill.fore_color.rgb = RGBColor(231, 76, 60) if flags[i] == 1 else RGBColor(31, 78, 121)
 
-    # 2) 라인(금액) 시리즈 색 지정 (구간별로 이미 분리되어 있으므로 시리즈 색만 지정)
-    nonfest_name = "매출금액(천만원)_비축제"
-    fest_name    = "매출금액(천만원)_축제"
-
-    # 보이는 선 굵기/색/마커
-    def style_line(series, rgb):
+    # 2) 라인(건수) 기본색 지정(원하면)
+    line_name = "매출건수(건)"
+    if line_name in name2idx:
         try:
-            ln = series.format.line
-            ln.color.rgb = rgb
-            # 선택: ln.width = Pt(2.0)
-            series.marker.style = XL_MARKER_STYLE.CIRCLE
-            series.marker.size = 6
-            series.marker.format.fill.solid()
-            series.marker.format.fill.fore_color.rgb = rgb
-            series.marker.format.line.color.rgb = rgb
-        except Exception as e:
-            print("line style err:", e)
-
-    if nonfest_name in name2idx:
-        style_line(chart.series[name2idx[nonfest_name]], RGBColor(31, 78, 121))   # 기본 파랑
-    if fest_name in name2idx:
-        style_line(chart.series[name2idx[fest_name]], RGBColor(231, 76, 60))       # 빨강
-
-
+            chart.series[name2idx[line_name]].format.line.color.rgb = RGBColor(96, 96, 96)
+        except Exception:
+            pass
 
 # ---------------------------------
 # 🔹 PowerPoint 트리맵 차트 자동 갱신
@@ -364,7 +339,8 @@ def apply_tokens_and_charts(prs_path, out_path, token_map, chart_map=None, image
         for cname, (cats, sdict) in chart_map.items():
             ch = find_chart(prs, cname)
             if ch:
-                replace_chart_data(ch, cats, sdict)
+                data_sdict = {k: v for k, v in sdict.items() if not k.startswith("_")}
+                replace_chart_data(ch, cats, data_sdict)
 
                 if cname == "SL5_chart_2":
                     try:
@@ -386,6 +362,8 @@ def apply_tokens_and_charts(prs_path, out_path, token_map, chart_map=None, image
                     except Exception as e:
                         print(f"⚠️ SL7_chart 강조 처리 실패: {e}")
 
+                pythoncom.PumpWaitingMessages()
+                time.sleep(0.2)
     
                 if cname == "SL20_chart":
                     color_sl20_chart_1(ch, sdict)

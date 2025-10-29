@@ -5692,58 +5692,6 @@ slides:
           ORDER BY seq;
 
         series:
-          매출건수(건): |-
-            WITH
-            d AS (
-              SELECT 
-                to_date(:DATE_FROM,'YYYYMMDD') AS d_from,
-                to_date(:DATE_TO  ,'YYYYMMDD') AS d_to
-            ),
-            prev AS (
-              SELECT gs::date AS d, ROW_NUMBER() OVER (ORDER BY gs) AS seq
-              FROM d, generate_series((SELECT d_from FROM d) - INTERVAL '7 day',
-                                      (SELECT d_from FROM d) - INTERVAL '1 day',
-                                      INTERVAL '1 day') gs
-            ),
-            fest AS (
-              SELECT gs::date AS d, (SELECT COUNT(*) FROM prev) + ROW_NUMBER() OVER (ORDER BY gs) AS seq
-              FROM d, generate_series((SELECT d_from FROM d),
-                                      (SELECT d_to   FROM d),
-                                      INTERVAL '1 day') gs
-            ),
-            nxt AS (
-              SELECT gs::date AS d, (SELECT COUNT(*) FROM prev) + (SELECT COUNT(*) FROM fest) + ROW_NUMBER() OVER (ORDER BY gs) AS seq
-              FROM d, generate_series((SELECT d_to FROM d) + INTERVAL '1 day',
-                                      (SELECT d_to FROM d) + INTERVAL '7 day',
-                                      INTERVAL '1 day') gs
-            ),
-            all_days AS (
-              SELECT d, seq FROM prev
-              UNION ALL SELECT d, seq FROM fest
-              UNION ALL SELECT d, seq FROM nxt
-            ),
-            flag AS (
-              SELECT 
-                a.seq,
-                CASE WHEN a.d BETWEEN (SELECT d_from FROM d) AND (SELECT d_to FROM d)
-                    THEN 1 ELSE 0 END AS is_festival
-              FROM all_days a
-            ),
-            agg AS (
-              SELECT 
-                a.seq,
-                COALESCE(SUM(s.TOT_DCNT),0)::bigint AS val
-              FROM all_days a
-              LEFT JOIN regionmonitor.tb_sexdstn_selng s
-                ON s.REGION_CD = CAST(:REGION_CD AS VARCHAR)
-              AND s.STDR_YMD = to_char(a.d,'YYYYMMDD')
-              GROUP BY a.seq
-            )
-            SELECT agg.val, flag.is_festival
-            FROM agg
-            JOIN flag USING (seq)
-            ORDER BY seq;
-
           매출금액(천만원): |-
             WITH
             d AS (
@@ -5785,6 +5733,58 @@ slides:
               SELECT 
                 a.seq,
                 (COALESCE(SUM(s.TOT_SALAMT),0)::numeric / 10000000.0)::numeric(18,2) AS val
+              FROM all_days a
+              LEFT JOIN regionmonitor.tb_sexdstn_selng s
+                ON s.REGION_CD = CAST(:REGION_CD AS VARCHAR)
+              AND s.STDR_YMD = to_char(a.d,'YYYYMMDD')
+              GROUP BY a.seq
+            )
+            SELECT agg.val, flag.is_festival
+            FROM agg
+            JOIN flag USING (seq)
+            ORDER BY seq;
+
+          매출건수(건): |-
+            WITH
+            d AS (
+              SELECT 
+                to_date(:DATE_FROM,'YYYYMMDD') AS d_from,
+                to_date(:DATE_TO  ,'YYYYMMDD') AS d_to
+            ),
+            prev AS (
+              SELECT gs::date AS d, ROW_NUMBER() OVER (ORDER BY gs) AS seq
+              FROM d, generate_series((SELECT d_from FROM d) - INTERVAL '7 day',
+                                      (SELECT d_from FROM d) - INTERVAL '1 day',
+                                      INTERVAL '1 day') gs
+            ),
+            fest AS (
+              SELECT gs::date AS d, (SELECT COUNT(*) FROM prev) + ROW_NUMBER() OVER (ORDER BY gs) AS seq
+              FROM d, generate_series((SELECT d_from FROM d),
+                                      (SELECT d_to   FROM d),
+                                      INTERVAL '1 day') gs
+            ),
+            nxt AS (
+              SELECT gs::date AS d, (SELECT COUNT(*) FROM prev) + (SELECT COUNT(*) FROM fest) + ROW_NUMBER() OVER (ORDER BY gs) AS seq
+              FROM d, generate_series((SELECT d_to FROM d) + INTERVAL '1 day',
+                                      (SELECT d_to FROM d) + INTERVAL '7 day',
+                                      INTERVAL '1 day') gs
+            ),
+            all_days AS (
+              SELECT d, seq FROM prev
+              UNION ALL SELECT d, seq FROM fest
+              UNION ALL SELECT d, seq FROM nxt
+            ),
+            flag AS (
+              SELECT 
+                a.seq,
+                CASE WHEN a.d BETWEEN (SELECT d_from FROM d) AND (SELECT d_to FROM d)
+                    THEN 1 ELSE 0 END AS is_festival
+              FROM all_days a
+            ),
+            agg AS (
+              SELECT 
+                a.seq,
+                COALESCE(SUM(s.TOT_DCNT),0)::bigint AS val
               FROM all_days a
               LEFT JOIN regionmonitor.tb_sexdstn_selng s
                 ON s.REGION_CD = CAST(:REGION_CD AS VARCHAR)

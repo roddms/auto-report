@@ -1,11 +1,20 @@
 # src/run_build_report.py
 import os
+import math
 import time
 import yaml
 import pandas as pd
+import warnings
+import geopandas as gpd
+warnings.filterwarnings("ignore", category=UserWarning)
+
+import matplotlib.pyplot as plt
+import contextily as ctx
+
+from collections import OrderedDict
+from shapely.geometry import Point
 from sqlalchemy import create_engine, text
 from dotenv import load_dotenv, find_dotenv
-
 from ppt_fillers import apply_tokens_and_charts, update_treemap_chart
 
 # ---------------------------------
@@ -130,7 +139,7 @@ engine = create_engine(
 with open("config/slides_tokens.yml", encoding="utf-8") as f:
     cfg = yaml.safe_load(f)
 
-OUTPUT_PPT = "out/test_1537.pptx"
+OUTPUT_PPT = "out/test_1632.pptx"
 TEMPLATE_PPT = "template/test.pptx"
 
 token_values = {}
@@ -138,7 +147,7 @@ chart_data = {}
 image_map = {}
 
 # ------------------------------
-# 토큰 / 일반 차트 / (옵션) 이미지 차트 생성
+# 토큰 / 일반 차트 / 이미지 차트 생성
 # ------------------------------
 for s in cfg["slides"]:
     # 텍스트 토큰
@@ -184,9 +193,40 @@ for s in cfg["slides"]:
         if "category_sql" in chart_conf:
             with engine.connect() as conn:
                 categories = [r[0] for r in conn.execute(text(chart_conf["category_sql"]), cfg["params"]).fetchall()]
-                series = {}
+
+                # ------- SL20 전용 임시 변수 -------
+                amt_vals, amt_flags = None, None
+                cnt_vals = None
+                # -----------------------------------
+
+                series = OrderedDict()
+
                 for sname, ssql in chart_conf["series"].items():
-                    series[sname] = [r[0] for r in conn.execute(text(ssql), cfg["params"]).fetchall()]
+                    rows = conn.execute(text(ssql), cfg["params"]).fetchall()
+
+                    if chart_name == "SL20_chart" and rows and len(rows[0]) == 2:
+                        vals  = [r[0] for r in rows]
+                        flags = [int(r[1]) if r[1] is not None else 0 for r in rows]
+
+                        if sname == "매출금액(천만원)":
+                            amt_vals, amt_flags = vals, flags
+                        elif sname == "매출건수(건)":
+                            cnt_vals = vals
+                        else:
+                            series[sname] = vals  # 예외 시 기본 처리
+                    else:
+                        # 일반(단일 컬럼) 시리즈
+                        series[sname] = [r[0] for r in rows]
+
+                if chart_name == "SL20_chart":
+                    # ⬇️ 콤보차트 타입 유지: 0번(막대)=금액, 1번(라인)=건수
+                    if amt_vals is not None:
+                        series["매출금액(천만원)"] = amt_vals      # 막대(포인트별 색칠 대상)
+                    if cnt_vals is not None:
+                        series["매출건수(건)"]   = cnt_vals        # 라인(연속선)
+                    if amt_flags is not None:
+                        series["_festival_flags"] = amt_flags      # 메타(차트 데이터 아님)
+
                 chart_data[chart_name] = (categories, series)
 
 print(f"DEBUG: 최종 Image Map: {image_map}")
