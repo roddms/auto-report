@@ -8,8 +8,8 @@ slides:
     tokens:
       SL1_p_1:
         sql: |-
-          SELECT region_nm
-          FROM public.region
+          SELECT event_nm
+          FROM regionmonitor.tb_analysis_report_tmp
           WHERE region_cd = CAST(:REGION_CD AS VARCHAR);
 
   - name: "3 : 행사 전체요약"
@@ -564,6 +564,7 @@ slides:
                             ELSE ROUND(((SELECT v FROM y25)-(SELECT v FROM y24))/(SELECT v FROM y24) * 100, 2) END
             ) s
             ORDER BY ord;
+            
 
       # -----------------------------
       # SL4_chart_2 : 연도별 매출액 추이
@@ -5321,8 +5322,487 @@ slides:
           LIMIT 8;
 
 
+  - name: "20: 축제 전중후 매출 분석"
+    tokens:
+      # 공통: 이전/축제/이후 경계(YYYYMMDD 문자열) 계산 → 각 토큰에서 재사용
+      #  d_from = :DATE_FROM, d_to = :DATE_TO
+      #  prev: [d_from - n  ~ d_from - 1]
+      #  fest: [d_from      ~ d_to]
+      #  next: [d_to + 1    ~ d_to + n]
 
-  - name: "21: 시설물 정보"
+      SL20_1:  # 직전 1주 일평균 매출금액
+        sql: |
+          WITH d AS (
+            SELECT to_date(:DATE_FROM,'YYYYMMDD') d_from
+          ),
+          b AS (
+            SELECT to_char(d_from - INTERVAL '7 day','YYYYMMDD') f,
+                  to_char(d_from - INTERVAL '1 day','YYYYMMDD') t
+            FROM d
+          )
+          SELECT COALESCE(ROUND(SUM(TOT_SALAMT)::numeric / 7, 0), 0)
+          FROM regionmonitor.tb_sexdstn_selng s, b
+          WHERE s.REGION_CD = CAST(:REGION_CD AS VARCHAR)
+            AND s.STDR_YMD BETWEEN b.f AND b.t;
+
+      SL20_2:  # 직전 1주 일평균 매출건수
+        sql: |
+          WITH d AS (
+            SELECT to_date(:DATE_FROM,'YYYYMMDD') d_from
+          ),
+          b AS (
+            SELECT to_char(d_from - INTERVAL '7 day','YYYYMMDD') f,
+                  to_char(d_from - INTERVAL '1 day','YYYYMMDD') t
+            FROM d
+          )
+          SELECT COALESCE(ROUND(SUM(TOT_DCNT)::numeric / 7, 2), 0)
+          FROM regionmonitor.tb_sexdstn_selng s, b
+          WHERE s.REGION_CD = CAST(:REGION_CD AS VARCHAR)
+            AND s.STDR_YMD BETWEEN b.f AND b.t;
+
+      SL20_3:  # 직전 1주 1건당 평균금액 (원)
+        sql: |
+          WITH d AS (
+            SELECT to_date(:DATE_FROM,'YYYYMMDD') d_from
+          ),
+          b AS (
+            SELECT to_char(d_from - INTERVAL '7 day','YYYYMMDD') f,
+                  to_char(d_from - INTERVAL '1 day','YYYYMMDD') t
+            FROM d
+          )
+          SELECT COALESCE((SUM(TOT_SALAMT)::numeric / NULLIF(SUM(TOT_DCNT),0))::numeric(18,0), 0)
+          FROM regionmonitor.tb_sexdstn_selng s, b
+          WHERE s.REGION_CD = CAST(:REGION_CD AS VARCHAR)
+            AND s.STDR_YMD BETWEEN b.f AND b.t;
+
+      SL20_4:  # 축제기간 일평균 소비금액
+        sql: |
+          WITH d AS (
+            SELECT to_date(:DATE_FROM,'YYYYMMDD') d_from,
+                  to_date(:DATE_TO  ,'YYYYMMDD') d_to
+          ),
+          span AS (SELECT (d_to - d_from + 1) AS n FROM d)
+          SELECT COALESCE(ROUND(SUM(TOT_SALAMT)::numeric / (SELECT n FROM span), 0), 0)
+          FROM regionmonitor.tb_sexdstn_selng s
+          WHERE s.REGION_CD = CAST(:REGION_CD AS VARCHAR)
+            AND s.STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO;
+
+      SL20_5:  # 축제기간 일평균 소비건수
+        sql: |
+          WITH d AS (
+            SELECT to_date(:DATE_FROM,'YYYYMMDD') d_from,
+                  to_date(:DATE_TO  ,'YYYYMMDD') d_to
+          ),
+          span AS (SELECT (d_to - d_from + 1) AS n FROM d)
+          SELECT COALESCE(ROUND(SUM(TOT_DCNT)::numeric / (SELECT n FROM span), 2), 0)
+          FROM regionmonitor.tb_sexdstn_selng s
+          WHERE s.REGION_CD = CAST(:REGION_CD AS VARCHAR)
+            AND s.STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO;
+
+      SL20_6:  # 축제기간 1건당 평균금액
+        sql: |
+          SELECT COALESCE((SUM(TOT_SALAMT)::numeric / NULLIF(SUM(TOT_DCNT),0))::numeric(18,0), 0)
+          FROM regionmonitor.tb_sexdstn_selng
+          WHERE REGION_CD = CAST(:REGION_CD AS VARCHAR)
+            AND STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO;
+
+      # (축제 vs 이전) 증감률(%) ─ 일평균 매출금액
+      SL20_4P:
+        sql: |
+          WITH d AS (
+            SELECT to_date(:DATE_FROM,'YYYYMMDD') d_from,
+                  to_date(:DATE_TO  ,'YYYYMMDD') d_to
+          ),
+          span AS (SELECT (d_to - d_from + 1) n FROM d),
+          b AS (
+            SELECT to_char(d_from - INTERVAL '7 day','YYYYMMDD') prev_from,
+                  to_char(d_from - INTERVAL '1 day','YYYYMMDD') prev_to,
+                  to_char(d_from,'YYYYMMDD')                    fest_from,
+                  to_char(d_to  ,'YYYYMMDD')                    fest_to
+            FROM d
+          ),
+          prev AS (  -- 직전 1주 총액
+            SELECT COALESCE(SUM(TOT_SALAMT),0)::numeric v
+            FROM regionmonitor.tb_sexdstn_selng s, b
+            WHERE s.REGION_CD = CAST(:REGION_CD AS VARCHAR)
+              AND s.STDR_YMD BETWEEN b.prev_from AND b.prev_to
+          ),
+          cur AS (   -- 축제기간 총액
+            SELECT COALESCE(SUM(TOT_SALAMT),0)::numeric v
+            FROM regionmonitor.tb_sexdstn_selng s, b
+            WHERE s.REGION_CD = CAST(:REGION_CD AS VARCHAR)
+              AND s.STDR_YMD BETWEEN b.fest_from AND b.fest_to
+          )
+          SELECT CASE 
+                  WHEN (SELECT v FROM prev) = 0 THEN 0
+                  ELSE ROUND( ((SELECT v FROM cur) / (SELECT n FROM span)::numeric
+                              -  (SELECT v FROM prev) / 7.0)
+                            / ((SELECT v FROM prev) / 7.0) * 100, 1)
+                END;
+
+      # (축제 vs 이전) 증감률(%) ─ 일평균 매출건수
+      SL20_5P:
+        sql: |
+          WITH d AS (
+            SELECT to_date(:DATE_FROM,'YYYYMMDD') d_from,
+                  to_date(:DATE_TO  ,'YYYYMMDD') d_to
+          ),
+          span AS (SELECT (d_to - d_from + 1) n FROM d),
+          b AS (
+            SELECT to_char(d_from - INTERVAL '7 day','YYYYMMDD') prev_from,
+                  to_char(d_from - INTERVAL '1 day','YYYYMMDD') prev_to,
+                  to_char(d_from,'YYYYMMDD')                    fest_from,
+                  to_char(d_to  ,'YYYYMMDD')                    fest_to
+            FROM d
+          ),
+          prev AS (  -- 직전 1주 총 건수
+            SELECT COALESCE(SUM(TOT_DCNT),0)::numeric v
+            FROM regionmonitor.tb_sexdstn_selng s, b
+            WHERE s.REGION_CD = CAST(:REGION_CD AS VARCHAR)
+              AND s.STDR_YMD BETWEEN b.prev_from AND b.prev_to
+          ),
+          cur AS (   -- 축제기간 총 건수
+            SELECT COALESCE(SUM(TOT_DCNT),0)::numeric v
+            FROM regionmonitor.tb_sexdstn_selng s, b
+            WHERE s.REGION_CD = CAST(:REGION_CD AS VARCHAR)
+              AND s.STDR_YMD BETWEEN b.fest_from AND b.fest_to
+          )
+          SELECT CASE 
+                  WHEN (SELECT v FROM prev) = 0 THEN 0
+                  ELSE ROUND( ((SELECT v FROM cur) / (SELECT n FROM span)::numeric
+                              -  (SELECT v FROM prev) / 7.0)
+                            / ((SELECT v FROM prev) / 7.0) * 100, 1)
+                END;
+
+      # (축제 vs 이전) 증감률(%) ─ 1건당 평균금액
+      #  * 전/축제 기간 각각 '총액/총건수'로 계산한 평균을 비교 (일평균이 아님)
+      SL20_6P:
+        sql: |
+          WITH b AS (
+            SELECT to_char(to_date(:DATE_FROM,'YYYYMMDD') - INTERVAL '7 day','YYYYMMDD') AS prev_from,
+                  to_char(to_date(:DATE_FROM,'YYYYMMDD') - INTERVAL '1 day','YYYYMMDD') AS prev_to,
+                  CAST(:DATE_FROM AS VARCHAR) AS fest_from,
+                  CAST(:DATE_TO   AS VARCHAR) AS fest_to
+          ),
+          prev AS (
+            SELECT (SUM(TOT_SALAMT)::numeric / NULLIF(SUM(TOT_DCNT),0)) AS v
+            FROM regionmonitor.tb_sexdstn_selng s, b
+            WHERE s.REGION_CD = CAST(:REGION_CD AS VARCHAR)
+              AND s.STDR_YMD BETWEEN b.prev_from AND b.prev_to
+          ),
+          cur AS (
+            SELECT (SUM(TOT_SALAMT)::numeric / NULLIF(SUM(TOT_DCNT),0)) AS v
+            FROM regionmonitor.tb_sexdstn_selng s, b
+            WHERE s.REGION_CD = CAST(:REGION_CD AS VARCHAR)
+              AND s.STDR_YMD BETWEEN b.fest_from AND b.fest_to
+          )
+          SELECT CASE
+                  WHEN (SELECT v FROM prev) = 0 THEN 0
+                  ELSE ROUND( ((SELECT v FROM cur) - (SELECT v FROM prev))
+                            /  (SELECT v FROM prev) * 100, 1)
+                END;
+
+
+
+      SL20_7:  # 직후 1주 일평균 소비금액
+        sql: |
+          WITH d AS (
+            SELECT to_date(:DATE_TO,'YYYYMMDD') d_to
+          ),
+          b AS (
+            SELECT to_char(d_to + INTERVAL '1 day','YYYYMMDD') f,
+                  to_char(d_to + INTERVAL '7 day','YYYYMMDD') t
+            FROM d
+          )
+          SELECT COALESCE(ROUND(SUM(TOT_SALAMT)::numeric / 7, 0), 0)
+          FROM regionmonitor.tb_sexdstn_selng s, b
+          WHERE s.REGION_CD = CAST(:REGION_CD AS VARCHAR)
+            AND s.STDR_YMD BETWEEN b.f AND b.t;
+
+      SL20_8:  # 직후 1주 일평균 소비건수
+        sql: |
+          WITH d AS (
+            SELECT to_date(:DATE_TO,'YYYYMMDD') d_to
+          ),
+          b AS (
+            SELECT to_char(d_to + INTERVAL '1 day','YYYYMMDD') f,
+                  to_char(d_to + INTERVAL '7 day','YYYYMMDD') t
+            FROM d
+          )
+          SELECT COALESCE(ROUND(SUM(TOT_DCNT)::numeric / 7, 2), 0)
+          FROM regionmonitor.tb_sexdstn_selng s, b
+          WHERE s.REGION_CD = CAST(:REGION_CD AS VARCHAR)
+            AND s.STDR_YMD BETWEEN b.f AND b.t;
+
+      SL20_9:  # 직후 1주 1건당 평균금액
+        sql: |
+          WITH d AS (
+            SELECT to_date(:DATE_TO,'YYYYMMDD') d_to
+          ),
+          b AS (
+            SELECT to_char(d_to + INTERVAL '1 day','YYYYMMDD') f,
+                  to_char(d_to + INTERVAL '7 day','YYYYMMDD') t
+            FROM d
+          )
+          SELECT COALESCE((SUM(TOT_SALAMT)::numeric / NULLIF(SUM(TOT_DCNT),0))::numeric(18,0), 0)
+          FROM regionmonitor.tb_sexdstn_selng s, b
+          WHERE s.REGION_CD = CAST(:REGION_CD AS VARCHAR)
+            AND s.STDR_YMD BETWEEN b.f AND b.t;
+
+      # (축제 vs 이후) 증감률(%)
+      SL20_7P:  # 금액 증감률
+        sql: |
+          WITH d AS (
+            SELECT to_date(:DATE_FROM,'YYYYMMDD') AS d_from,
+                  to_date(:DATE_TO  ,'YYYYMMDD') AS d_to
+          ),
+          span AS (SELECT (d_to - d_from + 1) AS n FROM d),
+          b AS (
+            SELECT CAST(:DATE_FROM AS VARCHAR) AS fest_from,
+                  CAST(:DATE_TO   AS VARCHAR) AS fest_to,
+                  to_char(d_to + INTERVAL '1 day','YYYYMMDD') AS next_from,
+                  to_char(d_to + INTERVAL '7 day','YYYYMMDD') AS next_to
+            FROM d
+          ),
+          fest AS (
+            SELECT COALESCE(SUM(TOT_SALAMT),0)::numeric AS v
+            FROM regionmonitor.tb_sexdstn_selng s, b
+            WHERE s.REGION_CD = CAST(:REGION_CD AS VARCHAR)
+              AND s.STDR_YMD BETWEEN b.fest_from AND b.fest_to
+          ),
+          nxt AS (
+            SELECT COALESCE(SUM(TOT_SALAMT),0)::numeric AS v
+            FROM regionmonitor.tb_sexdstn_selng s, b
+            WHERE s.REGION_CD = CAST(:REGION_CD AS VARCHAR)
+              AND s.STDR_YMD BETWEEN b.next_from AND b.next_to
+          )
+          SELECT CASE
+                  WHEN (SELECT v FROM fest) = 0 THEN 0
+                  ELSE ROUND( ((SELECT v FROM nxt)  / 7.0
+                              - (SELECT v FROM fest) / (SELECT n FROM span)::numeric)
+                            / ((SELECT v FROM fest) / (SELECT n FROM span)::numeric) * 100, 1)
+                END;
+
+
+      SL20_8P:  # 건수 증감률
+        sql: |
+          WITH d AS (
+            SELECT to_date(:DATE_FROM,'YYYYMMDD') AS d_from,
+                  to_date(:DATE_TO  ,'YYYYMMDD') AS d_to
+          ),
+          span AS (SELECT (d_to - d_from + 1) AS n FROM d),
+          b AS (
+            SELECT CAST(:DATE_FROM AS VARCHAR) AS fest_from,
+                  CAST(:DATE_TO   AS VARCHAR) AS fest_to,
+                  to_char(d_to + INTERVAL '1 day','YYYYMMDD') AS next_from,
+                  to_char(d_to + INTERVAL '7 day','YYYYMMDD') AS next_to
+            FROM d
+          ),
+          fest AS (
+            SELECT COALESCE(SUM(TOT_DCNT),0)::numeric AS v
+            FROM regionmonitor.tb_sexdstn_selng s, b
+            WHERE s.REGION_CD = CAST(:REGION_CD AS VARCHAR)
+              AND s.STDR_YMD BETWEEN b.fest_from AND b.fest_to
+          ),
+          nxt AS (
+            SELECT COALESCE(SUM(TOT_DCNT),0)::numeric AS v
+            FROM regionmonitor.tb_sexdstn_selng s, b
+            WHERE s.REGION_CD = CAST(:REGION_CD AS VARCHAR)
+              AND s.STDR_YMD BETWEEN b.next_from AND b.next_to
+          )
+          SELECT CASE
+                  WHEN (SELECT v FROM fest) = 0 THEN 0
+                  ELSE ROUND( ((SELECT v FROM nxt)  / 7.0
+                              - (SELECT v FROM fest) / (SELECT n FROM span)::numeric)
+                            / ((SELECT v FROM fest) / (SELECT n FROM span)::numeric) * 100, 1)
+                END;
+
+
+      SL20_9P:  # 1건당 평균금액 증감률
+        sql: |
+          WITH b AS (
+            SELECT CAST(:DATE_FROM AS VARCHAR) AS fest_from,
+                  CAST(:DATE_TO   AS VARCHAR) AS fest_to,
+                  to_char(to_date(:DATE_TO,'YYYYMMDD') + INTERVAL '1 day','YYYYMMDD') AS next_from,
+                  to_char(to_date(:DATE_TO,'YYYYMMDD') + INTERVAL '7 day','YYYYMMDD') AS next_to
+          ),
+          fest AS (
+            SELECT (SUM(TOT_SALAMT)::numeric / NULLIF(SUM(TOT_DCNT),0)) AS v
+            FROM regionmonitor.tb_sexdstn_selng s, b
+            WHERE s.REGION_CD = CAST(:REGION_CD AS VARCHAR)
+              AND s.STDR_YMD BETWEEN b.fest_from AND b.fest_to
+          ),
+          nxt AS (
+            SELECT (SUM(TOT_SALAMT)::numeric / NULLIF(SUM(TOT_DCNT),0)) AS v
+            FROM regionmonitor.tb_sexdstn_selng s, b
+            WHERE s.REGION_CD = CAST(:REGION_CD AS VARCHAR)
+              AND s.STDR_YMD BETWEEN b.next_from AND b.next_to
+          )
+          SELECT CASE
+                  WHEN (SELECT v FROM fest) = 0 THEN 0
+                  ELSE ROUND( ((SELECT v FROM nxt) - (SELECT v FROM fest))
+                            /  (SELECT v FROM fest) * 100, 1)
+                END;
+
+
+    charts:
+      SL20_chart:
+        category_sql: |-
+          WITH
+          d AS (
+            SELECT 
+              to_date(:DATE_FROM,'YYYYMMDD') AS d_from,
+              to_date(:DATE_TO  ,'YYYYMMDD') AS d_to
+          ),
+          prev AS (
+            SELECT gs::date AS d, ROW_NUMBER() OVER (ORDER BY gs) AS seq
+            FROM d, generate_series((SELECT d_from FROM d) - INTERVAL '7 day',
+                                    (SELECT d_from FROM d) - INTERVAL '1 day',
+                                    INTERVAL '1 day') gs
+          ),
+          fest AS (
+            SELECT gs::date AS d, (SELECT COUNT(*) FROM prev) + ROW_NUMBER() OVER (ORDER BY gs) AS seq
+            FROM d, generate_series((SELECT d_from FROM d),
+                                    (SELECT d_to   FROM d),
+                                    INTERVAL '1 day') gs
+          ),
+          nxt AS (
+            SELECT gs::date AS d, (SELECT COUNT(*) FROM prev) + (SELECT COUNT(*) FROM fest) + ROW_NUMBER() OVER (ORDER BY gs) AS seq
+            FROM d, generate_series((SELECT d_to FROM d) + INTERVAL '1 day',
+                                    (SELECT d_to FROM d) + INTERVAL '7 day',
+                                    INTERVAL '1 day') gs
+          ),
+          all_days AS (
+            SELECT d, seq FROM prev
+            UNION ALL SELECT d, seq FROM fest
+            UNION ALL SELECT d, seq FROM nxt
+          )
+          SELECT label
+          FROM (
+            SELECT 
+              seq,
+              CASE 
+                WHEN d <  (SELECT d_from FROM d) THEN 'D-' || ((SELECT d_from FROM d) - d)
+                WHEN d BETWEEN (SELECT d_from FROM d) AND (SELECT d_to FROM d)
+                  THEN 'DAY' || (d - (SELECT d_from FROM d) + 1)
+                ELSE 'D+' || (d - (SELECT d_to FROM d))
+              END AS label
+            FROM all_days
+          ) x
+          ORDER BY seq;
+
+        series:
+          매출건수(건): |-
+            WITH
+            d AS (
+              SELECT 
+                to_date(:DATE_FROM,'YYYYMMDD') AS d_from,
+                to_date(:DATE_TO  ,'YYYYMMDD') AS d_to
+            ),
+            prev AS (
+              SELECT gs::date AS d, ROW_NUMBER() OVER (ORDER BY gs) AS seq
+              FROM d, generate_series((SELECT d_from FROM d) - INTERVAL '7 day',
+                                      (SELECT d_from FROM d) - INTERVAL '1 day',
+                                      INTERVAL '1 day') gs
+            ),
+            fest AS (
+              SELECT gs::date AS d, (SELECT COUNT(*) FROM prev) + ROW_NUMBER() OVER (ORDER BY gs) AS seq
+              FROM d, generate_series((SELECT d_from FROM d),
+                                      (SELECT d_to   FROM d),
+                                      INTERVAL '1 day') gs
+            ),
+            nxt AS (
+              SELECT gs::date AS d, (SELECT COUNT(*) FROM prev) + (SELECT COUNT(*) FROM fest) + ROW_NUMBER() OVER (ORDER BY gs) AS seq
+              FROM d, generate_series((SELECT d_to FROM d) + INTERVAL '1 day',
+                                      (SELECT d_to FROM d) + INTERVAL '7 day',
+                                      INTERVAL '1 day') gs
+            ),
+            all_days AS (
+              SELECT d, seq FROM prev
+              UNION ALL SELECT d, seq FROM fest
+              UNION ALL SELECT d, seq FROM nxt
+            ),
+            flag AS (
+              SELECT 
+                a.seq,
+                CASE WHEN a.d BETWEEN (SELECT d_from FROM d) AND (SELECT d_to FROM d)
+                    THEN 1 ELSE 0 END AS is_festival
+              FROM all_days a
+            ),
+            agg AS (
+              SELECT 
+                a.seq,
+                COALESCE(SUM(s.TOT_DCNT),0)::bigint AS val
+              FROM all_days a
+              LEFT JOIN regionmonitor.tb_sexdstn_selng s
+                ON s.REGION_CD = CAST(:REGION_CD AS VARCHAR)
+              AND s.STDR_YMD = to_char(a.d,'YYYYMMDD')
+              GROUP BY a.seq
+            )
+            SELECT agg.val, flag.is_festival
+            FROM agg
+            JOIN flag USING (seq)
+            ORDER BY seq;
+
+          매출금액(천만원): |-
+            WITH
+            d AS (
+              SELECT 
+                to_date(:DATE_FROM,'YYYYMMDD') AS d_from,
+                to_date(:DATE_TO  ,'YYYYMMDD') AS d_to
+            ),
+            prev AS (
+              SELECT gs::date AS d, ROW_NUMBER() OVER (ORDER BY gs) AS seq
+              FROM d, generate_series((SELECT d_from FROM d) - INTERVAL '7 day',
+                                      (SELECT d_from FROM d) - INTERVAL '1 day',
+                                      INTERVAL '1 day') gs
+            ),
+            fest AS (
+              SELECT gs::date AS d, (SELECT COUNT(*) FROM prev) + ROW_NUMBER() OVER (ORDER BY gs) AS seq
+              FROM d, generate_series((SELECT d_from FROM d),
+                                      (SELECT d_to   FROM d),
+                                      INTERVAL '1 day') gs
+            ),
+            nxt AS (
+              SELECT gs::date AS d, (SELECT COUNT(*) FROM prev) + (SELECT COUNT(*) FROM fest) + ROW_NUMBER() OVER (ORDER BY gs) AS seq
+              FROM d, generate_series((SELECT d_to FROM d) + INTERVAL '1 day',
+                                      (SELECT d_to FROM d) + INTERVAL '7 day',
+                                      INTERVAL '1 day') gs
+            ),
+            all_days AS (
+              SELECT d, seq FROM prev
+              UNION ALL SELECT d, seq FROM fest
+              UNION ALL SELECT d, seq FROM nxt
+            ),
+            flag AS (
+              SELECT 
+                a.seq,
+                CASE WHEN a.d BETWEEN (SELECT d_from FROM d) AND (SELECT d_to FROM d)
+                    THEN 1 ELSE 0 END AS is_festival
+              FROM all_days a
+            ),
+            agg AS (
+              SELECT 
+                a.seq,
+                (COALESCE(SUM(s.TOT_SALAMT),0)::numeric / 10000000.0)::numeric(18,2) AS val
+              FROM all_days a
+              LEFT JOIN regionmonitor.tb_sexdstn_selng s
+                ON s.REGION_CD = CAST(:REGION_CD AS VARCHAR)
+              AND s.STDR_YMD = to_char(a.d,'YYYYMMDD')
+              GROUP BY a.seq
+            )
+            SELECT agg.val, flag.is_festival
+            FROM agg
+            JOIN flag USING (seq)
+            ORDER BY seq;
+
+
+
+
+  - name: "22: 축제 전중후 방문인구 분석"
+
+
+  - name: "22: 시설물 정보"
     charts:
       SL21_map_facility:
         map_sql: |
@@ -5337,7 +5817,7 @@ slides:
         shape: "SL21_map_facility"
         title: "주요 시설 위치"
 
-  - name: "22: 주차장 지도"
+  - name: "23: 주차장 지도"
     charts:
       SL22_map_parking:
         map_sql: |
@@ -5352,3 +5832,4 @@ slides:
         outfile: "out/maps/parking_map.png"
         shape: "SL22_map_parking"
         title: "주차장 위치"
+

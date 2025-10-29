@@ -130,8 +130,8 @@ engine = create_engine(
 with open("config/slides_tokens.yml", encoding="utf-8") as f:
     cfg = yaml.safe_load(f)
 
-OUTPUT_PPT = "out/treemap_test.pptx"
-TEMPLATE_PPT = "template/master.pptx"
+OUTPUT_PPT = "out/test_1537.pptx"
+TEMPLATE_PPT = "template/test.pptx"
 
 token_values = {}
 chart_data = {}
