@@ -5799,37 +5799,185 @@ slides:
 
 
 
-  - name: "22: 축제 전중후 방문인구 분석"
+  - name: "21: 축제 전중후 방문인구 분석"
+    tokens:
+      # ─────────── 직전 1주 ───────────
+      SL21_1:  # 총 방문인구(명)
+        sql: |
+          WITH d AS (
+            SELECT to_date(:DATE_FROM,'YYYYMMDD') AS d_from
+          ),
+          rng AS (
+            SELECT to_char(d_from - INTERVAL '7 day','YYYYMMDD') AS f,
+                  to_char(d_from - INTERVAL '1 day','YYYYMMDD') AS t
+            FROM d
+          )
+          SELECT TO_CHAR(COALESCE(ROUND(SUM(TOT_VIPOP)),0), 'FM9,999,999,999')
+          FROM regionmonitor.TB_SEXDSTN_VISIT_POPLTN s, rng
+          WHERE s.REGION_CD = CAST(:REGION_CD AS VARCHAR)
+            AND s.STDR_YMD BETWEEN rng.f AND rng.t;
+
+      SL21_2:  # 일평균 방문인구(명)
+        sql: |
+          WITH d AS (
+            SELECT to_date(:DATE_FROM,'YYYYMMDD') AS d_from
+          ),
+          rng AS (
+            SELECT to_char(d_from - INTERVAL '7 day','YYYYMMDD') AS f,
+                  to_char(d_from - INTERVAL '1 day','YYYYMMDD') AS t
+            FROM d
+          )
+          SELECT TO_CHAR(COALESCE(ROUND(SUM(TOT_VIPOP)::numeric / 7),0), 'FM9,999,999,999')
+          FROM regionmonitor.TB_SEXDSTN_VISIT_POPLTN s, rng
+          WHERE s.REGION_CD = CAST(:REGION_CD AS VARCHAR)
+            AND s.STDR_YMD BETWEEN rng.f AND rng.t;
+
+      # ─────────── 축제 기간 ───────────
+      SL21_3:  # 총 방문인구(명)
+        sql: |
+          SELECT TO_CHAR(COALESCE(ROUND(SUM(TOT_VIPOP)),0), 'FM9,999,999,999')
+          FROM regionmonitor.TB_SEXDSTN_VISIT_POPLTN
+          WHERE REGION_CD = CAST(:REGION_CD AS VARCHAR)
+            AND STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO;
+
+      SL21_4:  # 일평균 방문인구(명)
+        sql: |
+          WITH span AS (
+            SELECT (to_date(:DATE_TO,'YYYYMMDD') - to_date(:DATE_FROM,'YYYYMMDD') + 1) AS n
+          )
+          SELECT TO_CHAR(COALESCE(ROUND(SUM(TOT_VIPOP)::numeric / 7),0), 'FM9,999,999,999')
+          FROM regionmonitor.TB_SEXDSTN_VISIT_POPLTN
+          WHERE REGION_CD = CAST(:REGION_CD AS VARCHAR)
+            AND STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO;
+
+      # ─────────── 직후 1주 ───────────
+      SL21_5:  # 총 방문인구(명)
+        sql: |
+          WITH d AS (
+            SELECT to_date(:DATE_TO,'YYYYMMDD') AS d_to
+          ),
+          rng AS (
+            SELECT to_char(d_to + INTERVAL '1 day','YYYYMMDD') AS f,
+                  to_char(d_to + INTERVAL '7 day','YYYYMMDD') AS t
+            FROM d
+          )
+          SELECT TO_CHAR(COALESCE(ROUND(SUM(TOT_VIPOP)),0), 'FM9,999,999,999')
+          FROM regionmonitor.TB_SEXDSTN_VISIT_POPLTN s, rng
+          WHERE s.REGION_CD = CAST(:REGION_CD AS VARCHAR)
+            AND s.STDR_YMD BETWEEN rng.f AND rng.t;
+
+      SL21_6:  # 일평균 방문인구(명)
+        sql: |
+          WITH d AS (
+            SELECT to_date(:DATE_TO,'YYYYMMDD') AS d_to
+          ),
+          rng AS (
+            SELECT to_char(d_to + INTERVAL '1 day','YYYYMMDD') AS f,
+                  to_char(d_to + INTERVAL '7 day','YYYYMMDD') AS t
+            FROM d
+          )
+          SELECT TO_CHAR(COALESCE(ROUND(SUM(TOT_VIPOP)::numeric / 7),0), 'FM9,999,999,999')
+          FROM regionmonitor.TB_SEXDSTN_VISIT_POPLTN s, rng
+          WHERE s.REGION_CD = CAST(:REGION_CD AS VARCHAR)
+            AND s.STDR_YMD BETWEEN rng.f AND rng.t;
 
 
-  - name: "22: 시설물 정보"
     charts:
-      SL21_map_facility:
-        map_sql: |
-          SELECT
-            FCLTY_NM AS name,
-            FCLTY_SCLAS_CD AS type,
-            X_CRDNT AS x,
-            Y_CRDNT AS y
-          FROM regionmonitor.TB_MAIN_FCLTY_INFO
-          LIMIT 5;
-        outfile: "out/maps/facility_map.png"
-        shape: "SL21_map_facility"
-        title: "주요 시설 위치"
+      SL21_chart:
+        category_sql: |-
+          WITH
+          d AS (
+            SELECT 
+              to_date(:DATE_FROM,'YYYYMMDD') AS d_from,
+              to_date(:DATE_TO  ,'YYYYMMDD') AS d_to
+          ),
+          prev AS (
+            SELECT gs::date AS d, ROW_NUMBER() OVER (ORDER BY gs) AS seq
+            FROM d, generate_series((SELECT d_from FROM d) - INTERVAL '7 day',
+                                    (SELECT d_from FROM d) - INTERVAL '1 day',
+                                    INTERVAL '1 day') gs
+          ),
+          fest AS (
+            SELECT gs::date AS d, (SELECT COUNT(*) FROM prev) + ROW_NUMBER() OVER (ORDER BY gs) AS seq
+            FROM d, generate_series((SELECT d_from FROM d),
+                                    (SELECT d_to   FROM d),
+                                    INTERVAL '1 day') gs
+          ),
+          nxt AS (
+            SELECT gs::date AS d, (SELECT COUNT(*) FROM prev) + (SELECT COUNT(*) FROM fest) + ROW_NUMBER() OVER (ORDER BY gs) AS seq
+            FROM d, generate_series((SELECT d_to FROM d) + INTERVAL '1 day',
+                                    (SELECT d_to FROM d) + INTERVAL '7 day',
+                                    INTERVAL '1 day') gs
+          ),
+          all_days AS (
+            SELECT d, seq FROM prev
+            UNION ALL SELECT d, seq FROM fest
+            UNION ALL SELECT d, seq FROM nxt
+          )
+          SELECT label
+          FROM (
+            SELECT 
+              seq,
+              CASE 
+                WHEN d <  (SELECT d_from FROM d) THEN 'D-' || ((SELECT d_from FROM d) - d)
+                WHEN d BETWEEN (SELECT d_from FROM d) AND (SELECT d_to FROM d)
+                  THEN 'DAY' || (d - (SELECT d_from FROM d) + 1)
+                ELSE 'D+' || (d - (SELECT d_to FROM d))
+              END AS label
+            FROM all_days
+          ) x
+          ORDER BY seq;
 
-  - name: "23: 주차장 지도"
-    charts:
-      SL22_map_parking:
-        map_sql: |
-          SELECT
-            PRKPLCE_NM AS name,
-            FCLTY_SCLAS_CD AS type,
-            PRKCMPRT_CO AS slots,
-            X_CRDNT AS x,
-            Y_CRDNT AS y
-          FROM regionmonitor.TB_PRKPLCE_INFO
-          LIMIT 5;
-        outfile: "out/maps/parking_map.png"
-        shape: "SL22_map_parking"
-        title: "주차장 위치"
+        series:
+          방문인구(명): |-
+            WITH
+            d AS (
+              SELECT 
+                to_date(:DATE_FROM,'YYYYMMDD') AS d_from,
+                to_date(:DATE_TO  ,'YYYYMMDD') AS d_to
+            ),
+            prev AS (
+              SELECT gs::date AS d, ROW_NUMBER() OVER (ORDER BY gs) AS seq
+              FROM d, generate_series((SELECT d_from FROM d) - INTERVAL '7 day',
+                                      (SELECT d_from FROM d) - INTERVAL '1 day',
+                                      INTERVAL '1 day') gs
+            ),
+            fest AS (
+              SELECT gs::date AS d, (SELECT COUNT(*) FROM prev) + ROW_NUMBER() OVER (ORDER BY gs) AS seq
+              FROM d, generate_series((SELECT d_from FROM d),
+                                      (SELECT d_to   FROM d),
+                                      INTERVAL '1 day') gs
+            ),
+            nxt AS (
+              SELECT gs::date AS d, (SELECT COUNT(*) FROM prev) + (SELECT COUNT(*) FROM fest) + ROW_NUMBER() OVER (ORDER BY gs) AS seq
+              FROM d, generate_series((SELECT d_to FROM d) + INTERVAL '1 day',
+                                      (SELECT d_to FROM d) + INTERVAL '7 day',
+                                      INTERVAL '1 day') gs
+            ),
+            all_days AS (
+              SELECT d, seq FROM prev
+              UNION ALL SELECT d, seq FROM fest
+              UNION ALL SELECT d, seq FROM nxt
+            ),
+            flag AS (
+              SELECT 
+                a.seq,
+                CASE WHEN a.d BETWEEN (SELECT d_from FROM d) AND (SELECT d_to FROM d)
+                    THEN 1 ELSE 0 END AS is_festival
+              FROM all_days a
+            ),
+            agg AS (
+              SELECT 
+                a.seq,
+                COALESCE(SUM(s.TOT_VIPOP),0)::bigint AS val
+              FROM all_days a
+              LEFT JOIN regionmonitor.TB_SEXDSTN_VISIT_POPLTN s
+                ON s.REGION_CD = CAST(:REGION_CD AS VARCHAR)
+              AND s.STDR_YMD = to_char(a.d,'YYYYMMDD')
+              GROUP BY a.seq
+            )
+            SELECT agg.val, flag.is_festival
+            FROM agg
+            JOIN flag USING (seq)
+            ORDER BY seq;
 

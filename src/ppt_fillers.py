@@ -245,13 +245,67 @@ def color_sl20_chart_1(chart, sdict):
             fill.solid()
             fill.fore_color.rgb = RGBColor(231, 76, 60) if flags[i] == 1 else RGBColor(31, 78, 121)
 
-    # 2) 라인(건수) 기본색 지정(원하면)
+    # 2) 라인(건수) 기본색 지정
     line_name = "매출건수(건)"
     if line_name in name2idx:
         try:
             chart.series[name2idx[line_name]].format.line.color.rgb = RGBColor(96, 96, 96)
         except Exception:
             pass
+
+
+def color_sl21_chart(chart, sdict, bar_series_name="방문인구(명)"):
+    flags = sdict.get("_festival_flags")
+    name2idx = {chart.series[i].name: i for i in range(len(chart.series))}
+    if not flags or bar_series_name not in name2idx:
+        return
+
+    s = chart.series[name2idx[bar_series_name]]
+    for i, pt in enumerate(s.points):
+        try:
+            fill = pt.format.fill
+            fill.solid()
+            # 축제 = 빨강, 비축제 = 파랑(템플릿에 맞게 색상 조정 가능)
+            fill.fore_color.rgb = RGBColor(231, 76, 60) if flags[i] == 1 else RGBColor(31, 78, 121)
+        except Exception:
+            pass
+
+
+def color_line_markers_by_flags(chart, series_name, flags,
+                                color_festival=RGBColor(231, 76, 60),   # 빨강
+                                color_default=RGBColor(96, 96, 96),     # 회색/기본
+                                marker_size=6):
+    """
+    chart: python-pptx Chart
+    series_name: 라인 시리즈 이름 (예: '매출건수(건)')
+    flags: [0/1,...] (축제=1, 비축제=0)
+    포인트별로 마커 색을 다르게 칠함 (선 색은 그대로 유지)
+    """
+    # 시리즈 찾기
+    name2idx = {chart.series[i].name: i for i in range(len(chart.series))}
+    if series_name not in name2idx or not flags:
+        return
+
+    s = chart.series[name2idx[series_name]]
+
+    # 마커가 꺼져 있으면 켜기 (시리즈 공통 설정)
+    if XL_MARKER_STYLE is not None:
+        try:
+            s.marker.style = XL_MARKER_STYLE.CIRCLE
+            s.marker.size = marker_size
+        except Exception:
+            pass
+
+    # 포인트별 마커 색상 적용
+    for i, pt in enumerate(s.points):
+        try:
+            fill = pt.format.fill
+            fill.solid()
+            fill.fore_color.rgb = color_festival if flags[i] == 1 else color_default
+
+        except Exception:
+            # 길이 불일치 등은 조용히 스킵
+            continue
 
 # ---------------------------------
 # 🔹 PowerPoint 트리맵 차트 자동 갱신
@@ -367,6 +421,11 @@ def apply_tokens_and_charts(prs_path, out_path, token_map, chart_map=None, image
     
                 if cname == "SL20_chart":
                     color_sl20_chart_1(ch, sdict)
+                    flags = sdict.get("_festival_flags")
+                    color_line_markers_by_flags(ch, series_name="매출건수(건)", flags=flags)
+
+                if cname == "SL21_chart":
+                    color_sl21_chart(ch, sdict)
 
     if image_map:
         # out_path -> out_path 로 제자리 저장 (같은 경로 덮어씀)

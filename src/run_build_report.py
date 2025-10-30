@@ -15,6 +15,7 @@ from collections import OrderedDict
 from shapely.geometry import Point
 from sqlalchemy import create_engine, text
 from dotenv import load_dotenv, find_dotenv
+from shapely.geometry import shape
 from ppt_fillers import apply_tokens_and_charts, update_treemap_chart
 
 # ---------------------------------
@@ -125,6 +126,85 @@ def generate_heatmap_image(data_df, out_path, title=None, font_family="Malgun Go
     plt.close(fig)
 
 
+def add_naver_or_osm_basemap(ax, crs_epsg: int):
+    import contextily as ctx
+    try:
+        naver_url = "https://map.pstatic.net/nrb/styles/basic/1477/{z}/{x}/{y}.png?mt=bg.ol.ts.ar.lko"
+        src = ctx.TileClient(naver_url)
+        ctx.add_basemap(ax, source=src, crs=f"EPSG:{crs_epsg}")
+    except Exception:
+        ctx.add_basemap(ax, crs=f"EPSG:{crs_epsg}", source=ctx.providers.OpenStreetMap.Mapnik)
+
+def plot_points_within_region(engine, region_cd, out_png, buffer_m=500, point_sql=None, title=None):
+    """
+    - region_cd의 폴리곤을 GeoJSON으로 받아 shapely로 그림 (read_postgis 미사용)
+    - point_sql 은 이미 ST_Within + 500m 버퍼로 필터된 쿼리(위의 facility_sql / parking_sql)
+    """
+    import json
+    import pandas as pd
+    import geopandas as gpd
+    import matplotlib.pyplot as plt
+    from shapely.geometry import shape
+    from sqlalchemy import text
+    import os
+
+    # 0) 파라미터
+    params = {"REGION_CD": region_cd, "BUFFER_M": buffer_m}
+
+    # 1) 폴리곤(버퍼 적용) GeoJSON으로 가져오기
+    sql_poly = """
+    WITH reg AS (
+    SELECT ST_Transform(
+            ST_Buffer(ST_Transform(r.popltn_relm, 5179), :BUFFER_M),
+            4326
+            ) AS geom
+    FROM regionmonitor.tb_intrst_region_relm r
+    WHERE r.region_cd = :REGION_CD
+    )
+    SELECT ST_AsGeoJSON(geom) AS gj FROM reg;
+    """
+    with engine.connect() as conn:
+        row = conn.execute(text(sql_poly), params).fetchone()
+    if not row or not row[0]:
+        print(f"⚠️ region_cd={region_cd} 폴리곤 없음")
+        return
+    poly = shape(json.loads(row[0]))
+    gdf_region = gpd.GeoDataFrame(geometry=[poly], crs="EPSG:4326")
+
+    # 2) 포인트(이미 SQL에서 버퍼 내부로 필터된 결과만)
+    if point_sql is None:
+        print("⚠️ point_sql 이 필요합니다.")
+        return
+    df_points = pd.read_sql(text(point_sql), engine, params=params)
+    if df_points.empty:
+        print("⚠️ 포인트 없음")
+        return
+    gdf_points = gpd.GeoDataFrame(
+        df_points, geometry=gpd.points_from_xy(df_points["x"], df_points["y"]), crs="EPSG:4326"
+    )
+
+    # 3) 투영(Basemap용): 3857
+    reg_3857   = gdf_region.to_crs(3857)
+    points_3857 = gdf_points.to_crs(3857)
+
+    # 4) 시각화
+    fig, ax = plt.subplots(figsize=(8, 7))
+    add_naver_or_osm_basemap(ax, 3857)
+    reg_3857.boundary.plot(ax=ax, color="#005BAC", linewidth=2, alpha=0.9)
+    points_3857.plot(ax=ax, color="#E74C3C", markersize=18, alpha=0.85, edgecolor="k", linewidth=0.3)
+
+    ax.set_axis_off()
+    if title:
+        ax.set_title(title, fontsize=13, fontweight="bold", pad=6)
+
+    os.makedirs(os.path.dirname(out_png), exist_ok=True)
+    plt.savefig(out_png, dpi=300, bbox_inches="tight", pad_inches=0.1, transparent=True)
+    plt.close(fig)
+
+    print(f"✅ 지도 이미지 생성 완료 → {out_png} (표시 건수: {len(points_3857)})")
+
+
+
 # ------------------------------
 # 환경/DB 설정
 # ------------------------------
@@ -133,13 +213,13 @@ db_url = os.getenv("DB_URL")
 
 engine = create_engine(
     db_url,
-    connect_args={"options": "-csearch_path=regionmonitor"}
+    connect_args={"options": "-csearch_path=regionmonitor,public"}
 )
 
 with open("config/slides_tokens.yml", encoding="utf-8") as f:
     cfg = yaml.safe_load(f)
 
-OUTPUT_PPT = "out/test_1632.pptx"
+OUTPUT_PPT = "out/test_0938.pptx"
 TEMPLATE_PPT = "template/test.pptx"
 
 token_values = {}
@@ -218,6 +298,18 @@ for s in cfg["slides"]:
                         # 일반(단일 컬럼) 시리즈
                         series[sname] = [r[0] for r in rows]
 
+                    if chart_name == "SL21_chart" and rows and len(rows[0]) == 2:
+                        vals  = [r[0] for r in rows]
+                        flags = [int(r[1]) if r[1] is not None else 0 for r in rows]
+
+                        if sname == "방문인구(명)":
+                            series["방문인구(명)"] = vals
+                            series["_festival_flags"] = flags   # 메타(차트데이터로는 넣지 않음)
+                        else:
+                            series[sname] = vals
+                    else:
+                        series[sname] = [r[0] for r in rows]
+
                 if chart_name == "SL20_chart":
                     # ⬇️ 콤보차트 타입 유지: 0번(막대)=금액, 1번(라인)=건수
                     if amt_vals is not None:
@@ -228,6 +320,81 @@ for s in cfg["slides"]:
                         series["_festival_flags"] = amt_flags      # 메타(차트 데이터 아님)
 
                 chart_data[chart_name] = (categories, series)
+
+
+
+# 시설 지도
+facility_sql = """
+WITH reg AS (
+  SELECT ST_Transform(
+           ST_Buffer(ST_Transform(r.popltn_relm, 5179), :BUFFER_M),
+           4326
+         ) AS geom
+  FROM regionmonitor.tb_intrst_region_relm r
+  WHERE r.region_cd = :REGION_CD
+)
+SELECT 
+  f.fclty_nm AS name,
+  f.X_CRDNT  AS x,
+  f.Y_CRDNT  AS y
+FROM regionmonitor.TB_MAIN_FCLTY_INFO f
+JOIN reg 
+  ON ST_Within(
+       ST_SetSRID(ST_MakePoint(f.X_CRDNT, f.Y_CRDNT), 4326),
+       reg.geom
+     )
+WHERE f.X_CRDNT IS NOT NULL 
+  AND f.Y_CRDNT IS NOT NULL;
+"""
+
+# 주차장 지도
+parking_sql = """
+WITH reg AS (
+  SELECT ST_Transform(
+           ST_Buffer(ST_Transform(r.popltn_relm, 5179), :BUFFER_M),
+           4326
+         ) AS geom
+  FROM regionmonitor.tb_intrst_region_relm r
+  WHERE r.region_cd = :REGION_CD
+)
+SELECT 
+  p.prkplce_nm AS name,
+  p.X_CRDNT    AS x,
+  p.Y_CRDNT    AS y,
+  p.prkcmprt_co AS slots
+FROM regionmonitor.TB_PRKPLCE_INFO p
+JOIN reg 
+  ON ST_Within(
+       ST_SetSRID(ST_MakePoint(p.X_CRDNT, p.Y_CRDNT), 4326),
+       reg.geom
+     )
+WHERE p.X_CRDNT IS NOT NULL 
+  AND p.Y_CRDNT IS NOT NULL;
+"""
+
+region_cd = cfg["params"]["REGION_CD"]
+
+# 3-1) 시설 지도
+plot_points_within_region(
+    engine=engine,
+    region_cd=region_cd,
+    buffer_m=500,
+    point_sql=facility_sql,  # ← 단일 SQL (위 CTE 버전)
+    out_png="out/img/facility_map.png",
+    title="관심영역 500m 내 주요 시설"
+)
+image_map["SL22_map_facility"] = "out/img/facility_map.png"
+
+# 3-2) 주차장 지도
+plot_points_within_region(
+    engine=engine,
+    region_cd=region_cd,
+    buffer_m=500,
+    point_sql=parking_sql,   # ← 단일 SQL (위 CTE 버전)
+    out_png="out/img/parking_map.png",
+    title="관심영역 500m 내 주차장"
+)
+image_map["SL23_map_parking"] = "out/img/parking_map.png"
 
 print(f"DEBUG: 최종 Image Map: {image_map}")
 
@@ -287,6 +454,7 @@ WITH topk AS (
 )
 SELECT '업종별 매출금액(만원)' AS series, '내국인' AS parent, child, ROUND(amt/10000, 1) AS value FROM topk;
 """
+
 
 with engine.connect() as conn:
     rows_f = conn.execute(text(sql_treemap_foreigner), params).fetchall()
