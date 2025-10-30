@@ -96,7 +96,7 @@ def generate_heatmap_image(data_df, out_path, title=None, font_family="Malgun Go
     fig, ax = plt.subplots(figsize=(8, 6))
     fig.set_facecolor('none')
 
-    annot_data = data_df.applymap(lambda x: f'{x:.1f}%')
+    annot_data = data_df.map(lambda x: f'{x:.1f}%')
     annot_data[data_df.isna()] = ""
 
     sns.heatmap(
@@ -219,8 +219,8 @@ engine = create_engine(
 with open("config/slides_tokens.yml", encoding="utf-8") as f:
     cfg = yaml.safe_load(f)
 
-OUTPUT_PPT = "out/test_0938.pptx"
-TEMPLATE_PPT = "template/test.pptx"
+OUTPUT_PPT = "out/test_전년대비수정.pptx"
+TEMPLATE_PPT = "template/master.pptx"
 
 token_values = {}
 chart_data = {}

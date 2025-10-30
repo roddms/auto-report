@@ -1,7 +1,7 @@
 params:
   REGION_CD: "00000001"
-  DATE_FROM: "20250901"
-  DATE_TO:   "20250910"
+  DATE_FROM: "20250927"
+  DATE_TO:   "20250930"
 
 slides:
   - name: "1: 표지"
@@ -25,27 +25,21 @@ slides:
         sql: | # 전년대비 방문인구 증감율(%)
           SELECT 
             CASE
-              WHEN (cur.tot - COALESCE(yoy.tot_prev,0)) * 100.0 / NULLIF(yoy.tot_prev,0) > 0
-                THEN ROUND((cur.tot - COALESCE(yoy.tot_prev,0)) * 100.0 / NULLIF(yoy.tot_prev,0), 1)::TEXT || '% ▲'
-              WHEN (cur.tot - COALESCE(yoy.tot_prev,0)) * 100.0 / NULLIF(yoy.tot_prev,0) < 0
-                THEN ABS(ROUND((cur.tot - COALESCE(yoy.tot_prev,0)) * 100.0 / NULLIF(yoy.tot_prev,0), 1))::TEXT || '% ▼'
-              ELSE COALESCE(ROUND((cur.tot - COALESCE(yoy.tot_prev,0)) * 100.0 / NULLIF(yoy.tot_prev,0), 1), 0.0)::TEXT || '% -'
+              -- 증감액 계산: cur.tot_cur - COALESCE(cur.tot_prev, 0)
+              WHEN (cur.tot_cur - COALESCE(cur.tot_prev, 0)) * 100.0 / NULLIF(cur.tot_prev, 0) > 0
+                THEN ROUND((cur.tot_cur - COALESCE(cur.tot_prev, 0)) * 100.0 / NULLIF(cur.tot_prev, 0), 1)::TEXT || '% ▲'
+              WHEN (cur.tot_cur - COALESCE(cur.tot_prev, 0)) * 100.0 / NULLIF(cur.tot_prev, 0) < 0
+                THEN ABS(ROUND((cur.tot_cur - COALESCE(cur.tot_prev, 0)) * 100.0 / NULLIF(cur.tot_prev, 0), 1))::TEXT || '% ▼'
+              ELSE COALESCE(ROUND((cur.tot_cur - COALESCE(cur.tot_prev, 0)) * 100.0 / NULLIF(cur.tot_prev, 0), 1), 0.0)::TEXT || '% -'
             END
           FROM (
-            SELECT SUM(TOT_VIPOP) AS tot
-            FROM regionmonitor.TB_SEXDSTN_VISIT_POPLTN
+            SELECT 
+              SUM(TOT_VIPOP) AS tot_cur,             -- 현재 기간 총합
+              SUM(TOT_VIPOP_PERV1Y) AS tot_prev      -- 전년 동기간 총합 (테이블에서 직접 사용)
+            FROM regionmonitor.TB_INTRST_REGION      -- 테이블 이름 변경 적용
             WHERE STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
               AND REGION_CD = :REGION_CD
-          ) cur
-          LEFT JOIN (
-            SELECT SUM(TOT_VIPOP) AS tot_prev
-            FROM regionmonitor.TB_SEXDSTN_VISIT_POPLTN
-            WHERE STDR_YMD BETWEEN
-            
-                  to_char(to_date(CAST(:DATE_FROM AS text),'YYYYMMDD') - INTERVAL '1 year','YYYYMMDD')
-              AND to_char(to_date(CAST(:DATE_TO   AS text),'YYYYMMDD') - INTERVAL '1 year','YYYYMMDD')
-              AND REGION_CD = :REGION_CD
-          ) yoy ON TRUE;
+          ) cur;
 
       SL3_p_3:
         sql: | # 총 매출액
@@ -57,27 +51,23 @@ slides:
       SL3_p_4:
         sql: | # 전년대비 매출 증감율(%)
           SELECT 
-            CASE
-              WHEN (cur.s - COALESCE(yoy.s_prev,0)) * 100.0 / NULLIF(yoy.s_prev,0) > 0
-                THEN ROUND((cur.s - COALESCE(yoy.s_prev,0)) * 100.0 / NULLIF(yoy.s_prev,0), 1)::TEXT || '% ▲'
-              WHEN (cur.s - COALESCE(yoy.s_prev,0)) * 100.0 / NULLIF(yoy.s_prev,0) < 0
-                THEN ABS(ROUND((cur.s - COALESCE(yoy.s_prev,0)) * 100.0 / NULLIF(yoy.s_prev,0), 1))::TEXT || '% ▼'
-              ELSE COALESCE(ROUND((cur.s - COALESCE(yoy.s_prev,0)) * 100.0 / NULLIF(yoy.s_prev,0), 1), 0.0)::TEXT || '% -'
-            END
-          FROM (
-            SELECT SUM(TOT_SALAMT) AS s
-            FROM regionmonitor.TB_SEXDSTN_SELNG
-            WHERE REGION_CD = :REGION_CD
-              AND to_date(STDR_YMD,'YYYYMMDD') BETWEEN to_date(:DATE_FROM,'YYYYMMDD') AND to_date(:DATE_TO,'YYYYMMDD')
-          ) cur
-          LEFT JOIN (
-            SELECT SUM(TOT_SALAMT) AS s_prev
-            FROM regionmonitor.TB_SEXDSTN_SELNG
-            WHERE REGION_CD = :REGION_CD
-              AND to_date(STDR_YMD,'YYYYMMDD') BETWEEN
-                  (to_date(:DATE_FROM,'YYYYMMDD') - INTERVAL '1 year')
-              AND (to_date(:DATE_TO,'YYYYMMDD') - INTERVAL '1 year')
-          ) yoy ON TRUE;
+                CASE
+                  -- 계산 로직에서 현재 매출(tot_cur)과 전년 동기 매출(tot_prev)을 사용
+                  WHEN (cur.tot_cur - COALESCE(cur.tot_prev, 0)) * 100.0 / NULLIF(cur.tot_prev, 0) > 0
+                    THEN ROUND((cur.tot_cur - COALESCE(cur.tot_prev, 0)) * 100.0 / NULLIF(cur.tot_prev, 0), 1)::TEXT || '% ▲'
+                  WHEN (cur.tot_cur - COALESCE(cur.tot_prev, 0)) * 100.0 / NULLIF(cur.tot_prev, 0) < 0
+                    THEN ABS(ROUND((cur.tot_cur - COALESCE(cur.tot_prev, 0)) * 100.0 / NULLIF(cur.tot_prev, 0), 1))::TEXT || '% ▼'
+                  ELSE COALESCE(ROUND((cur.tot_cur - COALESCE(cur.tot_prev, 0)) * 100.0 / NULLIF(cur.tot_prev, 0), 1), 0.0)::TEXT || '% -'
+                END
+              FROM (
+                -- **핵심 수정: 현재 매출과 전년 동기 매출을 한 번의 쿼리로 합산**
+                SELECT 
+                  SUM(TOT_SALAMT) AS tot_cur,             -- 현재 기간 총 매출액
+                  SUM(TOT_SALAMT_PERV1Y) AS tot_prev      -- 전년 동기간 총 매출액 (새 테이블 컬럼 사용)
+                FROM regionmonitor.TB_INTRST_REGION      -- 테이블 이름 변경 적용
+                WHERE STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
+                  AND REGION_CD = :REGION_CD
+              ) cur;
 
       SL3_p_5:
         sql: | # 최다 방문일(YYYYMMDD)
@@ -363,31 +353,24 @@ slides:
 
       SL4_p_3:
         sql: | # 전년도 vs 전전년도 방문인구 증감률(%)
-          WITH y23 AS (
-            SELECT COALESCE(SUM(TOT_VIPOP),0) AS v
-            FROM regionmonitor.tb_sexdstn_visit_popltn
-            WHERE REGION_CD = CAST(:REGION_CD AS VARCHAR)
-              AND STDR_YMD BETWEEN
-                  to_char(to_date(:DATE_FROM,'YYYYMMDD') - INTERVAL '2 year','YYYYMMDD')
-              AND to_char(to_date(:DATE_TO  ,'YYYYMMDD') - INTERVAL '2 year','YYYYMMDD')
-          ),
-          y24 AS (
-            SELECT COALESCE(SUM(TOT_VIPOP),0) AS v
-            FROM regionmonitor.tb_sexdstn_visit_popltn
-            WHERE REGION_CD = CAST(:REGION_CD AS VARCHAR)
-              AND STDR_YMD BETWEEN
-                  to_char(to_date(:DATE_FROM,'YYYYMMDD') - INTERVAL '1 year','YYYYMMDD')
-              AND to_char(to_date(:DATE_TO  ,'YYYYMMDD') - INTERVAL '1 year','YYYYMMDD')
-          )
           SELECT 
-            CASE 
-              WHEN COALESCE(ROUND(100.0 * (y24.v - y23.v) / NULLIF(y23.v,0), 1), 0.0) > 0 
-                THEN COALESCE(ROUND(100.0 * (y24.v - y23.v) / NULLIF(y23.v,0), 1), 0.0)::TEXT || '% ▲'
-              WHEN COALESCE(ROUND(100.0 * (y24.v - y23.v) / NULLIF(y23.v,0), 1), 0.0) < 0 
-                THEN ABS(COALESCE(ROUND(100.0 * (y24.v - y23.v) / NULLIF(y23.v,0), 1), 0.0))::TEXT || '% ▼'
-              ELSE COALESCE(ROUND(100.0 * (y24.v - y23.v) / NULLIF(y23.v,0), 1), 0.0)::TEXT || '% -'
+            CASE
+              -- 전년(tot_prev) 대비 전전년(tot_prev2) 증감율 계산
+              WHEN (cur.tot_prev - COALESCE(cur.tot_prev2, 0)) * 100.0 / NULLIF(cur.tot_prev2, 0) > 0
+                THEN ROUND((cur.tot_prev - COALESCE(cur.tot_prev2, 0)) * 100.0 / NULLIF(cur.tot_prev2, 0), 1)::TEXT || '% ▲'
+              WHEN (cur.tot_prev - COALESCE(cur.tot_prev2, 0)) * 100.0 / NULLIF(cur.tot_prev2, 0) < 0
+                THEN ABS(ROUND((cur.tot_prev - COALESCE(cur.tot_prev2, 0)) * 100.0 / NULLIF(cur.tot_prev2, 0), 1))::TEXT || '% ▼'
+              ELSE COALESCE(ROUND((cur.tot_prev - COALESCE(cur.tot_prev2, 0)) * 100.0 / NULLIF(cur.tot_prev2, 0), 1), 0.0)::TEXT || '% -'
             END
-          FROM y23, y24;
+          FROM (
+            -- **핵심 수정: 전년과 전전년의 총합을 단일 쿼리에서 구함**
+            SELECT 
+              SUM(TOT_VIPOP_PERV1Y) AS tot_prev,       -- 전년 동기간 총합 (Y-1)
+              SUM(TOT_VIPOP_PERV2Y) AS tot_prev2       -- 전전년 동기간 총합 (Y-2)
+            FROM regionmonitor.TB_INTRST_REGION        -- 테이블 이름 변경 적용
+            WHERE STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
+              AND REGION_CD = :REGION_CD
+          ) cur;
 
       SL4_p_4:
         sql: | # 당해년도 방문인구 
@@ -398,29 +381,24 @@ slides:
 
       SL4_p_5:
         sql: | # 당해년도 vs 전전년도(기준년도) 방문인구 증감율(%)
-          WITH y24 AS (
-            SELECT COALESCE(SUM(TOT_VIPOP),0) AS v
-            FROM regionmonitor.tb_sexdstn_visit_popltn
-            WHERE REGION_CD = CAST(:REGION_CD AS VARCHAR)
-              AND STDR_YMD BETWEEN
-                  to_char(to_date(:DATE_FROM,'YYYYMMDD') - INTERVAL '2 year','YYYYMMDD')
-              AND to_char(to_date(:DATE_TO  ,'YYYYMMDD') - INTERVAL '2 year','YYYYMMDD')
-          ),
-          y25 AS (
-            SELECT COALESCE(SUM(TOT_VIPOP),0) AS v
-            FROM regionmonitor.tb_sexdstn_visit_popltn
-            WHERE REGION_CD = CAST(:REGION_CD AS VARCHAR)
-              AND STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
-          )
           SELECT 
-            CASE 
-              WHEN COALESCE(ROUND(100.0 * (y25.v - y24.v) / NULLIF(y24.v,0), 1), 0.0) > 0 
-                THEN (COALESCE(ROUND(100.0 * (y25.v - y24.v) / NULLIF(y24.v,0), 1), 0.0)::TEXT || '% ▲')
-              WHEN COALESCE(ROUND(100.0 * (y25.v - y24.v) / NULLIF(y24.v,0), 1), 0.0) < 0
-                THEN ABS(COALESCE(ROUND(100.0 * (y25.v - y24.v) / NULLIF(y24.v,0), 1), 0.0))::TEXT || '% ▼' 
-              ELSE (COALESCE(ROUND(100.0 * (y25.v - y24.v) / NULLIF(y24.v,0), 1), 0.0)::TEXT || '% -') 
+            CASE
+              -- 당해년도(tot_cur) 대비 전전년도(tot_prev2) 증감율 계산
+              WHEN (cur.tot_cur - COALESCE(cur.tot_prev2, 0)) * 100.0 / NULLIF(cur.tot_prev2, 0) > 0
+                THEN ROUND((cur.tot_cur - COALESCE(cur.tot_prev2, 0)) * 100.0 / NULLIF(cur.tot_prev2, 0), 1)::TEXT || '% ▲'
+              WHEN (cur.tot_cur - COALESCE(cur.tot_prev2, 0)) * 100.0 / NULLIF(cur.tot_prev2, 0) < 0
+                THEN ABS(ROUND((cur.tot_cur - COALESCE(cur.tot_prev2, 0)) * 100.0 / NULLIF(cur.tot_prev2, 0), 1))::TEXT || '% ▼'
+              ELSE COALESCE(ROUND((cur.tot_cur - COALESCE(cur.tot_prev2, 0)) * 100.0 / NULLIF(cur.tot_prev2, 0), 1), 0.0)::TEXT || '% -'
             END
-          FROM y24, y25;
+          FROM (
+            -- **핵심 수정: 당해년도 합계와 전전년도 합계를 단일 쿼리에서 구함**
+            SELECT 
+              SUM(TOT_VIPOP) AS tot_cur,             -- 현재 기간 총합
+              SUM(TOT_VIPOP_PERV2Y) AS tot_prev2      -- 전전년 동기간 총합 (새 테이블 컬럼 사용)
+            FROM regionmonitor.TB_INTRST_REGION      -- 테이블 이름 변경 적용
+            WHERE STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
+              AND REGION_CD = :REGION_CD
+          ) cur;
 
       SL4_p_6:
         sql: | # 2023년 매출액
@@ -441,32 +419,24 @@ slides:
             AND to_char(to_date(:DATE_TO  ,'YYYYMMDD') - INTERVAL '1 year','YYYYMMDD');
 
       SL4_p_8:
-        sql: | # 2024 vs 2023 매출 증감율(%)
-          WITH y23 AS (
-            SELECT COALESCE(SUM(TOT_SALAMT),0) AS s
-            FROM regionmonitor.tb_sexdstn_selng
-            WHERE REGION_CD = CAST(:REGION_CD AS VARCHAR)
-              AND STDR_YMD BETWEEN
-                  to_char(to_date(:DATE_FROM,'YYYYMMDD') - INTERVAL '2 year','YYYYMMDD')
-              AND to_char(to_date(:DATE_TO  ,'YYYYMMDD') - INTERVAL '2 year','YYYYMMDD')
-          ),
-          y24 AS (
-            SELECT COALESCE(SUM(TOT_SALAMT),0) AS s
-            FROM regionmonitor.tb_sexdstn_selng
-            WHERE REGION_CD = CAST(:REGION_CD AS VARCHAR)
-              AND STDR_YMD BETWEEN
-                  to_char(to_date(:DATE_FROM,'YYYYMMDD') - INTERVAL '1 year','YYYYMMDD')
-              AND to_char(to_date(:DATE_TO  ,'YYYYMMDD') - INTERVAL '1 year','YYYYMMDD')
-          )
+        sql: | # 전년도 vs 전전년도 매출 증감율(%)
           SELECT 
-            CASE 
-              WHEN COALESCE(ROUND(100.0 * (y24.s - y23.s) / NULLIF(y23.s,0), 1), 0.0) > 0 
-                THEN (COALESCE(ROUND(100.0 * (y24.s - y23.s) / NULLIF(y23.s,0), 1), 0.0)::TEXT || '% ▲')
-              WHEN COALESCE(ROUND(100.0 * (y24.s - y23.s) / NULLIF(y23.s,0), 1), 0.0) < 0
-                THEN ABS(COALESCE(ROUND(100.0 * (y24.s - y23.s) / NULLIF(y23.s,0), 1), 0.0))::TEXT || '% ▼' 
-              ELSE (COALESCE(ROUND(100.0 * (y24.s - y23.s) / NULLIF(y23.s,0), 1), 0.0)::TEXT || '% -') 
+            CASE
+              -- 전년(tot_prev) 대비 전전년(tot_prev2) 증감율 계산
+              WHEN (cur.tot_prev - COALESCE(cur.tot_prev2, 0)) * 100.0 / NULLIF(cur.tot_prev2, 0) > 0
+                THEN ROUND((cur.tot_prev - COALESCE(cur.tot_prev2, 0)) * 100.0 / NULLIF(cur.tot_prev2, 0), 1)::TEXT || '% ▲'
+              WHEN (cur.tot_prev - COALESCE(cur.tot_prev2, 0)) * 100.0 / NULLIF(cur.tot_prev2, 0) < 0
+                THEN ABS(ROUND((cur.tot_prev - COALESCE(cur.tot_prev2, 0)) * 100.0 / NULLIF(cur.tot_prev2, 0), 1))::TEXT || '% ▼'
+              ELSE COALESCE(ROUND((cur.tot_prev - COALESCE(cur.tot_prev2, 0)) * 100.0 / NULLIF(cur.tot_prev2, 0), 1), 0.0)::TEXT || '% -'
             END
-          FROM y23, y24;
+          FROM (
+            SELECT 
+              SUM(TOT_SALAMT_PERV1Y) AS tot_prev,      -- 전년 동기간 총 매출 (Y-1)
+              SUM(TOT_SALAMT_PERV2Y) AS tot_prev2       -- 전전년 동기간 총 매출 (Y-2)
+            FROM regionmonitor.TB_INTRST_REGION        -- 테이블 이름 변경 적용
+            WHERE STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
+              AND REGION_CD = :REGION_CD
+          ) cur;
 
       SL4_p_9:
         sql: | # 2025년 매출액
@@ -476,30 +446,24 @@ slides:
             AND STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO;
 
       SL4_p_10:
-        sql: | # 2025 vs 2023 매출 증감률(%)
-          WITH y24 AS (
-            SELECT COALESCE(SUM(TOT_SALAMT),0) AS s
-            FROM regionmonitor.tb_sexdstn_selng
-            WHERE REGION_CD = CAST(:REGION_CD AS VARCHAR)
-              AND STDR_YMD BETWEEN
-                  to_char(to_date(:DATE_FROM,'YYYYMMDD') - INTERVAL '2 year','YYYYMMDD')
-              AND to_char(to_date(:DATE_TO  ,'YYYYMMDD') - INTERVAL '2 year','YYYYMMDD')
-          ),
-          y25 AS (
-            SELECT COALESCE(SUM(TOT_SALAMT),0) AS s
-            FROM regionmonitor.tb_sexdstn_selng
-            WHERE REGION_CD = CAST(:REGION_CD AS VARCHAR)
-              AND STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
-          )
+        sql: | # 당해년도 vs 전전년도 매출 증감율(%)
           SELECT 
-            CASE 
-              WHEN COALESCE(ROUND(100.0 * (y25.s - y24.s) / NULLIF(y24.s,0), 1), 0.0) > 0 
-                THEN (COALESCE(ROUND(100.0 * (y25.s - y24.s) / NULLIF(y24.s,0), 1), 0.0)::TEXT || '% ▲')
-              WHEN COALESCE(ROUND(100.0 * (y25.s - y24.s) / NULLIF(y24.s,0), 1), 0.0) < 0
-                THEN ABS(COALESCE(ROUND(100.0 * (y25.s - y24.s) / NULLIF(y24.s,0), 1), 0.0))::TEXT || '% ▼' 
-              ELSE (COALESCE(ROUND(100.0 * (y25.s - y24.s) / NULLIF(y24.s,0), 1), 0.0)::TEXT || '% -') 
+            CASE
+              -- 당해년도(tot_cur) 대비 전전년도(tot_prev2) 증감율 계산
+              WHEN (cur.tot_cur - COALESCE(cur.tot_prev2, 0)) * 100.0 / NULLIF(cur.tot_prev2, 0) > 0
+                THEN ROUND((cur.tot_cur - COALESCE(cur.tot_prev2, 0)) * 100.0 / NULLIF(cur.tot_prev2, 0), 1)::TEXT || '% ▲'
+              WHEN (cur.tot_cur - COALESCE(cur.tot_prev2, 0)) * 100.0 / NULLIF(cur.tot_prev2, 0) < 0
+                THEN ABS(ROUND((cur.tot_cur - COALESCE(cur.tot_prev2, 0)) * 100.0 / NULLIF(cur.tot_prev2, 0), 1))::TEXT || '% ▼'
+              ELSE COALESCE(ROUND((cur.tot_cur - COALESCE(cur.tot_prev2, 0)) * 100.0 / NULLIF(cur.tot_prev2, 0), 1), 0.0)::TEXT || '% -'
             END
-          FROM y24, y25;
+          FROM (
+            SELECT 
+              SUM(TOT_SALAMT) AS tot_cur,             -- 현재 기간 총 매출액
+              SUM(TOT_SALAMT_PERV2Y) AS tot_prev2      -- 전전년 동기간 총 매출액 (새 테이블 컬럼 사용)
+            FROM regionmonitor.TB_INTRST_REGION        -- 테이블 이름 변경 적용
+            WHERE STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
+              AND REGION_CD = :REGION_CD
+          ) cur;
     
     charts:
       SL4_chart_1:
@@ -513,57 +477,40 @@ slides:
           방문인구 수(만 명): |-
             SELECT val
             FROM (
-              SELECT 1 ord, SUM(t.TOT_VIPOP)::NUMERIC/10000.0 AS val
-              FROM regionmonitor.TB_SEXDSTN_VISIT_POPLTN t
-              WHERE t.REGION_CD=:REGION_CD
-                AND t.STDR_YMD BETWEEN to_char(to_date(:DATE_FROM,'YYYYMMDD')-INTERVAL '2 year','YYYYMMDD')
-                                  AND to_char(to_date(:DATE_TO  ,'YYYYMMDD')-INTERVAL '2 year','YYYYMMDD')
+              WITH sums AS (
+                SELECT
+                  SUM(t.TOT_VIPOP_PERV2Y)::NUMERIC/10000.0 AS y2y_val, -- 전전년 (Y-2)
+                  SUM(t.TOT_VIPOP_PERV1Y)::NUMERIC/10000.0 AS y1y_val, -- 전년 (Y-1)
+                  SUM(t.TOT_VIPOP)::NUMERIC/10000.0 AS cur_val         -- 당해년도 (Y)
+                FROM regionmonitor.TB_INTRST_REGION t
+                WHERE t.REGION_CD=:REGION_CD AND t.STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
+              )
+              SELECT 1 ord, y2y_val AS val FROM sums -- Y-2
               UNION ALL
-              SELECT 2, SUM(t.TOT_VIPOP)::NUMERIC/10000.0
-              FROM regionmonitor.TB_SEXDSTN_VISIT_POPLTN t
-              WHERE t.REGION_CD=:REGION_CD
-                AND t.STDR_YMD BETWEEN to_char(to_date(:DATE_FROM,'YYYYMMDD')-INTERVAL '1 year','YYYYMMDD')
-                                  AND to_char(to_date(:DATE_TO  ,'YYYYMMDD')-INTERVAL '1 year','YYYYMMDD')
+              SELECT 2, y1y_val FROM sums            -- Y-1
               UNION ALL
-              SELECT 3, SUM(t.TOT_VIPOP)::NUMERIC/10000.0
-              FROM regionmonitor.TB_SEXDSTN_VISIT_POPLTN t
-              WHERE t.REGION_CD=:REGION_CD
-                AND t.STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
+              SELECT 3, cur_val FROM sums            -- Y
             ) x ORDER BY ord;
 
           방문인구 수 증감률(%): |-
-            WITH
-            y23 AS (
-              SELECT COALESCE(SUM(TOT_VIPOP),0)::NUMERIC v
-              FROM regionmonitor.TB_SEXDSTN_VISIT_POPLTN
-              WHERE REGION_CD=:REGION_CD
-                AND STDR_YMD BETWEEN to_char(to_date(:DATE_FROM,'YYYYMMDD')-INTERVAL '2 year','YYYYMMDD')
-                                  AND to_char(to_date(:DATE_TO  ,'YYYYMMDD')-INTERVAL '2 year','YYYYMMDD')
-            ),
-            y24 AS (
-              SELECT COALESCE(SUM(TOT_VIPOP),0)::NUMERIC v
-              FROM regionmonitor.TB_SEXDSTN_VISIT_POPLTN
-              WHERE REGION_CD=:REGION_CD
-                AND STDR_YMD BETWEEN to_char(to_date(:DATE_FROM,'YYYYMMDD')-INTERVAL '1 year','YYYYMMDD')
-                                  AND to_char(to_date(:DATE_TO  ,'YYYYMMDD')-INTERVAL '1 year','YYYYMMDD')
-            ),
-            y25 AS (
-              SELECT COALESCE(SUM(TOT_VIPOP),0)::NUMERIC v
-              FROM regionmonitor.TB_SEXDSTN_VISIT_POPLTN
-              WHERE REGION_CD=:REGION_CD
-                AND STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
+            WITH sums AS (
+              SELECT
+                COALESCE(SUM(t.TOT_VIPOP_PERV2Y), 0)::NUMERIC AS y2y_sum, -- 전전년 합계 (Y-2)
+                COALESCE(SUM(t.TOT_VIPOP_PERV1Y), 0)::NUMERIC AS y1y_sum, -- 전년 합계 (Y-1)
+                COALESCE(SUM(t.TOT_VIPOP), 0)::NUMERIC AS cur_sum         -- 당해년도 합계 (Y)
+              FROM regionmonitor.TB_INTRST_REGION t
+              WHERE t.REGION_CD=:REGION_CD AND t.STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
             )
             SELECT r
             FROM (
-              SELECT 1 ord, 0.0::NUMERIC AS r
+              SELECT 1 ord, 0.0::NUMERIC AS r -- Y-2 (기준이므로 0%)
               UNION ALL
-              SELECT 2, CASE WHEN (SELECT v FROM y23)=0 THEN 0
-                            ELSE ROUND(((SELECT v FROM y24)-(SELECT v FROM y23))/(SELECT v FROM y23) * 100, 2) END
+              SELECT 2, CASE WHEN s.y2y_sum = 0 THEN 0 ELSE ROUND((s.y1y_sum - s.y2y_sum) / NULLIF(s.y2y_sum, 0) * 100, 2) END -- Y-1 vs Y-2
+              FROM sums s
               UNION ALL
-              SELECT 3, CASE WHEN (SELECT v FROM y24)=0 THEN 0
-                            ELSE ROUND(((SELECT v FROM y25)-(SELECT v FROM y24))/(SELECT v FROM y24) * 100, 2) END
-            ) s
-            ORDER BY ord;
+              SELECT 3, CASE WHEN s.y1y_sum = 0 THEN 0 ELSE ROUND((s.cur_sum - s.y1y_sum) / NULLIF(s.y1y_sum, 0) * 100, 2) END -- Y vs Y-1
+              FROM sums s
+            ) s ORDER BY ord;
             
 
       # -----------------------------
@@ -580,58 +527,40 @@ slides:
           매출액(억원): |-
             SELECT val
             FROM (
-              SELECT 1 ord, SUM(t.TOT_SALAMT)::NUMERIC/1e8 AS val
-              FROM regionmonitor.TB_SEXDSTN_SELNG t
-              WHERE t.REGION_CD=:REGION_CD
-                AND t.STDR_YMD BETWEEN to_char(to_date(:DATE_FROM,'YYYYMMDD')-INTERVAL '2 year','YYYYMMDD')
-                                  AND to_char(to_date(:DATE_TO  ,'YYYYMMDD')-INTERVAL '2 year','YYYYMMDD')
+              WITH sums AS (
+                SELECT
+                  SUM(t.TOT_SALAMT_PERV2Y)::NUMERIC/1e8 AS y2y_val, -- 전전년 (Y-2)
+                  SUM(t.TOT_SALAMT_PERV1Y)::NUMERIC/1e8 AS y1y_val, -- 전년 (Y-1)
+                  SUM(t.TOT_SALAMT)::NUMERIC/1e8 AS cur_val         -- 당해년도 (Y)
+                FROM regionmonitor.TB_INTRST_REGION t
+                WHERE t.REGION_CD=:REGION_CD AND t.STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
+              )
+              SELECT 1 ord, y2y_val AS val FROM sums -- Y-2
               UNION ALL
-              SELECT 2, SUM(t.TOT_SALAMT)::NUMERIC/1e8
-              FROM regionmonitor.TB_SEXDSTN_SELNG t
-              WHERE t.REGION_CD=:REGION_CD
-                AND t.STDR_YMD BETWEEN to_char(to_date(:DATE_FROM,'YYYYMMDD')-INTERVAL '1 year','YYYYMMDD')
-                                  AND to_char(to_date(:DATE_TO  ,'YYYYMMDD')-INTERVAL '1 year','YYYYMMDD')
+              SELECT 2, y1y_val FROM sums            -- Y-1
               UNION ALL
-              SELECT 3, SUM(t.TOT_SALAMT)::NUMERIC/1e8
-              FROM regionmonitor.TB_SEXDSTN_SELNG t
-              WHERE t.REGION_CD=:REGION_CD
-                AND t.STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
+              SELECT 3, cur_val FROM sums            -- Y
             ) x ORDER BY ord;
 
           매출액 증감률(%): |-
-            WITH
-            y23 AS (
-              SELECT COALESCE(SUM(TOT_SALAMT),0)::NUMERIC v
-              FROM regionmonitor.TB_SEXDSTN_SELNG
-              WHERE REGION_CD=:REGION_CD
-                AND STDR_YMD BETWEEN to_char(to_date(:DATE_FROM,'YYYYMMDD')-INTERVAL '2 year','YYYYMMDD')
-                                  AND to_char(to_date(:DATE_TO  ,'YYYYMMDD')-INTERVAL '2 year','YYYYMMDD')
-            ),
-            y24 AS (
-              SELECT COALESCE(SUM(TOT_SALAMT),0)::NUMERIC v
-              FROM regionmonitor.TB_SEXDSTN_SELNG
-              WHERE REGION_CD=:REGION_CD
-                AND STDR_YMD BETWEEN to_char(to_date(:DATE_FROM,'YYYYMMDD')-INTERVAL '1 year','YYYYMMDD')
-                                  AND to_char(to_date(:DATE_TO  ,'YYYYMMDD')-INTERVAL '1 year','YYYYMMDD')
-            ),
-            y25 AS (
-              SELECT COALESCE(SUM(TOT_SALAMT),0)::NUMERIC v
-              FROM regionmonitor.TB_SEXDSTN_SELNG
-              WHERE REGION_CD=:REGION_CD
-                AND STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
+            WITH sums AS (
+              SELECT
+                COALESCE(SUM(t.TOT_SALAMT_PERV2Y), 0)::NUMERIC AS y2y_sum, -- 전전년 합계 (Y-2)
+                COALESCE(SUM(t.TOT_SALAMT_PERV1Y), 0)::NUMERIC AS y1y_sum, -- 전년 합계 (Y-1)
+                COALESCE(SUM(t.TOT_SALAMT), 0)::NUMERIC AS cur_sum         -- 당해년도 합계 (Y)
+              FROM regionmonitor.TB_INTRST_REGION t
+              WHERE t.REGION_CD=:REGION_CD AND t.STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
             )
             SELECT r
             FROM (
-              SELECT 1 ord, 0.0::NUMERIC AS r
+              SELECT 1 ord, 0.0::NUMERIC AS r -- Y-2 (기준이므로 0%)
               UNION ALL
-              SELECT 2, CASE WHEN (SELECT v FROM y23)=0 THEN 0
-                            ELSE ROUND(((SELECT v FROM y24)-(SELECT v FROM y23))/(SELECT v FROM y23) * 100, 2) END
+              SELECT 2, CASE WHEN s.y2y_sum = 0 THEN 0 ELSE ROUND((s.y1y_sum - s.y2y_sum) / NULLIF(s.y2y_sum, 0) * 100, 2) END -- Y-1 vs Y-2
+              FROM sums s
               UNION ALL
-              SELECT 3, CASE WHEN (SELECT v FROM y24)=0 THEN 0
-                            ELSE ROUND(((SELECT v FROM y25)-(SELECT v FROM y24))/(SELECT v FROM y24) * 100, 2) END
-            ) s
-            ORDER BY ord;
-    
+              SELECT 3, CASE WHEN s.y1y_sum = 0 THEN 0 ELSE ROUND((s.cur_sum - s.y1y_sum) / NULLIF(s.y1y_sum, 0) * 100, 2) END -- Y vs Y-1
+              FROM sums s
+            ) s ORDER BY ord;
 
 
   - name : "5 : 방문인구 분석 요약"
@@ -645,29 +574,24 @@ slides:
 
       SL5_p_2:
         sql: | # 전년대비 방문인구 증감율(%)
-          WITH cur AS (
-            SELECT COALESCE(SUM(TOT_VIPOP),0) AS v
-            FROM regionmonitor.TB_SEXDSTN_VISIT_POPLTN
-            WHERE REGION_CD = CAST(:REGION_CD AS VARCHAR)
-              AND STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
-          ),
-          prev AS (
-            SELECT COALESCE(SUM(TOT_VIPOP),0) AS v
-            FROM regionmonitor.TB_SEXDSTN_VISIT_POPLTN
-            WHERE REGION_CD = CAST(:REGION_CD AS VARCHAR)
-              AND STDR_YMD BETWEEN
-                  to_char(to_date(:DATE_FROM,'YYYYMMDD') - INTERVAL '1 year','YYYYMMDD')
-              AND to_char(to_date(:DATE_TO  ,'YYYYMMDD') - INTERVAL '1 year','YYYYMMDD')
-          )
           SELECT 
-            CASE 
-              WHEN COALESCE(ROUND(100.0 * (cur.v - prev.v) / NULLIF(prev.v,0), 1), 0.0) > 0 
-                THEN (COALESCE(ROUND(100.0 * (cur.v - prev.v) / NULLIF(prev.v,0), 1), 0.0)::TEXT || '% ▲')
-              WHEN COALESCE(ROUND(100.0 * (cur.v - prev.v) / NULLIF(prev.v,0), 1), 0.0) < 0
-                THEN ABS(COALESCE(ROUND(100.0 * (cur.v - prev.v) / NULLIF(prev.v,0), 1), 0.0))::TEXT || '% ▼' 
-              ELSE (COALESCE(ROUND(100.0 * (cur.v - prev.v) / NULLIF(prev.v,0), 1), 0.0)::TEXT || '% -') 
+            CASE
+              -- 당해년도(tot_cur) 대비 전년도(tot_prev) 증감율 계산
+              WHEN (cur.tot_cur - COALESCE(cur.tot_prev, 0)) * 100.0 / NULLIF(cur.tot_prev, 0) > 0
+                THEN ROUND((cur.tot_cur - COALESCE(cur.tot_prev, 0)) * 100.0 / NULLIF(cur.tot_prev, 0), 1)::TEXT || '% ▲'
+              WHEN (cur.tot_cur - COALESCE(cur.tot_prev, 0)) * 100.0 / NULLIF(cur.tot_prev, 0) < 0
+                THEN ABS(ROUND((cur.tot_cur - COALESCE(cur.tot_prev, 0)) * 100.0 / NULLIF(cur.tot_prev, 0), 1))::TEXT || '% ▼'
+              ELSE COALESCE(ROUND((cur.tot_cur - COALESCE(cur.tot_prev, 0)) * 100.0 / NULLIF(cur.tot_prev, 0), 1), 0.0)::TEXT || '% -'
             END
-          FROM cur, prev;
+          FROM (
+            -- **핵심 수정: 당해년도 합계와 전년도 합계를 단일 쿼리에서 구함**
+            SELECT 
+              SUM(TOT_VIPOP) AS tot_cur,             -- 현재 기간 총합
+              SUM(TOT_VIPOP_PERV1Y) AS tot_prev      -- 전년 동기간 총합 (새 테이블 컬럼 사용)
+            FROM regionmonitor.TB_INTRST_REGION      -- 테이블 이름 변경 적용
+            WHERE STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
+              AND REGION_CD = :REGION_CD
+          ) cur;
 
 
       SL5_p_3:
@@ -2402,29 +2326,24 @@ slides:
 
       SL12_p_3:
         sql: | # 총 소비금액 전년대비 증감률(%)
-          WITH cur AS (
-            SELECT COALESCE(SUM(TOT_SALAMT),0) AS v
-            FROM regionmonitor.TB_SEXDSTN_SELNG
-            WHERE REGION_CD = CAST(:REGION_CD AS VARCHAR)
-              AND STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
-          ),
-          prv AS (
-            SELECT COALESCE(SUM(TOT_SALAMT),0) AS v
-            FROM regionmonitor.TB_SEXDSTN_SELNG
-            WHERE REGION_CD = CAST(:REGION_CD AS VARCHAR)
-              AND STDR_YMD BETWEEN
-                  to_char(to_date(:DATE_FROM,'YYYYMMDD') - INTERVAL '1 year','YYYYMMDD')
-              AND to_char(to_date(:DATE_TO  ,'YYYYMMDD') - INTERVAL '1 year','YYYYMMDD')
-          )
           SELECT 
             CASE
-              WHEN COALESCE(ROUND(100.0*(cur.v - prv.v)/NULLIF(prv.v,0),1), 0.0) > 0
-                THEN COALESCE(ROUND(100.0*(cur.v - prv.v)/NULLIF(prv.v,0),1), 0.0)::TEXT || '% ▲'
-              WHEN COALESCE(ROUND(100.0*(cur.v - prv.v)/NULLIF(prv.v,0),1), 0.0) < 0
-                THEN ABS(COALESCE(ROUND(100.0*(cur.v - prv.v)/NULLIF(prv.v,0),1), 0.0))::TEXT || '% ▼'
-              ELSE COALESCE(ROUND(100.0*(cur.v - prv.v)/NULLIF(prv.v,0),1), 0.0)::TEXT || '% -'
+              -- 당해년도(tot_cur) 대비 전년도(tot_prev) 증감률 계산
+              WHEN (cur.tot_cur - COALESCE(cur.tot_prev, 0)) * 100.0 / NULLIF(cur.tot_prev, 0) > 0
+                THEN ROUND((cur.tot_cur - COALESCE(cur.tot_prev, 0)) * 100.0 / NULLIF(cur.tot_prev, 0), 1)::TEXT || '% ▲'
+              WHEN (cur.tot_cur - COALESCE(cur.tot_prev, 0)) * 100.0 / NULLIF(cur.tot_prev, 0) < 0
+                THEN ABS(ROUND((cur.tot_cur - COALESCE(cur.tot_prev, 0)) * 100.0 / NULLIF(cur.tot_prev, 0), 1))::TEXT || '% ▼'
+              ELSE COALESCE(ROUND((cur.tot_cur - COALESCE(cur.tot_prev, 0)) * 100.0 / NULLIF(cur.tot_prev, 0), 1), 0.0)::TEXT || '% -'
             END
-          FROM cur, prv;
+          FROM (
+            -- **수정: 단일 쿼리로 현재 매출과 전년 매출 합산**
+            SELECT 
+              SUM(TOT_SALAMT) AS tot_cur,             -- 현재 기간 총 매출액
+              SUM(TOT_SALAMT_PERV1Y) AS tot_prev      -- 전년 동기간 총 매출액
+            FROM regionmonitor.TB_INTRST_REGION      -- 테이블 이름 변경 적용
+            WHERE STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
+              AND REGION_CD = :REGION_CD
+          ) cur;
 
       # 2) 1인당 평균 매출 (= 총매출 / 방문인구)
       SL12_p_4:
@@ -2446,41 +2365,34 @@ slides:
 
       SL12_p_5:
         sql: | # 1인당 평균 매출 전년대비 증감률(%)
-          WITH cur AS (
+          WITH totals AS (
+            -- **수정: 단일 쿼리로 현재와 전년의 매출액 및 방문인구를 모두 합산**
             SELECT
-              COALESCE(SUM(TOT_SALAMT),0)::numeric AS s,
-              (SELECT COALESCE(SUM(TOT_VIPOP),0) FROM regionmonitor.TB_SEXDSTN_VISIT_POPLTN
-                WHERE REGION_CD = CAST(:REGION_CD AS VARCHAR)
-                  AND STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
-              )::numeric AS v
-            FROM regionmonitor.TB_SEXDSTN_SELNG
+              COALESCE(SUM(TOT_SALAMT), 0)::NUMERIC AS cur_s,           -- 현재 매출액
+              COALESCE(SUM(TOT_VIPOP), 0)::NUMERIC AS cur_v,            -- 현재 방문인구
+              COALESCE(SUM(TOT_SALAMT_PERV1Y), 0)::NUMERIC AS prev_s,   -- 전년 매출액
+              COALESCE(SUM(TOT_VIPOP_PERV1Y), 0)::NUMERIC AS prev_v     -- 전년 방문인구
+            FROM regionmonitor.TB_INTRST_REGION
             WHERE REGION_CD = CAST(:REGION_CD AS VARCHAR)
               AND STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
-          ),
-          prv AS (
-            SELECT
-              COALESCE(SUM(TOT_SALAMT),0)::numeric AS s,
-              (SELECT COALESCE(SUM(TOT_VIPOP),0) FROM regionmonitor.TB_SEXDSTN_VISIT_POPLTN
-                WHERE REGION_CD = CAST(:REGION_CD AS VARCHAR)
-                  AND STDR_YMD BETWEEN
-                    to_char(to_date(:DATE_FROM,'YYYYMMDD') - INTERVAL '1 year','YYYYMMDD')
-                    AND to_char(to_date(:DATE_TO,'YYYYMMDD') - INTERVAL '1 year','YYYYMMDD')
-              )::numeric AS v
-            FROM regionmonitor.TB_SEXDSTN_SELNG
-            WHERE REGION_CD = CAST(:REGION_CD AS VARCHAR)
-              AND STDR_YMD BETWEEN
-                to_char(to_date(:DATE_FROM,'YYYYMMDD') - INTERVAL '1 year','YYYYMMDD')
-                AND to_char(to_date(:DATE_TO  ,'YYYYMMDD') - INTERVAL '1 year','YYYYMMDD')
           )
           SELECT 
             CASE
-              WHEN COALESCE(ROUND(100.0 * ((cur.s/NULLIF(cur.v,0)) - (prv.s/NULLIF(prv.v,0))) / NULLIF((prv.s/NULLIF(prv.v,0)),0), 1), 0.0) > 0
-                THEN COALESCE(ROUND(100.0 * ((cur.s/NULLIF(cur.v,0)) - (prv.s/NULLIF(prv.v,0))) / NULLIF((prv.s/NULLIF(prv.v,0)),0), 1), 0.0)::TEXT || '% ▲'
-              WHEN COALESCE(ROUND(100.0 * ((cur.s/NULLIF(cur.v,0)) - (prv.s/NULLIF(prv.v,0))) / NULLIF((prv.s/NULLIF(prv.v,0)),0), 1), 0.0) < 0
-                THEN ABS(COALESCE(ROUND(100.0 * ((cur.s/NULLIF(cur.v,0)) - (prv.s/NULLIF(prv.v,0))) / NULLIF((prv.s/NULLIF(prv.v,0)),0), 1), 0.0))::TEXT || '% ▼'
-              ELSE COALESCE(ROUND(100.0 * ((cur.s/NULLIF(cur.v,0)) - (prv.s/NULLIF(prv.v,0))) / NULLIF((prv.s/NULLIF(prv.v,0)),0), 1), 0.0)::TEXT || '% -'
+              -- 현재 1인당 평균: (t.cur_s / NULLIF(t.cur_v, 0))
+              -- 전년 1인당 평균: (t.prev_s / NULLIF(t.prev_v, 0))
+              WHEN COALESCE(ROUND(100.0 * (
+                  (t.cur_s / NULLIF(t.cur_v, 0)) - (t.prev_s / NULLIF(t.prev_v, 0))
+                ) / NULLIF((t.prev_s / NULLIF(t.prev_v, 0)), 0), 1), 0.0) > 0
+                THEN COALESCE(ROUND(100.0 * ((t.cur_s / NULLIF(t.cur_v, 0)) - (t.prev_s / NULLIF(t.prev_v, 0))) / NULLIF((t.prev_s / NULLIF(t.prev_v, 0)), 0), 1), 0.0)::TEXT || '% ▲'
+              WHEN COALESCE(ROUND(100.0 * (
+                  (t.cur_s / NULLIF(t.cur_v, 0)) - (t.prev_s / NULLIF(t.prev_v, 0))
+                ) / NULLIF((t.prev_s / NULLIF(t.prev_v, 0)), 0), 1), 0.0) < 0
+                THEN ABS(COALESCE(ROUND(100.0 * ((t.cur_s / NULLIF(t.cur_v, 0)) - (t.prev_s / NULLIF(t.prev_v, 0))) / NULLIF((t.prev_s / NULLIF(t.prev_v, 0)), 0), 1), 0.0))::TEXT || '% ▼'
+              ELSE COALESCE(ROUND(100.0 * (
+                  (t.cur_s / NULLIF(t.cur_v, 0)) - (t.prev_s / NULLIF(t.prev_v, 0))
+                ) / NULLIF((t.prev_s / NULLIF(t.prev_v, 0)), 0), 1), 0.0)::TEXT || '% -'
             END
-          FROM cur, prv;
+          FROM totals t;
 
       # 3) 최다 매출 집단(연령) + 그 집단의 비중
       SL12_p_6:
@@ -5340,7 +5252,7 @@ slides:
                   to_char(d_from - INTERVAL '1 day','YYYYMMDD') t
             FROM d
           )
-          SELECT COALESCE(ROUND(SUM(TOT_SALAMT)::numeric / 7, 0), 0)
+          SELECT TO_CHAR(COALESCE(ROUND(SUM(TOT_SALAMT)::numeric / 7, 0), 0), 'FM9,999,999,999')
           FROM regionmonitor.tb_sexdstn_selng s, b
           WHERE s.REGION_CD = CAST(:REGION_CD AS VARCHAR)
             AND s.STDR_YMD BETWEEN b.f AND b.t;
@@ -5355,7 +5267,7 @@ slides:
                   to_char(d_from - INTERVAL '1 day','YYYYMMDD') t
             FROM d
           )
-          SELECT COALESCE(ROUND(SUM(TOT_DCNT)::numeric / 7, 2), 0)
+          SELECT TO_CHAR(COALESCE(ROUND(SUM(TOT_DCNT)::numeric / 7, 2), 0), 'FM9,999,999,999')
           FROM regionmonitor.tb_sexdstn_selng s, b
           WHERE s.REGION_CD = CAST(:REGION_CD AS VARCHAR)
             AND s.STDR_YMD BETWEEN b.f AND b.t;
@@ -5370,7 +5282,7 @@ slides:
                   to_char(d_from - INTERVAL '1 day','YYYYMMDD') t
             FROM d
           )
-          SELECT COALESCE((SUM(TOT_SALAMT)::numeric / NULLIF(SUM(TOT_DCNT),0))::numeric(18,0), 0)
+          SELECT TO_CHAR(COALESCE((SUM(TOT_SALAMT)::numeric / NULLIF(SUM(TOT_DCNT),0))::numeric(18,0), 0), 'FM9,999,999,999')
           FROM regionmonitor.tb_sexdstn_selng s, b
           WHERE s.REGION_CD = CAST(:REGION_CD AS VARCHAR)
             AND s.STDR_YMD BETWEEN b.f AND b.t;
@@ -5382,7 +5294,7 @@ slides:
                   to_date(:DATE_TO  ,'YYYYMMDD') d_to
           ),
           span AS (SELECT (d_to - d_from + 1) AS n FROM d)
-          SELECT COALESCE(ROUND(SUM(TOT_SALAMT)::numeric / (SELECT n FROM span), 0), 0)
+          SELECT TO_CHAR(COALESCE(ROUND(SUM(TOT_SALAMT)::numeric / (SELECT n FROM span), 0), 0), 'FM9,999,999,999')
           FROM regionmonitor.tb_sexdstn_selng s
           WHERE s.REGION_CD = CAST(:REGION_CD AS VARCHAR)
             AND s.STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO;
@@ -5394,14 +5306,14 @@ slides:
                   to_date(:DATE_TO  ,'YYYYMMDD') d_to
           ),
           span AS (SELECT (d_to - d_from + 1) AS n FROM d)
-          SELECT COALESCE(ROUND(SUM(TOT_DCNT)::numeric / (SELECT n FROM span), 2), 0)
+          SELECT TO_CHAR(COALESCE(ROUND(SUM(TOT_DCNT)::numeric / (SELECT n FROM span), 2), 0), 'FM9,999,999,999')
           FROM regionmonitor.tb_sexdstn_selng s
           WHERE s.REGION_CD = CAST(:REGION_CD AS VARCHAR)
             AND s.STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO;
 
       SL20_6:  # 축제기간 1건당 평균금액
         sql: |
-          SELECT COALESCE((SUM(TOT_SALAMT)::numeric / NULLIF(SUM(TOT_DCNT),0))::numeric(18,0), 0)
+          SELECT TO_CHAR(COALESCE((SUM(TOT_SALAMT)::numeric / NULLIF(SUM(TOT_DCNT),0))::numeric(18,0), 0), 'FM9,999,999,999')
           FROM regionmonitor.tb_sexdstn_selng
           WHERE REGION_CD = CAST(:REGION_CD AS VARCHAR)
             AND STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO;
@@ -5514,7 +5426,7 @@ slides:
                   to_char(d_to + INTERVAL '7 day','YYYYMMDD') t
             FROM d
           )
-          SELECT COALESCE(ROUND(SUM(TOT_SALAMT)::numeric / 7, 0), 0)
+          SELECT TO_CHAR(COALESCE(ROUND(SUM(TOT_SALAMT)::numeric / 7, 0), 0), 'FM9,999,999,999')
           FROM regionmonitor.tb_sexdstn_selng s, b
           WHERE s.REGION_CD = CAST(:REGION_CD AS VARCHAR)
             AND s.STDR_YMD BETWEEN b.f AND b.t;
@@ -5529,7 +5441,7 @@ slides:
                   to_char(d_to + INTERVAL '7 day','YYYYMMDD') t
             FROM d
           )
-          SELECT COALESCE(ROUND(SUM(TOT_DCNT)::numeric / 7, 2), 0)
+          SELECT TO_CHAR(COALESCE(ROUND(SUM(TOT_DCNT)::numeric / 7, 2), 0), 'FM9,999,999,999')
           FROM regionmonitor.tb_sexdstn_selng s, b
           WHERE s.REGION_CD = CAST(:REGION_CD AS VARCHAR)
             AND s.STDR_YMD BETWEEN b.f AND b.t;
@@ -5544,7 +5456,7 @@ slides:
                   to_char(d_to + INTERVAL '7 day','YYYYMMDD') t
             FROM d
           )
-          SELECT COALESCE((SUM(TOT_SALAMT)::numeric / NULLIF(SUM(TOT_DCNT),0))::numeric(18,0), 0)
+          SELECT TO_CHAR(COALESCE((SUM(TOT_SALAMT)::numeric / NULLIF(SUM(TOT_DCNT),0))::numeric(18,0), 0), 'FM9,999,999,999')
           FROM regionmonitor.tb_sexdstn_selng s, b
           WHERE s.REGION_CD = CAST(:REGION_CD AS VARCHAR)
             AND s.STDR_YMD BETWEEN b.f AND b.t;
@@ -5845,7 +5757,15 @@ slides:
           WITH span AS (
             SELECT (to_date(:DATE_TO,'YYYYMMDD') - to_date(:DATE_FROM,'YYYYMMDD') + 1) AS n
           )
-          SELECT TO_CHAR(COALESCE(ROUND(SUM(TOT_VIPOP)::numeric / 7),0), 'FM9,999,999,999')
+          SELECT TO_CHAR(
+                  COALESCE(
+                    ROUND(
+                      SUM(TOT_VIPOP)::numeric / NULLIF((SELECT n FROM span)::numeric, 0)
+                    ),
+                    0
+                  ),
+                  'FM9,999,999,999'
+                )
           FROM regionmonitor.TB_SEXDSTN_VISIT_POPLTN
           WHERE REGION_CD = CAST(:REGION_CD AS VARCHAR)
             AND STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO;
