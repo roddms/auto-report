@@ -135,75 +135,112 @@ def add_naver_or_osm_basemap(ax, crs_epsg: int):
     except Exception:
         ctx.add_basemap(ax, crs=f"EPSG:{crs_epsg}", source=ctx.providers.OpenStreetMap.Mapnik)
 
-def plot_points_within_region(engine, region_cd, out_png, buffer_m=500, point_sql=None, title=None):
-    """
-    - region_cd의 폴리곤을 GeoJSON으로 받아 shapely로 그림 (read_postgis 미사용)
-    - point_sql 은 이미 ST_Within + 500m 버퍼로 필터된 쿼리(위의 facility_sql / parking_sql)
-    """
-    import json
+def plot_facility_and_parking(engine, region_cd, out_png, buffer_m=500, title=None):
+    import json, os
     import pandas as pd
     import geopandas as gpd
     import matplotlib.pyplot as plt
     from shapely.geometry import shape
     from sqlalchemy import text
-    import os
 
-    # 0) 파라미터
-    params = {"REGION_CD": region_cd, "BUFFER_M": buffer_m}
-
-    # 1) 폴리곤(버퍼 적용) GeoJSON으로 가져오기
-    sql_poly = """
+    # SQL 정의
+    sql_region = """
     WITH reg AS (
-    SELECT ST_Transform(
-            ST_Buffer(ST_Transform(r.popltn_relm, 5179), :BUFFER_M),
-            4326
-            ) AS geom
-    FROM regionmonitor.tb_intrst_region_relm r
-    WHERE r.region_cd = :REGION_CD
+      SELECT ST_Transform(
+               ST_Buffer(ST_Transform(r.popltn_relm, 5179), :BUFFER_M),
+               4326
+             ) AS geom
+      FROM regionmonitor.tb_intrst_region_relm r
+      WHERE r.region_cd = :REGION_CD
     )
     SELECT ST_AsGeoJSON(geom) AS gj FROM reg;
     """
-    with engine.connect() as conn:
-        row = conn.execute(text(sql_poly), params).fetchone()
-    if not row or not row[0]:
-        print(f"⚠️ region_cd={region_cd} 폴리곤 없음")
-        return
-    poly = shape(json.loads(row[0]))
-    gdf_region = gpd.GeoDataFrame(geometry=[poly], crs="EPSG:4326")
-
-    # 2) 포인트(이미 SQL에서 버퍼 내부로 필터된 결과만)
-    if point_sql is None:
-        print("⚠️ point_sql 이 필요합니다.")
-        return
-    df_points = pd.read_sql(text(point_sql), engine, params=params)
-    if df_points.empty:
-        print("⚠️ 포인트 없음")
-        return
-    gdf_points = gpd.GeoDataFrame(
-        df_points, geometry=gpd.points_from_xy(df_points["x"], df_points["y"]), crs="EPSG:4326"
+    sql_facility = """
+    WITH reg AS (
+      SELECT ST_Transform(ST_Buffer(ST_Transform(r.popltn_relm, 5179), :BUFFER_M), 4326) AS geom
+      FROM regionmonitor.tb_intrst_region_relm r
+      WHERE r.region_cd = :REGION_CD
     )
+    SELECT
+      f.fclty_nm AS name,
+      f.Y_CRDNT  AS x,
+      f.X_CRDNT  AS y,
+      f.fclty_sclas_cd AS type
+    FROM regionmonitor.TB_MAIN_FCLTY_INFO f
+    JOIN reg
+      ON ST_Within(ST_SetSRID(ST_MakePoint(f.Y_CRDNT, f.X_CRDNT), 4326), reg.geom)
+    WHERE f.X_CRDNT IS NOT NULL AND f.Y_CRDNT IS NOT NULL;
+    """
+    sql_parking = """
+    WITH reg AS (
+      SELECT ST_Transform(ST_Buffer(ST_Transform(r.popltn_relm, 5179), :BUFFER_M), 4326) AS geom
+      FROM regionmonitor.tb_intrst_region_relm r
+      WHERE r.region_cd = :REGION_CD
+    )
+    SELECT
+      p.prkplce_nm AS name,
+      p.Y_CRDNT    AS x,
+      p.X_CRDNT    AS y, 
+      p.prkcmprt_co AS slots
+    FROM regionmonitor.TB_PRKPLCE_INFO p
+    JOIN reg
+      ON ST_Within(ST_SetSRID(ST_MakePoint(p.Y_CRDNT, p.X_CRDNT), 4326), reg.geom)
+    WHERE p.X_CRDNT IS NOT NULL AND p.Y_CRDNT IS NOT NULL;
+    """
 
-    # 3) 투영(Basemap용): 3857
-    reg_3857   = gdf_region.to_crs(3857)
-    points_3857 = gdf_points.to_crs(3857)
+    params = {"REGION_CD": region_cd, "BUFFER_M": buffer_m}
+    with engine.connect() as conn:
+        row = conn.execute(text(sql_region), params).fetchone()
+        poly = shape(json.loads(row[0]))
+        gdf_region = gpd.GeoDataFrame(geometry=[poly], crs="EPSG:4326")
 
-    # 4) 시각화
+        df_fac = pd.read_sql(text(sql_facility), conn, params=params)
+        df_par = pd.read_sql(text(sql_parking), conn, params=params)
+
+    if df_fac.empty and df_par.empty:
+        print("⚠️ 시설/주차장 모두 없음")
+        return
+
+    gdf_fac = gpd.GeoDataFrame(df_fac, geometry=gpd.points_from_xy(df_fac["x"], df_fac["y"]), crs="EPSG:4326")
+    gdf_par = gpd.GeoDataFrame(df_par, geometry=gpd.points_from_xy(df_par["x"], df_par["y"]), crs="EPSG:4326")
+
+    # 투영
+    reg3857 = gdf_region.to_crs(3857)
+    fac3857 = gdf_fac.to_crs(3857)
+    par3857 = gdf_par.to_crs(3857)
+
+    # 색상 팔레트 (시설 코드별)
+    unique_types = fac3857["type"].unique().tolist()
+    cmap = plt.get_cmap("tab10")
+    color_map = {t: cmap(i % 10) for i, t in enumerate(unique_types)}
+
     fig, ax = plt.subplots(figsize=(8, 7))
-    add_naver_or_osm_basemap(ax, 3857)
-    reg_3857.boundary.plot(ax=ax, color="#005BAC", linewidth=2, alpha=0.9)
-    points_3857.plot(ax=ax, color="#E74C3C", markersize=18, alpha=0.85, edgecolor="k", linewidth=0.3)
 
+    # 베이스맵 마지막에 추가
+    #reg3857.boundary.plot(ax=ax, color="#005BAC", linewidth=2, alpha=0.8, zorder=5)
+
+    # 시설 (분류별 색상)
+    for t, g in fac3857.groupby("type"):
+        g.plot(ax=ax, markersize=25, color=color_map[t], alpha=0.8, label=f"시설:{t}", zorder=10)
+
+    # 주차장
+    #par3857.plot(ax=ax, color="black", markersize=30, marker="P", alpha=0.8, label="주차장", zorder=9)
+
+    # 범례/제목/축
+    ax.legend(loc="lower left", fontsize=8, frameon=True)
     ax.set_axis_off()
     if title:
         ax.set_title(title, fontsize=13, fontweight="bold", pad=6)
 
+    from contextily import add_basemap, providers
+    add_basemap(ax, source=providers.CartoDB.Positron, crs=3857)
+
+    import os
     os.makedirs(os.path.dirname(out_png), exist_ok=True)
     plt.savefig(out_png, dpi=300, bbox_inches="tight", pad_inches=0.1, transparent=True)
     plt.close(fig)
 
-    print(f"✅ 지도 이미지 생성 완료 → {out_png} (표시 건수: {len(points_3857)})")
-
-
+    print(f"✅ 지도 이미지 생성 완료 → {out_png}")
 
 # ------------------------------
 # 환경/DB 설정
@@ -219,7 +256,7 @@ engine = create_engine(
 with open("config/slides_tokens.yml", encoding="utf-8") as f:
     cfg = yaml.safe_load(f)
 
-OUTPUT_PPT = "out/test_sl20.pptx"
+OUTPUT_PPT = "out/test_1653.pptx"
 TEMPLATE_PPT = "template/master.pptx"
 
 token_values = {}
@@ -324,82 +361,81 @@ for s in cfg["slides"]:
 
 
 
-# 시설 지도
-facility_sql = """
-WITH reg AS (
-  SELECT ST_Transform(
-           ST_Buffer(ST_Transform(r.popltn_relm, 5179), :BUFFER_M),
-           4326
-         ) AS geom
-  FROM regionmonitor.tb_intrst_region_relm r
-  WHERE r.region_cd = :REGION_CD
-)
-SELECT
-  f.fclty_nm AS name,
-  /* x=경도(lon), y=위도(lat)로 맞춰서 반환 */
-  f.Y_CRDNT  AS x,
-  f.X_CRDNT  AS y
-FROM regionmonitor.TB_MAIN_FCLTY_INFO f
-JOIN reg
-  ON ST_Within(
-       /* lon, lat 순서로 포인트 생성 */
-       ST_SetSRID(ST_MakePoint(f.Y_CRDNT, f.X_CRDNT), 4326),
-       reg.geom
-     )
-WHERE f.X_CRDNT IS NOT NULL
-  AND f.Y_CRDNT IS NOT NULL;
+# # 시설 지도
+# facility_sql = """
+# WITH reg AS (
+#   SELECT ST_Transform(
+#            ST_Buffer(ST_Transform(r.popltn_relm, 5179), :BUFFER_M),
+#            4326
+#          ) AS geom
+#   FROM regionmonitor.tb_intrst_region_relm r
+#   WHERE r.region_cd = :REGION_CD
+# )
+# SELECT
+#   f.fclty_nm AS name,
+#   /* x=경도(lon), y=위도(lat)로 맞춰서 반환 */
+#   f.Y_CRDNT  AS x,
+#   f.X_CRDNT  AS y,
+#   f.fclty_sclas_cd AS type
+# FROM regionmonitor.TB_MAIN_FCLTY_INFO f
+# JOIN reg
+#   ON ST_Within(
+#        /* lon, lat 순서로 포인트 생성 */
+#        ST_SetSRID(ST_MakePoint(f.Y_CRDNT, f.X_CRDNT), 4326),
+#        reg.geom
+#      )
+# WHERE f.X_CRDNT IS NOT NULL
+#   AND f.Y_CRDNT IS NOT NULL;
 
-"""
+# """
 
-# 주차장 지도
-parking_sql = """
-WITH reg AS (
-  SELECT ST_Transform(
-           ST_Buffer(ST_Transform(r.popltn_relm, 5179), :BUFFER_M),
-           4326
-         ) AS geom
-  FROM regionmonitor.tb_intrst_region_relm r
-  WHERE r.region_cd = :REGION_CD
-)
-SELECT
-  p.prkplce_nm AS name,
-  /* x=경도(lon), y=위도(lat) */
-  p.Y_CRDNT    AS x,
-  p.X_CRDNT    AS y,
-  p.prkcmprt_co AS slots
-FROM regionmonitor.TB_PRKPLCE_INFO p
-JOIN reg
-  ON ST_Within(
-       ST_SetSRID(ST_MakePoint(p.Y_CRDNT, p.X_CRDNT), 4326),
-       reg.geom
-     )
-WHERE p.X_CRDNT IS NOT NULL
-  AND p.Y_CRDNT IS NOT NULL;
-"""
+# # 주차장 지도
+# parking_sql = """
+# WITH reg AS (
+#   SELECT ST_Transform(
+#            ST_Buffer(ST_Transform(r.popltn_relm, 5179), :BUFFER_M),
+#            4326
+#          ) AS geom
+#   FROM regionmonitor.tb_intrst_region_relm r
+#   WHERE r.region_cd = :REGION_CD
+# )
+# SELECT
+#   p.prkplce_nm AS name,
+#   /* x=경도(lon), y=위도(lat) */
+#   p.Y_CRDNT    AS x,
+#   p.X_CRDNT    AS y,
+#   p.prkcmprt_co AS slots
+# FROM regionmonitor.TB_PRKPLCE_INFO p
+# JOIN reg
+#   ON ST_Within(
+#        ST_SetSRID(ST_MakePoint(p.Y_CRDNT, p.X_CRDNT), 4326),
+#        reg.geom
+#      )
+# WHERE p.X_CRDNT IS NOT NULL
+#   AND p.Y_CRDNT IS NOT NULL;
+# """
 
 region_cd = cfg["params"]["REGION_CD"]
 
-# 3-1) 시설 지도
-plot_points_within_region(
+# 3) 시설+주차장 지도
+plot_facility_and_parking(
     engine=engine,
     region_cd=region_cd,
     buffer_m=500,
-    point_sql=facility_sql,  # ← 단일 SQL (위 CTE 버전)
-    out_png="out/img/facility_map.png",
-    title="관심영역 500m 내 주요 시설"
+    out_png="out/img/facility_parking_map.png",
+    title="500m내 주요 시설 및 주차장"
 )
-image_map["SL22_map_facility"] = "out/img/facility_map.png"
+image_map["SL22_map_facility"] = "out/img/facility_parking_map.png"
 
-# 3-2) 주차장 지도
-plot_points_within_region(
-    engine=engine,
-    region_cd=region_cd,
-    buffer_m=500,
-    point_sql=parking_sql,   # ← 단일 SQL (위 CTE 버전)
-    out_png="out/img/parking_map.png",
-    title="관심영역 500m 내 주차장"
-)
-image_map["SL23_map_parking"] = "out/img/parking_map.png"
+# # 3-2) 주차장 지도
+# plot_facility_and_parking(
+#     engine=engine,
+#     region_cd=region_cd,
+#     buffer_m=500,
+#     out_png="out/img/parking_map.png",
+#     title="관심영역 500m 내 주차장"
+# )
+# image_map["SL23_map_parking"] = "out/img/parking_map.png"
 
 print(f"DEBUG: 최종 Image Map: {image_map}")
 
