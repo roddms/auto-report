@@ -219,7 +219,7 @@ engine = create_engine(
 with open("config/slides_tokens.yml", encoding="utf-8") as f:
     cfg = yaml.safe_load(f)
 
-OUTPUT_PPT = "out/test_전년대비수정.pptx"
+OUTPUT_PPT = "out/test_sl20.pptx"
 TEMPLATE_PPT = "template/master.pptx"
 
 token_values = {}
@@ -281,19 +281,20 @@ for s in cfg["slides"]:
 
                 series = OrderedDict()
 
+                flags_from_cats = [1 if str(lbl).startswith("DAY") else 0 for lbl in categories]
+
                 for sname, ssql in chart_conf["series"].items():
                     rows = conn.execute(text(ssql), cfg["params"]).fetchall()
 
-                    if chart_name == "SL20_chart" and rows and len(rows[0]) == 2:
-                        vals  = [r[0] for r in rows]
-                        flags = [int(r[1]) if r[1] is not None else 0 for r in rows]
-
-                        if sname == "매출금액(천만원)":
-                            amt_vals, amt_flags = vals, flags
+                    if chart_name == "SL20_chart":
+                        vals = [r[0] for r in rows]  # 첫 컬럼만 사용
+                        if sname == "매출금액(백만원)":
+                            series["매출금액(백만원)"] = vals       # 막대(색칠 대상)
+                            series["_festival_flags"] = flags_from_cats  # ← 여기서 확정
                         elif sname == "매출건수(건)":
-                            cnt_vals = vals
+                            series["매출건수(건)"] = vals           # 라인
                         else:
-                            series[sname] = vals  # 예외 시 기본 처리
+                            series[sname] = vals
                     else:
                         # 일반(단일 컬럼) 시리즈
                         series[sname] = [r[0] for r in rows]
@@ -313,7 +314,7 @@ for s in cfg["slides"]:
                 if chart_name == "SL20_chart":
                     # ⬇️ 콤보차트 타입 유지: 0번(막대)=금액, 1번(라인)=건수
                     if amt_vals is not None:
-                        series["매출금액(천만원)"] = amt_vals      # 막대(포인트별 색칠 대상)
+                        series["매출금액(백만원)"] = amt_vals      # 막대(포인트별 색칠 대상)
                     if cnt_vals is not None:
                         series["매출건수(건)"]   = cnt_vals        # 라인(연속선)
                     if amt_flags is not None:
@@ -333,18 +334,21 @@ WITH reg AS (
   FROM regionmonitor.tb_intrst_region_relm r
   WHERE r.region_cd = :REGION_CD
 )
-SELECT 
+SELECT
   f.fclty_nm AS name,
-  f.X_CRDNT  AS x,
-  f.Y_CRDNT  AS y
+  /* x=경도(lon), y=위도(lat)로 맞춰서 반환 */
+  f.Y_CRDNT  AS x,
+  f.X_CRDNT  AS y
 FROM regionmonitor.TB_MAIN_FCLTY_INFO f
-JOIN reg 
+JOIN reg
   ON ST_Within(
-       ST_SetSRID(ST_MakePoint(f.X_CRDNT, f.Y_CRDNT), 4326),
+       /* lon, lat 순서로 포인트 생성 */
+       ST_SetSRID(ST_MakePoint(f.Y_CRDNT, f.X_CRDNT), 4326),
        reg.geom
      )
-WHERE f.X_CRDNT IS NOT NULL 
+WHERE f.X_CRDNT IS NOT NULL
   AND f.Y_CRDNT IS NOT NULL;
+
 """
 
 # 주차장 지도
@@ -357,18 +361,19 @@ WITH reg AS (
   FROM regionmonitor.tb_intrst_region_relm r
   WHERE r.region_cd = :REGION_CD
 )
-SELECT 
+SELECT
   p.prkplce_nm AS name,
-  p.X_CRDNT    AS x,
-  p.Y_CRDNT    AS y,
+  /* x=경도(lon), y=위도(lat) */
+  p.Y_CRDNT    AS x,
+  p.X_CRDNT    AS y,
   p.prkcmprt_co AS slots
 FROM regionmonitor.TB_PRKPLCE_INFO p
-JOIN reg 
+JOIN reg
   ON ST_Within(
-       ST_SetSRID(ST_MakePoint(p.X_CRDNT, p.Y_CRDNT), 4326),
+       ST_SetSRID(ST_MakePoint(p.Y_CRDNT, p.X_CRDNT), 4326),
        reg.geom
      )
-WHERE p.X_CRDNT IS NOT NULL 
+WHERE p.X_CRDNT IS NOT NULL
   AND p.Y_CRDNT IS NOT NULL;
 """
 
@@ -437,7 +442,7 @@ WITH topk AS (
   ORDER BY amt DESC, i.svc_induty_sclas_cd_nm
   LIMIT 10
 )
-SELECT '업종별 매출금액(만원)' AS series, '외국인' AS parent, child, ROUND(amt/10000, 1) AS value FROM topk;
+SELECT '업종별 매출금액(백만원)' AS series, '외국인' AS parent, child, ROUND(amt/1000000, 1) AS value FROM topk;
 """
 
 sql_treemap_native = """
@@ -452,7 +457,7 @@ WITH topk AS (
   ORDER BY amt DESC, i.svc_induty_sclas_cd_nm
   LIMIT 10
 )
-SELECT '업종별 매출금액(만원)' AS series, '내국인' AS parent, child, ROUND(amt/10000, 1) AS value FROM topk;
+SELECT '업종별 매출금액(백만원)' AS series, '내국인' AS parent, child, ROUND(amt/1000000, 1) AS value FROM topk;
 """
 
 
@@ -470,14 +475,14 @@ update_treemap_chart(
     out_path=ppt_abs,
     shape_name="SL19_chart_foreigner",
     rows=rows_foreigner,
-    value_header="억원"
+    value_header="백만원"
 )
 update_treemap_chart(
     ppt_path=ppt_abs,
     out_path=ppt_abs,
     shape_name="SL19_chart_native",
     rows=rows_native,
-    value_header="억원"
+    value_header="백만원"
 )
 
 

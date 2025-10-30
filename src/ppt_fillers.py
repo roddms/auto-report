@@ -1,3 +1,4 @@
+#src/ppt_fillers.py
 import os
 import re
 from pptx import Presentation
@@ -237,12 +238,13 @@ def color_sl20_chart_1(chart, sdict):
     flags = sdict.get("_festival_flags")
 
     # 1) 막대(금액) 포인트별 색상: 축제=빨강, 비축제=파랑
-    bar_name = "매출금액(천만원)"
+    bar_name = "매출금액(백만원)"
     if flags and bar_name in name2idx:
         s = chart.series[name2idx[bar_name]]
         for i, pt in enumerate(s.points):
             fill = pt.format.fill
             fill.solid()
+            # 축제 = 빨강, 비축제 = 파랑
             fill.fore_color.rgb = RGBColor(231, 76, 60) if flags[i] == 1 else RGBColor(31, 78, 121)
 
     # 2) 라인(건수) 기본색 지정
@@ -265,7 +267,7 @@ def color_sl21_chart(chart, sdict, bar_series_name="방문인구(명)"):
         try:
             fill = pt.format.fill
             fill.solid()
-            # 축제 = 빨강, 비축제 = 파랑(템플릿에 맞게 색상 조정 가능)
+            # 축제 = 빨강, 비축제 = 파랑
             fill.fore_color.rgb = RGBColor(231, 76, 60) if flags[i] == 1 else RGBColor(31, 78, 121)
         except Exception:
             pass

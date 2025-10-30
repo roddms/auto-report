@@ -43,7 +43,7 @@ slides:
 
       SL3_p_3:
         sql: | # 총 매출액
-          SELECT to_char(ROUND(SUM(TOT_SALAMT)/100000000, 0), 'FM999,999,999') || '억'
+          SELECT to_char(ROUND(SUM(TOT_SALAMT)/1000000, 0), 'FM999,999,999') || '백만'
           FROM regionmonitor.tb_sexdstn_selng
           WHERE STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
             AND REGION_CD = CAST(:REGION_CD AS VARCHAR);
@@ -402,7 +402,7 @@ slides:
 
       SL4_p_6:
         sql: | # 2023년 매출액
-          SELECT to_char(ROUND(SUM(TOT_SALAMT)/100000000.0, 0), 'FM999,999,999') || '억'
+          SELECT to_char(ROUND(SUM(TOT_SALAMT)/1000000, 0), 'FM999,999,999') || '백만'
           FROM regionmonitor.tb_sexdstn_selng
           WHERE REGION_CD = CAST(:REGION_CD AS VARCHAR)
             AND STDR_YMD BETWEEN
@@ -411,7 +411,7 @@ slides:
 
       SL4_p_7:
         sql: | # 2024년 매출액
-          SELECT to_char(ROUND(SUM(TOT_SALAMT)/100000000.0, 0), 'FM999,999,999') || '억'
+          SELECT to_char(ROUND(SUM(TOT_SALAMT)/1000000, 0), 'FM999,999,999') || '백만'
           FROM regionmonitor.tb_sexdstn_selng
           WHERE REGION_CD = CAST(:REGION_CD AS VARCHAR)
             AND STDR_YMD BETWEEN
@@ -440,7 +440,7 @@ slides:
 
       SL4_p_9:
         sql: | # 2025년 매출액
-          SELECT to_char(ROUND(SUM(TOT_SALAMT)/100000000.0, 0), 'FM999,999,999') || '억'
+          SELECT to_char(ROUND(SUM(TOT_SALAMT)/1000000, 0), 'FM999,999,999') || '백만'
           FROM regionmonitor.tb_sexdstn_selng
           WHERE REGION_CD = CAST(:REGION_CD AS VARCHAR)
             AND STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO;
@@ -471,7 +471,7 @@ slides:
           WITH p AS (SELECT CAST(SUBSTRING(:DATE_FROM,1,4) AS INT) y)
           SELECT (y-2)::TEXT FROM p
           UNION ALL SELECT (y-1)::TEXT FROM p
-          UNION ALL SELECT (y  )::TEXT FROM p;
+          UNION ALL SELECT (y)::TEXT FROM p;
 
         series:
           방문인구 수(만 명): |-
@@ -521,17 +521,17 @@ slides:
           WITH p AS (SELECT CAST(SUBSTRING(:DATE_FROM,1,4) AS INT) y)
           SELECT (y-2)::TEXT FROM p
           UNION ALL SELECT (y-1)::TEXT FROM p
-          UNION ALL SELECT (y  )::TEXT FROM p;
+          UNION ALL SELECT (y)::TEXT FROM p;
 
         series:
-          매출액(억원): |-
+          매출액(백만원): |-
             SELECT val
             FROM (
               WITH sums AS (
                 SELECT
-                  SUM(t.TOT_SALAMT_PERV2Y)::NUMERIC/1e8 AS y2y_val, -- 전전년 (Y-2)
-                  SUM(t.TOT_SALAMT_PERV1Y)::NUMERIC/1e8 AS y1y_val, -- 전년 (Y-1)
-                  SUM(t.TOT_SALAMT)::NUMERIC/1e8 AS cur_val         -- 당해년도 (Y)
+                  SUM(t.TOT_SALAMT_PERV2Y)::NUMERIC/1000000 AS y2y_val, -- 전전년 (Y-2)
+                  SUM(t.TOT_SALAMT_PERV1Y)::NUMERIC/1000000 AS y1y_val, -- 전년 (Y-1)
+                  SUM(t.TOT_SALAMT)::NUMERIC/1000000 AS cur_val         -- 당해년도 (Y)
                 FROM regionmonitor.TB_INTRST_REGION t
                 WHERE t.REGION_CD=:REGION_CD AND t.STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
               )
@@ -2134,42 +2134,59 @@ slides:
           WITH p AS (SELECT CAST(SUBSTRING(:DATE_FROM,1,4) AS INT) y)
           SELECT (y-2)::TEXT FROM p
           UNION ALL SELECT (y-1)::TEXT FROM p
-          UNION ALL SELECT (y  )::TEXT FROM p;
+          UNION ALL SELECT (y)::TEXT FROM p;
 
         series:
           관내: |-
-            WITH p AS (SELECT CAST(SUBSTRING(:DATE_FROM,1,4) AS INT) y),
-            yrs AS (SELECT 1 ord, y-2 yy FROM p UNION ALL SELECT 2, y-1 FROM p UNION ALL SELECT 3, y FROM p)
+            WITH p AS (SELECT CAST(SUBSTRING(:DATE_FROM,1,4) AS INT) y, :DATE_FROM df, :DATE_TO dt),
+            yrs_data AS (
+              SELECT 1 ord, y-2 yy, df, dt FROM p
+              UNION ALL SELECT 2, y-1, df, dt FROM p
+              UNION ALL SELECT 3, y, df, dt FROM p
+            )
             SELECT (
               SELECT COALESCE(SUM(t.WHTHRC_VIPOP),0)::NUMERIC/100000
               FROM regionmonitor.TB_INFLOW_VISIT_POPLTN t
               WHERE t.REGION_CD = :REGION_CD
-                AND t.STDR_YMD BETWEEN (yy::TEXT||'0101') AND (yy::TEXT||'1231')
+                AND t.STDR_YMD BETWEEN
+                    CASE WHEN yrs_data.yy = CAST(SUBSTRING(yrs_data.df,1,4) AS INT) THEN yrs_data.df ELSE (yrs_data.yy::TEXT||'0101') END
+                AND CASE WHEN yrs_data.yy = CAST(SUBSTRING(yrs_data.dt,1,4) AS INT) THEN yrs_data.dt ELSE (yrs_data.yy::TEXT||'1231') END
             )
-            FROM yrs ORDER BY ord;
+            FROM yrs_data ORDER BY ord;
 
           인접: |-
-            WITH p AS (SELECT CAST(SUBSTRING(:DATE_FROM,1,4) AS INT) y),
-            yrs AS (SELECT 1 ord, y-2 yy FROM p UNION ALL SELECT 2, y-1 FROM p UNION ALL SELECT 3, y FROM p)
+            WITH p AS (SELECT CAST(SUBSTRING(:DATE_FROM,1,4) AS INT) y, :DATE_FROM df, :DATE_TO dt),
+            yrs_data AS (
+              SELECT 1 ord, y-2 yy, df, dt FROM p
+              UNION ALL SELECT 2, y-1, df, dt FROM p
+              UNION ALL SELECT 3, y, df, dt FROM p
+            )
             SELECT (
               SELECT COALESCE(SUM(t.NEARBY_VIPOP),0)::NUMERIC/100000
               FROM regionmonitor.TB_INFLOW_VISIT_POPLTN t
               WHERE t.REGION_CD = :REGION_CD
-                AND t.STDR_YMD BETWEEN (yy::TEXT||'0101') AND (yy::TEXT||'1231')
+                AND t.STDR_YMD BETWEEN
+                    CASE WHEN yrs_data.yy = CAST(SUBSTRING(yrs_data.df,1,4) AS INT) THEN yrs_data.df ELSE (yrs_data.yy::TEXT||'0101') END
+                AND CASE WHEN yrs_data.yy = CAST(SUBSTRING(yrs_data.dt,1,4) AS INT) THEN yrs_data.dt ELSE (yrs_data.yy::TEXT||'1231') END
             )
-            FROM yrs ORDER BY ord;
+            FROM yrs_data ORDER BY ord;
 
           관외: |-
-            WITH p AS (SELECT CAST(SUBSTRING(:DATE_FROM,1,4) AS INT) y),
-            yrs AS (SELECT 1 ord, y-2 yy FROM p UNION ALL SELECT 2, y-1 FROM p UNION ALL SELECT 3, y FROM p)
+            WITH p AS (SELECT CAST(SUBSTRING(:DATE_FROM,1,4) AS INT) y, :DATE_FROM df, :DATE_TO dt),
+            yrs_data AS (
+              SELECT 1 ord, y-2 yy, df, dt FROM p
+              UNION ALL SELECT 2, y-1, df, dt FROM p
+              UNION ALL SELECT 3, y, df, dt FROM p
+            )
             SELECT (
               SELECT COALESCE(SUM(t.OUTHRC_VIPOP),0)::NUMERIC/100000
               FROM regionmonitor.TB_INFLOW_VISIT_POPLTN t
               WHERE t.REGION_CD = :REGION_CD
-                AND t.STDR_YMD BETWEEN (yy::TEXT||'0101') AND (yy::TEXT||'1231')
+                AND t.STDR_YMD BETWEEN
+                    CASE WHEN yrs_data.yy = CAST(SUBSTRING(yrs_data.df,1,4) AS INT) THEN yrs_data.df ELSE (yrs_data.yy::TEXT||'0101') END
+                AND CASE WHEN yrs_data.yy = CAST(SUBSTRING(yrs_data.dt,1,4) AS INT) THEN yrs_data.dt ELSE (yrs_data.yy::TEXT||'1231') END
             )
-            FROM yrs ORDER BY ord;
-
+            FROM yrs_data ORDER BY ord;
 
   - name: "11 : 내국인 vs 외국인 방문 비교"
     tokens:
@@ -2271,48 +2288,50 @@ slides:
           WITH p AS (SELECT CAST(SUBSTRING(:DATE_FROM,1,4) AS INT) y)
           SELECT (y-2)::TEXT FROM p
           UNION ALL SELECT (y-1)::TEXT FROM p
-          UNION ALL SELECT (y  )::TEXT FROM p;
-
+          UNION ALL SELECT (y)::TEXT FROM p;
 
         series:
           외국인: |-
-            WITH p AS (SELECT CAST(SUBSTRING(:DATE_FROM,1,4) AS INT) y),
-            yrs AS (
-              SELECT 1 ord, y-2 yy FROM p
-              UNION ALL SELECT 2, y-1 FROM p
-              UNION ALL SELECT 3, y   FROM p
+            WITH p AS (SELECT CAST(SUBSTRING(:DATE_FROM,1,4) AS INT) y, :DATE_FROM df, :DATE_TO dt),
+            yrs_data AS (
+              SELECT 1 ord, y-2 yy, df, dt FROM p
+              UNION ALL SELECT 2, y-1, df, dt FROM p
+              UNION ALL SELECT 3, y, df, dt FROM p
             )
             SELECT (
               SELECT COALESCE(SUM(t.FRGNR_VIPOP),0)::NUMERIC/100000
               FROM regionmonitor.TB_NATION_VISIT_POPLTN t
               WHERE t.REGION_CD = :REGION_CD
-                AND t.STDR_YMD BETWEEN (yy::TEXT||'0101') AND (yy::TEXT||'1231')
+                AND t.STDR_YMD BETWEEN
+                    CASE WHEN yrs_data.yy = CAST(SUBSTRING(yrs_data.df,1,4) AS INT) THEN yrs_data.df ELSE (yrs_data.yy::TEXT||'0101') END
+                AND CASE WHEN yrs_data.yy = CAST(SUBSTRING(yrs_data.dt,1,4) AS INT) THEN yrs_data.dt ELSE (yrs_data.yy::TEXT||'1231') END
             )
-            FROM yrs ORDER BY ord;
+            FROM yrs_data ORDER BY ord;
 
           내국인: |-
-            WITH p AS (SELECT CAST(SUBSTRING(:DATE_FROM,1,4) AS INT) y),
-            yrs AS (
-              SELECT 1 ord, y-2 yy FROM p
-              UNION ALL SELECT 2, y-1 FROM p
-              UNION ALL SELECT 3, y   FROM p
+            WITH p AS (SELECT CAST(SUBSTRING(:DATE_FROM,1,4) AS INT) y, :DATE_FROM df, :DATE_TO dt),
+            yrs_data AS (
+              SELECT 1 ord, y-2 yy, df, dt FROM p
+              UNION ALL SELECT 2, y-1, df, dt FROM p
+              UNION ALL SELECT 3, y, df, dt FROM p
             )
             SELECT (
               SELECT COALESCE(SUM(t.NATIVE_VIPOP),0)::NUMERIC/100000
               FROM regionmonitor.TB_NATION_VISIT_POPLTN t
               WHERE t.REGION_CD = :REGION_CD
-                AND t.STDR_YMD BETWEEN (yy::TEXT||'0101') AND (yy::TEXT||'1231')
+                AND t.STDR_YMD BETWEEN
+                    CASE WHEN yrs_data.yy = CAST(SUBSTRING(yrs_data.df,1,4) AS INT) THEN yrs_data.df ELSE (yrs_data.yy::TEXT||'0101') END
+                AND CASE WHEN yrs_data.yy = CAST(SUBSTRING(yrs_data.dt,1,4) AS INT) THEN yrs_data.dt ELSE (yrs_data.yy::TEXT||'1231') END
             )
-            FROM yrs ORDER BY ord;
-
+            FROM yrs_data ORDER BY ord;
 
 
   - name: "12 : 소비 분석 요약"
     tokens:
       # 1) 총 소비금액 & 소비건수
       SL12_p_1:
-        sql: | # 총 소비금액(억원 단위
-          SELECT to_char(ROUND(COALESCE(SUM(TOT_SALAMT),0) / 100000000.0, 0), 'FM999,999,999') || '억원'
+        sql: | # 총 소비금액(백만원 단위)
+          SELECT to_char(ROUND(COALESCE(SUM(TOT_SALAMT),0) /1000000.0, 0), 'FM999,999,999') || '백만원'
           FROM regionmonitor.TB_SEXDSTN_SELNG
           WHERE REGION_CD = CAST(:REGION_CD AS VARCHAR)
             AND STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO;
@@ -2578,13 +2597,13 @@ slides:
         category_sql: |- # 성별 매출 비율
           SELECT '남자' UNION ALL SELECT '여자';
         series:
-          매출금액(억원): |-
-            SELECT SUM(t.MSALAMT)/1e8
+          매출금액(백만원): |-
+            SELECT SUM(t.MSALAMT)/1000000
             FROM regionmonitor.TB_SEXDSTN_SELNG t
             WHERE t.REGION_CD = :REGION_CD
               AND t.STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
             UNION ALL
-            SELECT SUM(t.FSALAMT)/1e8
+            SELECT SUM(t.FSALAMT)/1000000
             FROM regionmonitor.TB_SEXDSTN_SELNG t
             WHERE t.REGION_CD = :REGION_CD
               AND t.STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO;
@@ -2618,7 +2637,7 @@ slides:
           )
           SELECT lbl FROM age_sum ORDER BY amt DESC LIMIT 3;
         series:
-          매출금액(억원): |-
+          매출금액(백만원): |-
             WITH age_sum AS (
               SELECT '20대' AS lbl, COALESCE(SUM(GNR20_SALAMT),0) AS amt
                 FROM regionmonitor.tb_agrde_selng
@@ -2644,22 +2663,22 @@ slides:
                 FROM regionmonitor.tb_agrde_selng
                 WHERE REGION_CD=:REGION_CD AND STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
             )
-            SELECT amt/1e8 FROM age_sum ORDER BY amt DESC LIMIT 3;
+            SELECT amt/1000000 FROM age_sum ORDER BY amt DESC LIMIT 3;
 
       SL12_chart_3: # 유입지별 매출 비율
         category_sql: |-
           SELECT '관내' UNION ALL SELECT '인접' UNION ALL SELECT '관외';
         series:
-          매출금액(억원): |-
-            SELECT COALESCE(SUM(WHTHRC_SALAMT),0)/1e8
+          매출금액(백만원): |-
+            SELECT COALESCE(SUM(WHTHRC_SALAMT),0)/1000000
             FROM regionmonitor.TB_INFLOW_SELNG
             WHERE REGION_CD=:REGION_CD AND STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
             UNION ALL
-            SELECT COALESCE(SUM(NEARBY_SALAMT),0)/1e8
+            SELECT COALESCE(SUM(NEARBY_SALAMT),0)/1000000
             FROM regionmonitor.TB_INFLOW_SELNG
             WHERE REGION_CD=:REGION_CD AND STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
             UNION ALL
-            SELECT COALESCE(SUM(OUTHRC_SALAMT),0)/1e8
+            SELECT COALESCE(SUM(OUTHRC_SALAMT),0)/1000000
             FROM regionmonitor.TB_INFLOW_SELNG
             WHERE REGION_CD=:REGION_CD AND STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO;
 
@@ -2679,7 +2698,7 @@ slides:
           )
           SELECT nm FROM top_ind ORDER BY amt DESC;
         series:
-          매출금액(억원): |-
+          매출금액(백만원): |-
             WITH top_ind AS (
               SELECT i.svc_induty_sclas_cd_nm AS nm,
                     SUM(s.TOT_SALAMT) AS amt
@@ -2691,7 +2710,7 @@ slides:
               ORDER BY amt DESC
               LIMIT 5
             )
-            SELECT amt/1e8 FROM top_ind ORDER BY amt DESC;
+            SELECT amt/1000000 FROM top_ind ORDER BY amt DESC;
 
       SL12_chart_5: # 일자별 매출액
         category_sql: |- 
@@ -2703,8 +2722,8 @@ slides:
             ORDER BY STDR_YMD
           );
         series:
-          매출액(억원): |-
-            SELECT SUM(TOT_SALAMT)/1e8
+          매출액(백만원): |-
+            SELECT SUM(TOT_SALAMT)/1000000
             FROM regionmonitor.TB_SEXDSTN_SELNG
             WHERE REGION_CD=:REGION_CD AND STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
             GROUP BY STDR_YMD
@@ -2984,7 +3003,7 @@ slides:
           SELECT nm FROM top10 ORDER BY amt DESC;
 
         series:
-          소비금액(억원): |-
+          매출금액(백만원): |-
             WITH top10 AS (
               SELECT i.svc_induty_sclas_cd_nm AS nm,
                     SUM(s.TOT_SALAMT) AS amt
@@ -2997,11 +3016,11 @@ slides:
               ORDER BY amt DESC
               LIMIT 10
             )
-            SELECT amt/1e8
+            SELECT amt/1000000
             FROM top10
             ORDER BY amt DESC;
 
-          소비건수(건): |-
+          매출건수(건): |-
             WITH top10 AS (
               SELECT i.svc_induty_sclas_cd_nm AS nm,
                     SUM(s.TOT_SALAMT) AS amt
@@ -3288,7 +3307,7 @@ slides:
           ORDER BY amt DESC;
 
         series:
-          남자(억원): |-
+          남자(백만원): |-
             WITH top10 AS (
               SELECT i.svc_induty_sclas_cd_nm AS nm,
                     SUM(s.TOT_SALAMT)        AS amt
@@ -3302,7 +3321,7 @@ slides:
               LIMIT 10
             )
             SELECT COALESCE((
-              SELECT SUM(s.MSALAMT)::NUMERIC/1e8
+              SELECT SUM(s.MSALAMT)::NUMERIC/1000000
               FROM regionmonitor.TB_SEXDSTN_SELNG s
               JOIN regionmonitor.tb_svc_induty_sclas i
                 ON s.SVC_INDUTY_SCLAS_CD = i.svc_induty_sclas_cd
@@ -3313,7 +3332,7 @@ slides:
             FROM top10
             ORDER BY top10.amt DESC;
 
-          여자(억원): |-
+          여자(백만원): |-
             WITH top10 AS (
               SELECT i.svc_induty_sclas_cd_nm AS nm,
                     SUM(s.TOT_SALAMT)        AS amt
@@ -3327,7 +3346,7 @@ slides:
               LIMIT 10
             )
             SELECT COALESCE((
-              SELECT SUM(s.FSALAMT)::NUMERIC/1e8
+              SELECT SUM(s.FSALAMT)::NUMERIC/1000000
               FROM regionmonitor.TB_SEXDSTN_SELNG s
               JOIN regionmonitor.tb_svc_induty_sclas i
                 ON s.SVC_INDUTY_SCLAS_CD = i.svc_induty_sclas_cd
@@ -3388,7 +3407,7 @@ slides:
             WHERE REGION_CD = CAST(:REGION_CD AS VARCHAR)
               AND STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
           )
-          SELECT to_char(ROUND(v/100000000.0, 0), 'FM999,999,999') || '억' FROM age;
+          SELECT to_char(ROUND(v/1000000, 0), 'FM999,999,999') || '백만' FROM age;
 
 
       SL15_4:
@@ -3408,7 +3427,7 @@ slides:
             WHERE REGION_CD = CAST(:REGION_CD AS VARCHAR)
               AND STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
           )
-          SELECT to_char(ROUND(v/100000000.0, 0), 'FM999,999,999') || '억' FROM age;
+          SELECT to_char(ROUND(v/1000000.0, 0), 'FM999,999,999') || '백만' FROM age;
 
 
       SL15_6:
@@ -3428,7 +3447,7 @@ slides:
             WHERE REGION_CD = CAST(:REGION_CD AS VARCHAR)
               AND STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
           )
-          SELECT to_char(ROUND(v/100000000.0, 0), 'FM999,999,999') || '억' FROM age;
+          SELECT to_char(ROUND(v/1000000, 0), 'FM999,999,999') || '백만' FROM age;
 
 
       SL15_8:
@@ -3447,7 +3466,7 @@ slides:
             WHERE REGION_CD = CAST(:REGION_CD AS VARCHAR)
               AND STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
           )
-          SELECT to_char(ROUND(v/100000000.0, 0), 'FM999,999,999') || '억' FROM age;
+          SELECT to_char(ROUND(v/1000000, 0), 'FM999,999,999') || '백만' FROM age;
 
 
       SL15_10:
@@ -3466,7 +3485,7 @@ slides:
             WHERE REGION_CD = CAST(:REGION_CD AS VARCHAR)
               AND STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
           )
-          SELECT to_char(ROUND(v/100000000.0, 0), 'FM999,999,999') || '억' FROM age;
+          SELECT to_char(ROUND(v/1000000, 0), 'FM999,999,999') || '백만' FROM age;
 
 
       SL15_12:
@@ -3485,7 +3504,7 @@ slides:
             WHERE REGION_CD = CAST(:REGION_CD AS VARCHAR)
               AND STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
           )
-          SELECT to_char(ROUND(v/100000000.0, 0), 'FM999,999,999') || '억' FROM age;
+          SELECT to_char(ROUND(v/1000000, 0), 'FM999,999,999') || '백만' FROM age;
 
 
       SL15_14:
@@ -3926,7 +3945,7 @@ slides:
         category_sql: |-
           SELECT lbl
           FROM (VALUES
-            ('0~6시'), ('7시'), ('8시'), ('9시'), ('10시'), ('11시'),
+            ('0-6시'), ('7시'), ('8시'), ('9시'), ('10시'), ('11시'),
             ('12시'), ('13시'), ('14시'), ('15시'), ('16시'),
             ('17시'), ('18시'), ('19시'), ('20시'), ('21시'),
             ('22시'), ('23시')
@@ -3948,24 +3967,24 @@ slides:
               LIMIT 5
             )
             SELECT UNNEST(ARRAY[
-              COALESCE(SUM(t.T0_T6_SALAMT),0)/1e8,
-              COALESCE(SUM(t.T7_SALAMT),0)/1e8,
-              COALESCE(SUM(t.T8_SALAMT),0)/1e8,
-              COALESCE(SUM(t.T9_SALAMT),0)/1e8,
-              COALESCE(SUM(t.T10_SALAMT),0)/1e8,
-              COALESCE(SUM(t.T11_SALAMT),0)/1e8,
-              COALESCE(SUM(t.T12_SALAMT),0)/1e8,
-              COALESCE(SUM(t.T13_SALAMT),0)/1e8,
-              COALESCE(SUM(t.T14_SALAMT),0)/1e8,
-              COALESCE(SUM(t.T15_SALAMT),0)/1e8,
-              COALESCE(SUM(t.T16_SALAMT),0)/1e8,
-              COALESCE(SUM(t.T17_SALAMT),0)/1e8,
-              COALESCE(SUM(t.T18_SALAMT),0)/1e8,
-              COALESCE(SUM(t.T19_SALAMT),0)/1e8,
-              COALESCE(SUM(t.T20_SALAMT),0)/1e8,
-              COALESCE(SUM(t.T21_SALAMT),0)/1e8,
-              COALESCE(SUM(t.T22_SALAMT),0)/1e8,
-              COALESCE(SUM(t.T23_SALAMT),0)/1e8
+              COALESCE(SUM(t.T0_T6_SALAMT),0)/1000000,
+              COALESCE(SUM(t.T7_SALAMT),0)/1000000,
+              COALESCE(SUM(t.T8_SALAMT),0)/1000000,
+              COALESCE(SUM(t.T9_SALAMT),0)/1000000,
+              COALESCE(SUM(t.T10_SALAMT),0)/1000000,
+              COALESCE(SUM(t.T11_SALAMT),0)/1000000,
+              COALESCE(SUM(t.T12_SALAMT),0)/1000000,
+              COALESCE(SUM(t.T13_SALAMT),0)/1000000,
+              COALESCE(SUM(t.T14_SALAMT),0)/1000000,
+              COALESCE(SUM(t.T15_SALAMT),0)/1000000,
+              COALESCE(SUM(t.T16_SALAMT),0)/1000000,
+              COALESCE(SUM(t.T17_SALAMT),0)/1000000,
+              COALESCE(SUM(t.T18_SALAMT),0)/1000000,
+              COALESCE(SUM(t.T19_SALAMT),0)/1000000,
+              COALESCE(SUM(t.T20_SALAMT),0)/1000000,
+              COALESCE(SUM(t.T21_SALAMT),0)/1000000,
+              COALESCE(SUM(t.T22_SALAMT),0)/1000000,
+              COALESCE(SUM(t.T23_SALAMT),0)/1000000
             ])
             FROM regionmonitor.TB_TMZON_SELNG t
             WHERE t.REGION_CD = :REGION_CD
@@ -3987,24 +4006,24 @@ slides:
               LIMIT 5
             )
             SELECT UNNEST(ARRAY[
-              COALESCE(SUM(t.T0_T6_SALAMT),0)/1e8,
-              COALESCE(SUM(t.T7_SALAMT),0)/1e8,
-              COALESCE(SUM(t.T8_SALAMT),0)/1e8,
-              COALESCE(SUM(t.T9_SALAMT),0)/1e8,
-              COALESCE(SUM(t.T10_SALAMT),0)/1e8,
-              COALESCE(SUM(t.T11_SALAMT),0)/1e8,
-              COALESCE(SUM(t.T12_SALAMT),0)/1e8,
-              COALESCE(SUM(t.T13_SALAMT),0)/1e8,
-              COALESCE(SUM(t.T14_SALAMT),0)/1e8,
-              COALESCE(SUM(t.T15_SALAMT),0)/1e8,
-              COALESCE(SUM(t.T16_SALAMT),0)/1e8,
-              COALESCE(SUM(t.T17_SALAMT),0)/1e8,
-              COALESCE(SUM(t.T18_SALAMT),0)/1e8,
-              COALESCE(SUM(t.T19_SALAMT),0)/1e8,
-              COALESCE(SUM(t.T20_SALAMT),0)/1e8,
-              COALESCE(SUM(t.T21_SALAMT),0)/1e8,
-              COALESCE(SUM(t.T22_SALAMT),0)/1e8,
-              COALESCE(SUM(t.T23_SALAMT),0)/1e8
+              COALESCE(SUM(t.T0_T6_SALAMT),0)/1000000,
+              COALESCE(SUM(t.T7_SALAMT),0)/1000000,
+              COALESCE(SUM(t.T8_SALAMT),0)/1000000,
+              COALESCE(SUM(t.T9_SALAMT),0)/1000000,
+              COALESCE(SUM(t.T10_SALAMT),0)/1000000,
+              COALESCE(SUM(t.T11_SALAMT),0)/1000000,
+              COALESCE(SUM(t.T12_SALAMT),0)/1000000,
+              COALESCE(SUM(t.T13_SALAMT),0)/1000000,
+              COALESCE(SUM(t.T14_SALAMT),0)/1000000,
+              COALESCE(SUM(t.T15_SALAMT),0)/1000000,
+              COALESCE(SUM(t.T16_SALAMT),0)/1000000,
+              COALESCE(SUM(t.T17_SALAMT),0)/1000000,
+              COALESCE(SUM(t.T18_SALAMT),0)/1000000,
+              COALESCE(SUM(t.T19_SALAMT),0)/1000000,
+              COALESCE(SUM(t.T20_SALAMT),0)/1000000,
+              COALESCE(SUM(t.T21_SALAMT),0)/1000000,
+              COALESCE(SUM(t.T22_SALAMT),0)/1000000,
+              COALESCE(SUM(t.T23_SALAMT),0)/1000000
             ])
             FROM regionmonitor.TB_TMZON_SELNG t
             WHERE t.REGION_CD = :REGION_CD
@@ -4026,24 +4045,24 @@ slides:
               LIMIT 5
             )
             SELECT UNNEST(ARRAY[
-              COALESCE(SUM(t.T0_T6_SALAMT),0)/1e8,
-              COALESCE(SUM(t.T7_SALAMT),0)/1e8,
-              COALESCE(SUM(t.T8_SALAMT),0)/1e8,
-              COALESCE(SUM(t.T9_SALAMT),0)/1e8,
-              COALESCE(SUM(t.T10_SALAMT),0)/1e8,
-              COALESCE(SUM(t.T11_SALAMT),0)/1e8,
-              COALESCE(SUM(t.T12_SALAMT),0)/1e8,
-              COALESCE(SUM(t.T13_SALAMT),0)/1e8,
-              COALESCE(SUM(t.T14_SALAMT),0)/1e8,
-              COALESCE(SUM(t.T15_SALAMT),0)/1e8,
-              COALESCE(SUM(t.T16_SALAMT),0)/1e8,
-              COALESCE(SUM(t.T17_SALAMT),0)/1e8,
-              COALESCE(SUM(t.T18_SALAMT),0)/1e8,
-              COALESCE(SUM(t.T19_SALAMT),0)/1e8,
-              COALESCE(SUM(t.T20_SALAMT),0)/1e8,
-              COALESCE(SUM(t.T21_SALAMT),0)/1e8,
-              COALESCE(SUM(t.T22_SALAMT),0)/1e8,
-              COALESCE(SUM(t.T23_SALAMT),0)/1e8
+              COALESCE(SUM(t.T0_T6_SALAMT),0)/1000000,
+              COALESCE(SUM(t.T7_SALAMT),0)/1000000,
+              COALESCE(SUM(t.T8_SALAMT),0)/1000000,
+              COALESCE(SUM(t.T9_SALAMT),0)/1000000,
+              COALESCE(SUM(t.T10_SALAMT),0)/1000000,
+              COALESCE(SUM(t.T11_SALAMT),0)/1000000,
+              COALESCE(SUM(t.T12_SALAMT),0)/1000000,
+              COALESCE(SUM(t.T13_SALAMT),0)/1000000,
+              COALESCE(SUM(t.T14_SALAMT),0)/1000000,
+              COALESCE(SUM(t.T15_SALAMT),0)/1000000,
+              COALESCE(SUM(t.T16_SALAMT),0)/1000000,
+              COALESCE(SUM(t.T17_SALAMT),0)/1000000,
+              COALESCE(SUM(t.T18_SALAMT),0)/1000000,
+              COALESCE(SUM(t.T19_SALAMT),0)/1000000,
+              COALESCE(SUM(t.T20_SALAMT),0)/1000000,
+              COALESCE(SUM(t.T21_SALAMT),0)/1000000,
+              COALESCE(SUM(t.T22_SALAMT),0)/1000000,
+              COALESCE(SUM(t.T23_SALAMT),0)/1000000
             ])
             FROM regionmonitor.TB_TMZON_SELNG t
             WHERE t.REGION_CD = :REGION_CD
@@ -4065,24 +4084,24 @@ slides:
               LIMIT 5
             )
             SELECT UNNEST(ARRAY[
-              COALESCE(SUM(t.T0_T6_SALAMT),0)/1e8,
-              COALESCE(SUM(t.T7_SALAMT),0)/1e8,
-              COALESCE(SUM(t.T8_SALAMT),0)/1e8,
-              COALESCE(SUM(t.T9_SALAMT),0)/1e8,
-              COALESCE(SUM(t.T10_SALAMT),0)/1e8,
-              COALESCE(SUM(t.T11_SALAMT),0)/1e8,
-              COALESCE(SUM(t.T12_SALAMT),0)/1e8,
-              COALESCE(SUM(t.T13_SALAMT),0)/1e8,
-              COALESCE(SUM(t.T14_SALAMT),0)/1e8,
-              COALESCE(SUM(t.T15_SALAMT),0)/1e8,
-              COALESCE(SUM(t.T16_SALAMT),0)/1e8,
-              COALESCE(SUM(t.T17_SALAMT),0)/1e8,
-              COALESCE(SUM(t.T18_SALAMT),0)/1e8,
-              COALESCE(SUM(t.T19_SALAMT),0)/1e8,
-              COALESCE(SUM(t.T20_SALAMT),0)/1e8,
-              COALESCE(SUM(t.T21_SALAMT),0)/1e8,
-              COALESCE(SUM(t.T22_SALAMT),0)/1e8,
-              COALESCE(SUM(t.T23_SALAMT),0)/1e8
+              COALESCE(SUM(t.T0_T6_SALAMT),0)/1000000,
+              COALESCE(SUM(t.T7_SALAMT),0)/1000000,
+              COALESCE(SUM(t.T8_SALAMT),0)/1000000,
+              COALESCE(SUM(t.T9_SALAMT),0)/1000000,
+              COALESCE(SUM(t.T10_SALAMT),0)/1000000,
+              COALESCE(SUM(t.T11_SALAMT),0)/1000000,
+              COALESCE(SUM(t.T12_SALAMT),0)/1000000,
+              COALESCE(SUM(t.T13_SALAMT),0)/1000000,
+              COALESCE(SUM(t.T14_SALAMT),0)/1000000,
+              COALESCE(SUM(t.T15_SALAMT),0)/1000000,
+              COALESCE(SUM(t.T16_SALAMT),0)/1000000,
+              COALESCE(SUM(t.T17_SALAMT),0)/1000000,
+              COALESCE(SUM(t.T18_SALAMT),0)/1000000,
+              COALESCE(SUM(t.T19_SALAMT),0)/1000000,
+              COALESCE(SUM(t.T20_SALAMT),0)/1000000,
+              COALESCE(SUM(t.T21_SALAMT),0)/1000000,
+              COALESCE(SUM(t.T22_SALAMT),0)/1000000,
+              COALESCE(SUM(t.T23_SALAMT),0)/1000000
             ])
             FROM regionmonitor.TB_TMZON_SELNG t
             WHERE t.REGION_CD = :REGION_CD
@@ -4104,24 +4123,24 @@ slides:
               LIMIT 5
             )
             SELECT UNNEST(ARRAY[
-              COALESCE(SUM(t.T0_T6_SALAMT),0)/1e8,
-              COALESCE(SUM(t.T7_SALAMT),0)/1e8,
-              COALESCE(SUM(t.T8_SALAMT),0)/1e8,
-              COALESCE(SUM(t.T9_SALAMT),0)/1e8,
-              COALESCE(SUM(t.T10_SALAMT),0)/1e8,
-              COALESCE(SUM(t.T11_SALAMT),0)/1e8,
-              COALESCE(SUM(t.T12_SALAMT),0)/1e8,
-              COALESCE(SUM(t.T13_SALAMT),0)/1e8,
-              COALESCE(SUM(t.T14_SALAMT),0)/1e8,
-              COALESCE(SUM(t.T15_SALAMT),0)/1e8,
-              COALESCE(SUM(t.T16_SALAMT),0)/1e8,
-              COALESCE(SUM(t.T17_SALAMT),0)/1e8,
-              COALESCE(SUM(t.T18_SALAMT),0)/1e8,
-              COALESCE(SUM(t.T19_SALAMT),0)/1e8,
-              COALESCE(SUM(t.T20_SALAMT),0)/1e8,
-              COALESCE(SUM(t.T21_SALAMT),0)/1e8,
-              COALESCE(SUM(t.T22_SALAMT),0)/1e8,
-              COALESCE(SUM(t.T23_SALAMT),0)/1e8
+              COALESCE(SUM(t.T0_T6_SALAMT),0)/1000000,
+              COALESCE(SUM(t.T7_SALAMT),0)/1000000,
+              COALESCE(SUM(t.T8_SALAMT),0)/1000000,
+              COALESCE(SUM(t.T9_SALAMT),0)/1000000,
+              COALESCE(SUM(t.T10_SALAMT),0)/1000000,
+              COALESCE(SUM(t.T11_SALAMT),0)/1000000,
+              COALESCE(SUM(t.T12_SALAMT),0)/1000000,
+              COALESCE(SUM(t.T13_SALAMT),0)/1000000,
+              COALESCE(SUM(t.T14_SALAMT),0)/1000000,
+              COALESCE(SUM(t.T15_SALAMT),0)/1000000,
+              COALESCE(SUM(t.T16_SALAMT),0)/1000000,
+              COALESCE(SUM(t.T17_SALAMT),0)/1000000,
+              COALESCE(SUM(t.T18_SALAMT),0)/1000000,
+              COALESCE(SUM(t.T19_SALAMT),0)/1000000,
+              COALESCE(SUM(t.T20_SALAMT),0)/1000000,
+              COALESCE(SUM(t.T21_SALAMT),0)/1000000,
+              COALESCE(SUM(t.T22_SALAMT),0)/1000000,
+              COALESCE(SUM(t.T23_SALAMT),0)/1000000
             ])
             FROM regionmonitor.TB_TMZON_SELNG t
             WHERE t.REGION_CD = :REGION_CD
@@ -4712,10 +4731,10 @@ slides:
 
   - name: "18: 유입지별 소비"
     tokens:
-      # 관내/관외/인접 : 금액(억), 건수, 최다 업종
+      # 관내/관외/인접 : 금액, 건수, 최다 업종
       SL18_1:
-        sql: | # 관내 금액(억)
-          SELECT to_char(ROUND(SUM(WHTHRC_SALAMT) / 100000000.0, 0), 'FM999,999,999,999')
+        sql: | # 관내 금액
+          SELECT to_char(ROUND(SUM(WHTHRC_SALAMT) / 1000000, 0), 'FM999,999,999,999')
           FROM regionmonitor.TB_INFLOW_SELNG
           WHERE REGION_CD = CAST(:REGION_CD AS VARCHAR)
             AND STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO;
@@ -4743,8 +4762,8 @@ slides:
             ON t.SVC_INDUTY_SCLAS_CD = i.svc_induty_sclas_cd;
 
       SL18_4:
-        sql: | # 관외 금액(억)
-          SELECT to_char(ROUND(SUM(OUTHRC_SALAMT) / 100000000.0, 0), 'FM999,999,999,999')
+        sql: | # 관외 금액
+          SELECT to_char(ROUND(SUM(OUTHRC_SALAMT) / 1000000, 0), 'FM999,999,999,999')
           FROM regionmonitor.TB_INFLOW_SELNG
           WHERE REGION_CD = CAST(:REGION_CD AS VARCHAR)
             AND STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO;
@@ -4772,8 +4791,8 @@ slides:
             ON t.SVC_INDUTY_SCLAS_CD = i.svc_induty_sclas_cd;
 
       SL18_7:
-        sql: | # 인접 금액(억)
-          SELECT to_char(ROUND(SUM(NEARBY_SALAMT) / 100000000.0, 0), 'FM999,999,999,999')
+        sql: | # 인접 금액
+          SELECT to_char(ROUND(SUM(NEARBY_SALAMT) / 1000000, 0), 'FM999,999,999,999')
           FROM regionmonitor.TB_INFLOW_SELNG
           WHERE REGION_CD = CAST(:REGION_CD AS VARCHAR)
             AND STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO;
@@ -4848,7 +4867,7 @@ slides:
           SELECT nm FROM top10 ORDER BY tot DESC;
 
         series:
-          관내(억원): |-
+          관내(백만원): |-
             WITH top10 AS (
               SELECT i.svc_induty_sclas_cd_nm AS nm,
                     SUM(t.WHTHRC_SALAMT + t.NEARBY_SALAMT + t.OUTHRC_SALAMT) AS tot
@@ -4862,7 +4881,7 @@ slides:
               LIMIT 10
             )
             SELECT COALESCE((
-              SELECT SUM(t.WHTHRC_SALAMT)/1e8
+              SELECT SUM(t.WHTHRC_SALAMT)/1000000
               FROM regionmonitor.TB_INFLOW_SELNG t
               JOIN regionmonitor.tb_svc_induty_sclas i
                 ON t.SVC_INDUTY_SCLAS_CD = i.svc_induty_sclas_cd
@@ -4873,7 +4892,7 @@ slides:
             FROM top10
             ORDER BY top10.tot DESC;
 
-          인접(억원): |-
+          인접(백만원): |-
             WITH top10 AS (
               SELECT i.svc_induty_sclas_cd_nm AS nm,
                     SUM(t.WHTHRC_SALAMT + t.NEARBY_SALAMT + t.OUTHRC_SALAMT) AS tot
@@ -4887,7 +4906,7 @@ slides:
               LIMIT 10
             )
             SELECT COALESCE((
-              SELECT SUM(t.NEARBY_SALAMT)/1e8
+              SELECT SUM(t.NEARBY_SALAMT)/1000000
               FROM regionmonitor.TB_INFLOW_SELNG t
               JOIN regionmonitor.tb_svc_induty_sclas i
                 ON t.SVC_INDUTY_SCLAS_CD = i.svc_induty_sclas_cd
@@ -4898,7 +4917,7 @@ slides:
             FROM top10
             ORDER BY top10.tot DESC;
 
-          관외(억원): |-
+          관외(백만원): |-
             WITH top10 AS (
               SELECT i.svc_induty_sclas_cd_nm AS nm,
                     SUM(t.WHTHRC_SALAMT + t.NEARBY_SALAMT + t.OUTHRC_SALAMT) AS tot
@@ -4912,7 +4931,7 @@ slides:
               LIMIT 10
             )
             SELECT COALESCE((
-              SELECT SUM(t.OUTHRC_SALAMT)/1e8
+              SELECT SUM(t.OUTHRC_SALAMT)/1000000
               FROM regionmonitor.TB_INFLOW_SELNG t
               JOIN regionmonitor.tb_svc_induty_sclas i
                 ON t.SVC_INDUTY_SCLAS_CD = i.svc_induty_sclas_cd
@@ -5151,15 +5170,15 @@ slides:
 
       # 총액/건수/1건당 평균
       SL19_13:
-        sql: | # 내국인 총 매출액(억)
-          SELECT to_char(ROUND(SUM(NATIVE_SALAMT)/100000000.0,0),'FM999,999,999,999')
+        sql: | # 내국인 총 매출액
+          SELECT to_char(ROUND(SUM(NATIVE_SALAMT)/ 1000000,0),'FM999,999,999,999')
           FROM regionmonitor.TB_NATION_SELNG
           WHERE REGION_CD = CAST(:REGION_CD AS VARCHAR)
             AND STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO;
 
       SL19_14:
-        sql: | # 외국인 총 매출액(억)
-          SELECT to_char(ROUND(SUM(FRGNR_SALAMT)/100000000.0,0),'FM999,999,999,999')
+        sql: | # 외국인 총 매출액
+          SELECT to_char(ROUND(SUM(FRGNR_SALAMT)/ 1000000,0),'FM999,999,999,999')
           FROM regionmonitor.TB_NATION_SELNG
           WHERE REGION_CD = CAST(:REGION_CD AS VARCHAR)
             AND STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO;
@@ -5205,7 +5224,7 @@ slides:
         treemap_sql: |-
           SELECT
             i.svc_induty_sclas_cd_nm AS nm,
-            SUM(t.FRGNR_SALAMT)/1e8     AS val_eok
+            SUM(t.FRGNR_SALAMT)/1000000     AS val_eok
           FROM regionmonitor.TB_NATION_SELNG t
           JOIN regionmonitor.tb_svc_induty_sclas i
             ON t.SVC_INDUTY_SCLAS_CD = i.svc_induty_sclas_cd
@@ -5223,7 +5242,7 @@ slides:
         treemap_sql: |-
           SELECT
             i.svc_induty_sclas_cd_nm AS nm,
-            SUM(t.NATIVE_SALAMT)/1e8   AS val_eok
+            SUM(t.NATIVE_SALAMT)/1000000   AS val_eok
           FROM regionmonitor.TB_NATION_SELNG t
           JOIN regionmonitor.tb_svc_induty_sclas i
             ON t.SVC_INDUTY_SCLAS_CD = i.svc_induty_sclas_cd
@@ -5604,7 +5623,7 @@ slides:
           ORDER BY seq;
 
         series:
-          매출금액(천만원): |-
+          매출금액(백만원): |-
             WITH
             d AS (
               SELECT 
@@ -5644,7 +5663,7 @@ slides:
             agg AS (
               SELECT 
                 a.seq,
-                (COALESCE(SUM(s.TOT_SALAMT),0)::numeric / 10000000.0)::numeric(18,2) AS val
+                (COALESCE(SUM(s.TOT_SALAMT),0)::numeric / 1000000.0)::numeric(18,2) AS val
               FROM all_days a
               LEFT JOIN regionmonitor.tb_sexdstn_selng s
                 ON s.REGION_CD = CAST(:REGION_CD AS VARCHAR)
