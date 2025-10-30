@@ -169,48 +169,44 @@ def plot_facility_and_parking(engine, region_cd, out_png, buffer_m=500, title=No
     # 2) 시설: 대분류명 → 8개 그룹 매핑 포함
     sql_facility = """
     WITH reg AS (
-      SELECT ST_Transform(ST_Buffer(ST_Transform(r.popltn_relm, 5179), :BUFFER_M), 4326) AS geom
-      FROM regionmonitor.tb_intrst_region_relm r
-      WHERE r.region_cd = :REGION_CD
-    ),
-    -- 대분류명 → 그룹명/순서 매핑 (표 기준)
-    grp(lclas_nm, group_nm, group_ord) AS (VALUES
-      ('철도역','그룹1',1),
-      ('버스정류장','그룹1',1),
-      ('공항','그룹1',1),
-      ('지하철','그룹1',1),
-      ('터미널','그룹1',1),
-
-      ('상가업소','그룹2(개별)',4),
-      ('의료기관','그룹3(개별)',5),
-      ('공중화장실','그룹4(개별)',6),
-      ('주차장','그룹5(개별)',7),
-
-      ('관공서','그룹6',2),
-      ('공공기관','그룹6',2),
-      ('교육기관','그룹6',2),
-      ('은행점포','그룹6',2),
-
-      ('숙박시설','그룹7(개별)',8),
-
-      ('문화여가시설','그룹8',3),
-      ('상영관','그룹8',3)
-    )
-    SELECT
-      f.fclty_nm                                  AS name,
-      f.Y_CRDNT                                   AS x,       -- 경도(lon)
-      f.X_CRDNT                                   AS y,       -- 위도(lat)
-      lc.fclty_lclas_cd_nm                        AS lclas_nm,
-      COALESCE(g.group_nm, '기타')                AS group_nm,
-      COALESCE(g.group_ord, 99)                   AS group_ord
-    FROM regionmonitor.TB_MAIN_FCLTY_INFO f
-    JOIN reg
-      ON ST_Within(ST_SetSRID(ST_MakePoint(f.Y_CRDNT, f.X_CRDNT), 4326), reg.geom)
-    LEFT JOIN regionmonitor.tb_fclty_lclas lc
-      ON lc.fclty_lclas_cd = SUBSTRING(f.fclty_sclas_cd FROM 1 FOR 1)  -- 'A01' -> 'A'
-    LEFT JOIN grp g
-      ON g.lclas_nm = lc.fclty_lclas_cd_nm
-    WHERE f.X_CRDNT IS NOT NULL AND f.Y_CRDNT IS NOT NULL;
+        SELECT ST_Transform(ST_Buffer(ST_Transform(r.popltn_relm, 5179), :BUFFER_M), 4326) AS geom
+        FROM regionmonitor.tb_intrst_region_relm r
+        WHERE r.region_cd = :REGION_CD
+        ),
+        -- 코드(A~P) 기준으로 그룹/순서/대분류명 매핑
+        code_map(code, lclas_nm, group_nm, group_ord) AS (VALUES
+        ('A','숙박시설'     ,'그룹7(개별)',8),
+        ('B','관공서'       ,'그룹6',2),
+        ('C','문화여가시설' ,'그룹8',3),
+        ('D','상가업소'     ,'그룹2(개별)',4),
+        ('E','의료기관'     ,'그룹3(개별)',5),
+        ('F','공공기관'     ,'그룹6',2),
+        ('G','철도역'       ,'그룹1',1),
+        ('H','버스정류장'   ,'그룹1',1),
+        ('I','교육기관'     ,'그룹6',2),
+        ('J','공항'         ,'그룹1',1),
+        ('K','상영관'       ,'그룹8',3),
+        ('L','은행점포'     ,'그룹6',2),
+        ('M','지하철'       ,'그룹1',1),
+        ('N','터미널'       ,'그룹1',1),
+        ('O','공중화장실'   ,'그룹4(개별)',6),
+        ('P','주차장'       ,'그룹5(개별)',7)   -- 주차장은 아래 WHERE에서 제외
+        )
+        SELECT
+        f.fclty_nm                                  AS name,
+        f.Y_CRDNT                                   AS x,       -- 경도(lon)
+        f.X_CRDNT                                   AS y,       -- 위도(lat)
+        cm.lclas_nm                                 AS lclas_nm,
+        cm.group_nm                                 AS group_nm,
+        cm.group_ord                                AS group_ord
+        FROM regionmonitor.TB_MAIN_FCLTY_INFO f
+        JOIN reg
+        ON ST_Within(ST_SetSRID(ST_MakePoint(f.Y_CRDNT, f.X_CRDNT), 4326), reg.geom)
+        LEFT JOIN code_map cm
+        ON cm.code = SUBSTRING(TRIM(f.fclty_sclas_cd) FROM 1 FOR 1)
+        WHERE f.X_CRDNT IS NOT NULL
+        AND f.Y_CRDNT IS NOT NULL
+        AND SUBSTRING(TRIM(f.fclty_sclas_cd) FROM 1 FOR 1) <> 'P';
     """
 
     # 3) 주차장: 그룹5(개별)로 고정
@@ -330,7 +326,7 @@ engine = create_engine(
 with open("config/slides_tokens.yml", encoding="utf-8") as f:
     cfg = yaml.safe_load(f)
 
-OUTPUT_PPT = "out/test_1725.pptx"
+OUTPUT_PPT = "out/test_1749.pptx"
 TEMPLATE_PPT = "template/master.pptx"
 
 token_values = {}
