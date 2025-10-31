@@ -9,6 +9,7 @@ from pptx.enum.chart import XL_MARKER_STYLE
 import win32com.client as win32
 import pandas as pd
 import pythoncom
+from pptx.enum.text import PP_ALIGN
 
 # ---------------------------
 # 🔹 Text / Chart Utilities
@@ -99,43 +100,29 @@ def fill_table(table, dataframe):
             table.cell(r, c).text = val
 
 
-# ---------------------------
-# 🔹 Formatter Utilities
-# ---------------------------
+def fill_table_with_padding(table, rows):
+    """
+    헤더 없는 표에 데이터를 채움.
+    table: python-pptx Table 객체
+    rows:  [("주차장명", "1,234대"), ...]
+    """
+    n_total = len(table.rows)
+    n_cols = len(table.columns)
 
-def fmt_int_comma(x):
-    """정수 천단위 콤마"""
-    try:
-        return f"{int(round(float(x))):,}"
-    except Exception:
-        return str(x)
+    cap = n_total  # 전체가 데이터 영역
+    data = rows[:cap]  # 초과는 잘림
 
-
-def fmt_signed_percent_1(x):
-    """+/- 표시, 소수점 1자리 %"""
-    try:
-        return f"{float(x):+0.1f}%"
-    except Exception:
-        return str(x)
-
-
-def fmt_won_or_eok(x):
-    """1억 이상이면 억원 단위로 변환"""
-    try:
-        v = float(x)
-        if abs(v) >= 1e8:
-            return f"{v/1e8:0.1f}억원"
+    for i in range(cap):
+        if i < len(data):
+            name, slots = data[i]
+            table.cell(i, 0).text = str(name or "")
+            table.cell(i, 1).text = str(slots or "")
         else:
-            return f"{int(v):,}원"
-    except Exception:
-        return str(x)
-
-
-FORMATTERS = {
-    "int_comma": fmt_int_comma,
-    "signed_percent_1": fmt_signed_percent_1,
-    "won_or_eok": fmt_won_or_eok,
-}
+            table.cell(i, 0).text = ""
+            table.cell(i, 1).text = ""
+        # 간단 서식
+        table.cell(i, 0).text_frame.paragraphs[0].alignment = PP_ALIGN.LEFT
+        table.cell(i, 1).text_frame.paragraphs[0].alignment = PP_ALIGN.RIGHT
 
 
 # ---------------------------

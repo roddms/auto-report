@@ -17,6 +17,8 @@ from sqlalchemy import create_engine, text
 from dotenv import load_dotenv, find_dotenv
 from shapely.geometry import shape
 from ppt_fillers import apply_tokens_and_charts, update_treemap_chart
+from pptx import Presentation
+from ppt_fillers import find_table, fill_table_with_padding
 
 # ---------------------------------
 # (옵션) 트리맵/히트맵 이미지 유틸
@@ -135,15 +137,184 @@ def add_naver_or_osm_basemap(ax, crs_epsg: int):
     except Exception:
         ctx.add_basemap(ax, crs=f"EPSG:{crs_epsg}", source=ctx.providers.OpenStreetMap.Mapnik)
 
-def plot_facility_and_parking(engine, region_cd, out_png, buffer_m=500, title=None):
-    """
-    관심영역(=tb_intrst_region_relm.popltn_relm) 주변 buffer_m 내
-    - 시설(대분류→8개 그룹 매핑, 그룹별 색상)
-    - 주차장(그룹5로 고정, P마커)
-    를 한 장의 지도에 함께 표시한다.
+# def plot_facility_and_parking(engine, region_cd, out_png, buffer_m=500, title=None):
+#     """
+#     관심영역(=tb_intrst_region_relm.popltn_relm) 주변 buffer_m 내
+#     - 시설(대분류→8개 그룹 매핑, 그룹별 색상)
+#     - 주차장(그룹5로 고정, P마커)
+#     를 한 장의 지도에 함께 표시한다.
 
-    좌표 스키마 주의: x=경도=Y_CRDNT, y=위도=X_CRDNT
-    버퍼 경계선(파란 원)은 표시하지 않음.
+#     좌표 스키마 주의: x=경도=Y_CRDNT, y=위도=X_CRDNT
+#     버퍼 경계선(파란 원)은 표시하지 않음.
+#     """
+#     import json, os
+#     import pandas as pd
+#     import geopandas as gpd
+#     import matplotlib.pyplot as plt
+#     from shapely.geometry import shape
+#     from sqlalchemy import text
+#     from contextily import add_basemap, providers
+
+#     # 1) 버퍼 영역(4326) GeoJSON
+#     sql_region = """
+#     WITH reg AS (
+#       SELECT ST_Transform(
+#                ST_Buffer(ST_Transform(r.popltn_relm, 5179), :BUFFER_M),
+#                4326
+#              ) AS geom
+#       FROM regionmonitor.tb_intrst_region_relm r
+#       WHERE r.region_cd = :REGION_CD
+#     )
+#     SELECT ST_AsGeoJSON(geom) AS gj FROM reg;
+#     """
+
+#     # 2) 시설: 대분류명 → 8개 그룹 매핑 포함
+#     sql_facility = """
+#     WITH reg AS (
+#         SELECT ST_Transform(ST_Buffer(ST_Transform(r.popltn_relm, 5179), :BUFFER_M), 4326) AS geom
+#         FROM regionmonitor.tb_intrst_region_relm r
+#         WHERE r.region_cd = :REGION_CD
+#         ),
+#         -- 코드(A~P) 기준으로 그룹/순서/대분류명 매핑
+#         code_map(code, lclas_nm, group_nm, group_ord) AS (VALUES
+#         ('A','숙박시설'     ,'그룹7(개별)',8),
+#         ('B','관공서'       ,'그룹6',2),
+#         ('C','문화여가시설' ,'그룹8',3),
+#         ('D','상가업소'     ,'그룹2(개별)',4),
+#         ('E','의료기관'     ,'그룹3(개별)',5),
+#         ('F','공공기관'     ,'그룹6',2),
+#         ('G','철도역'       ,'그룹1',1),
+#         ('H','버스정류장'   ,'그룹1',1),
+#         ('I','교육기관'     ,'그룹6',2),
+#         ('J','공항'         ,'그룹1',1),
+#         ('K','상영관'       ,'그룹8',3),
+#         ('L','은행점포'     ,'그룹6',2),
+#         ('M','지하철'       ,'그룹1',1),
+#         ('N','터미널'       ,'그룹1',1),
+#         ('O','공중화장실'   ,'그룹4(개별)',6),
+#         ('P','주차장'       ,'그룹5(개별)',7)   -- 주차장은 아래 WHERE에서 제외
+#         )
+#         SELECT
+#         f.fclty_nm                                  AS name,
+#         f.Y_CRDNT                                   AS x,       -- 경도(lon)
+#         f.X_CRDNT                                   AS y,       -- 위도(lat)
+#         cm.lclas_nm                                 AS lclas_nm,
+#         cm.group_nm                                 AS group_nm,
+#         cm.group_ord                                AS group_ord
+#         FROM regionmonitor.TB_MAIN_FCLTY_INFO f
+#         JOIN reg
+#         ON ST_Within(ST_SetSRID(ST_MakePoint(f.Y_CRDNT, f.X_CRDNT), 4326), reg.geom)
+#         LEFT JOIN code_map cm
+#         ON cm.code = SUBSTRING(TRIM(f.fclty_sclas_cd) FROM 1 FOR 1)
+#         WHERE f.X_CRDNT IS NOT NULL
+#         AND f.Y_CRDNT IS NOT NULL
+#         AND SUBSTRING(TRIM(f.fclty_sclas_cd) FROM 1 FOR 1) <> 'P';
+#     """
+
+#     # 3) 주차장: 그룹5(개별)로 고정
+#     sql_parking = """
+#     WITH reg AS (
+#       SELECT ST_Transform(ST_Buffer(ST_Transform(r.popltn_relm, 5179), :BUFFER_M), 4326) AS geom
+#       FROM regionmonitor.tb_intrst_region_relm r
+#       WHERE r.region_cd = :REGION_CD
+#     )
+#     SELECT
+#       p.prkplce_nm                                AS name,
+#       p.Y_CRDNT                                   AS x,      -- 경도(lon)
+#       p.X_CRDNT                                   AS y,      -- 위도(lat)
+#       '주차장'                                     AS lclas_nm,
+#       '그룹5(개별)'                                 AS group_nm,
+#       7                                            AS group_ord
+#     FROM regionmonitor.TB_PRKPLCE_INFO p
+#     JOIN reg
+#       ON ST_Within(ST_SetSRID(ST_MakePoint(p.Y_CRDNT, p.X_CRDNT), 4326), reg.geom)
+#     WHERE p.X_CRDNT IS NOT NULL AND p.Y_CRDNT IS NOT NULL;
+#     """
+
+#     params = {"REGION_CD": region_cd, "BUFFER_M": buffer_m}
+#     with engine.connect() as conn:
+#         gj = conn.execute(text(sql_region), params).scalar()
+#         if not gj:
+#             print("⚠️ 관심영역 폴리곤을 찾을 수 없습니다.")
+#             return
+#         poly = shape(json.loads(gj))
+#         df_fac = pd.read_sql(text(sql_facility), conn, params=params)
+#         df_par = pd.read_sql(text(sql_parking),  conn, params=params)
+
+#     gdf_region = gpd.GeoDataFrame(geometry=[poly], crs="EPSG:4326")
+#     gdf_fac = gpd.GeoDataFrame(df_fac, geometry=gpd.points_from_xy(df_fac["x"], df_fac["y"]), crs="EPSG:4326")
+#     gdf_par = gpd.GeoDataFrame(df_par, geometry=gpd.points_from_xy(df_par["x"], df_par["y"]), crs="EPSG:4326")
+
+#     # 투영(웹 타일용) : 3857
+#     reg3857 = gdf_region.to_crs(3857)
+#     fac3857 = gdf_fac.to_crs(3857) if not gdf_fac.empty else gdf_fac
+#     par3857 = gdf_par.to_crs(3857) if not gdf_par.empty else gdf_par
+
+#     # 고정 팔레트(8그룹)
+#     group_palette = {
+#         "그룹1": "#1F77B4",        # 철도/버스/공항/지하철/터미널
+#         "그룹2(개별)": "#FF7F0E",   # 상가업소
+#         "그룹3(개별)": "#2CA02C",   # 의료기관
+#         "그룹4(개별)": "#D62728",   # 공중화장실
+#         "그룹5(개별)": "#9467BD",   # 주차장
+#         "그룹6": "#8C564B",        # 관공서/공공기관/교육기관/은행점포
+#         "그룹7(개별)": "#E377C2",   # 숙박시설
+#         "그룹8": "#17BECF",        # 문화여가시설/상영관
+#         "기타": "#7F7F7F"
+#     }
+
+#     fig, ax = plt.subplots(figsize=(8, 7))
+
+#     # (버퍼 외곽선은 숨김)  ← 원 안 보이게
+#     # reg3857.boundary.plot(ax=ax, color="#005BAC", linewidth=2, alpha=0.8, zorder=5)
+
+#     # 시설: 그룹별 색상
+#     if not fac3857.empty:
+#         for gnm, g in fac3857.sort_values("group_ord").groupby("group_nm"):
+#             color = group_palette.get(gnm, "#7F7F7F")
+#             g.plot(ax=ax,
+#                    markersize=22, marker="o",
+#                    edgecolor="k", linewidth=0.2,
+#                    color=color, alpha=0.85,
+#                    label=f"{gnm}", zorder=10)
+
+#     # 주차장: 그룹5 색상, P 마커
+#     if not par3857.empty:
+#         color = group_palette["그룹5(개별)"]
+#         par3857.plot(ax=ax,
+#                      markersize=34, marker="P",
+#                      edgecolor="k", linewidth=0.3,
+#                      color=color, alpha=0.9,
+#                      label="그룹5(개별)", zorder=11)
+
+#     # 축 범위: 버퍼 전체 기준
+#     xmin, ymin, xmax, ymax = reg3857.total_bounds
+#     pad = 80
+#     ax.set_xlim(xmin - pad, xmax + pad)
+#     ax.set_ylim(ymin - pad, ymax + pad)
+
+#     # 베이스맵은 마지막에
+#     add_basemap(ax, source=providers.CartoDB.Positron, crs=3857)
+
+#     ax.set_axis_off()
+#     if title:
+#         ax.set_title(title, fontsize=13, fontweight="bold", pad=6)
+
+#     # 범례 정리
+#     # if not fac3857.empty or not par3857.empty:
+#     #     leg = ax.legend(loc="lower left", fontsize=8, frameon=True, ncol=2, markerscale=1.0)
+#     #     for lh in leg.legend_handles:
+#     #         lh.set_alpha(1.0)
+
+#     os.makedirs(os.path.dirname(out_png), exist_ok=True)
+#     plt.savefig(out_png, dpi=300, bbox_inches="tight", pad_inches=0.1, transparent=True)
+#     plt.close(fig)
+
+# 그룹별 시설 지도
+def plot_facility_group_map(engine, region_cd, group_name, out_png,
+                            buffer_m=500, title=None):
+    """
+    group_name: '그룹1', '그룹2(개별)', '그룹3(개별)', '그룹4(개별)', '그룹5(개별)', '그룹6', '그룹7(개별)', '그룹8'
     """
     import json, os
     import pandas as pd
@@ -153,163 +324,120 @@ def plot_facility_and_parking(engine, region_cd, out_png, buffer_m=500, title=No
     from sqlalchemy import text
     from contextily import add_basemap, providers
 
-    # 1) 버퍼 영역(4326) GeoJSON
+    # ── 1) 그룹 정의
+    GROUP_MAP = {
+        "그룹1":       ['G','H','J','M','N'],
+        "그룹2(개별)": ['D'],
+        "그룹3(개별)": ['E'],
+        "그룹4(개별)": ['O'],
+        "그룹5(개별)": ['P'],   # 주차장
+        "그룹6":       ['B','F','I','L'],
+        "그룹7(개별)": ['A'],
+        "그룹8":       ['C','K'],
+    }
+    letters = GROUP_MAP[group_name]
+
+    # ── 2) 쿼리
     sql_region = """
     WITH reg AS (
-      SELECT ST_Transform(
-               ST_Buffer(ST_Transform(r.popltn_relm, 5179), :BUFFER_M),
-               4326
-             ) AS geom
+      SELECT ST_Transform(ST_Buffer(ST_Transform(r.popltn_relm,5179), :BUFFER_M), 4326) AS geom
       FROM regionmonitor.tb_intrst_region_relm r
       WHERE r.region_cd = :REGION_CD
     )
     SELECT ST_AsGeoJSON(geom) AS gj FROM reg;
     """
 
-    # 2) 시설: 대분류명 → 8개 그룹 매핑 포함
-    sql_facility = """
+    sql_fac = """
     WITH reg AS (
-        SELECT ST_Transform(ST_Buffer(ST_Transform(r.popltn_relm, 5179), :BUFFER_M), 4326) AS geom
-        FROM regionmonitor.tb_intrst_region_relm r
-        WHERE r.region_cd = :REGION_CD
-        ),
-        -- 코드(A~P) 기준으로 그룹/순서/대분류명 매핑
-        code_map(code, lclas_nm, group_nm, group_ord) AS (VALUES
-        ('A','숙박시설'     ,'그룹7(개별)',8),
-        ('B','관공서'       ,'그룹6',2),
-        ('C','문화여가시설' ,'그룹8',3),
-        ('D','상가업소'     ,'그룹2(개별)',4),
-        ('E','의료기관'     ,'그룹3(개별)',5),
-        ('F','공공기관'     ,'그룹6',2),
-        ('G','철도역'       ,'그룹1',1),
-        ('H','버스정류장'   ,'그룹1',1),
-        ('I','교육기관'     ,'그룹6',2),
-        ('J','공항'         ,'그룹1',1),
-        ('K','상영관'       ,'그룹8',3),
-        ('L','은행점포'     ,'그룹6',2),
-        ('M','지하철'       ,'그룹1',1),
-        ('N','터미널'       ,'그룹1',1),
-        ('O','공중화장실'   ,'그룹4(개별)',6),
-        ('P','주차장'       ,'그룹5(개별)',7)   -- 주차장은 아래 WHERE에서 제외
-        )
-        SELECT
-        f.fclty_nm                                  AS name,
-        f.Y_CRDNT                                   AS x,       -- 경도(lon)
-        f.X_CRDNT                                   AS y,       -- 위도(lat)
-        cm.lclas_nm                                 AS lclas_nm,
-        cm.group_nm                                 AS group_nm,
-        cm.group_ord                                AS group_ord
-        FROM regionmonitor.TB_MAIN_FCLTY_INFO f
-        JOIN reg
-        ON ST_Within(ST_SetSRID(ST_MakePoint(f.Y_CRDNT, f.X_CRDNT), 4326), reg.geom)
-        LEFT JOIN code_map cm
-        ON cm.code = SUBSTRING(TRIM(f.fclty_sclas_cd) FROM 1 FOR 1)
-        WHERE f.X_CRDNT IS NOT NULL
-        AND f.Y_CRDNT IS NOT NULL
-        AND SUBSTRING(TRIM(f.fclty_sclas_cd) FROM 1 FOR 1) <> 'P';
-    """
-
-    # 3) 주차장: 그룹5(개별)로 고정
-    sql_parking = """
-    WITH reg AS (
-      SELECT ST_Transform(ST_Buffer(ST_Transform(r.popltn_relm, 5179), :BUFFER_M), 4326) AS geom
+      SELECT ST_Transform(ST_Buffer(ST_Transform(r.popltn_relm,5179), :BUFFER_M), 4326) AS geom
       FROM regionmonitor.tb_intrst_region_relm r
       WHERE r.region_cd = :REGION_CD
     )
     SELECT
-      p.prkplce_nm                                AS name,
-      p.Y_CRDNT                                   AS x,      -- 경도(lon)
-      p.X_CRDNT                                   AS y,      -- 위도(lat)
-      '주차장'                                     AS lclas_nm,
-      '그룹5(개별)'                                 AS group_nm,
-      7                                            AS group_ord
-    FROM regionmonitor.TB_PRKPLCE_INFO p
-    JOIN reg
-      ON ST_Within(ST_SetSRID(ST_MakePoint(p.Y_CRDNT, p.X_CRDNT), 4326), reg.geom)
-    WHERE p.X_CRDNT IS NOT NULL AND p.Y_CRDNT IS NOT NULL;
+      f.fclty_nm AS name,
+      f.Y_CRDNT  AS x,      -- lon
+      f.X_CRDNT  AS y,      -- lat
+      SUBSTRING(TRIM(f.fclty_sclas_cd) FROM 1 FOR 1) AS lclas
+    FROM regionmonitor.TB_MAIN_FCLTY_INFO f, reg
+    WHERE ST_Within(ST_SetSRID(ST_MakePoint(f.Y_CRDNT,f.X_CRDNT),4326), reg.geom)
+      AND SUBSTRING(TRIM(f.fclty_sclas_cd) FROM 1 FOR 1) = ANY(:LETTERS);
     """
 
-    params = {"REGION_CD": region_cd, "BUFFER_M": buffer_m}
+    params = {"REGION_CD": region_cd, "BUFFER_M": buffer_m, "LETTERS": letters}
+
     with engine.connect() as conn:
-        gj = conn.execute(text(sql_region), params).scalar()
-        if not gj:
-            print("⚠️ 관심영역 폴리곤을 찾을 수 없습니다.")
-            return
-        poly = shape(json.loads(gj))
-        df_fac = pd.read_sql(text(sql_facility), conn, params=params)
-        df_par = pd.read_sql(text(sql_parking),  conn, params=params)
+        row = conn.execute(text(sql_region), params).fetchone()
+        region = shape(json.loads(row[0]))
+        df = pd.read_sql(text(sql_fac), conn, params=params)
 
-    gdf_region = gpd.GeoDataFrame(geometry=[poly], crs="EPSG:4326")
-    gdf_fac = gpd.GeoDataFrame(df_fac, geometry=gpd.points_from_xy(df_fac["x"], df_fac["y"]), crs="EPSG:4326")
-    gdf_par = gpd.GeoDataFrame(df_par, geometry=gpd.points_from_xy(df_par["x"], df_par["y"]), crs="EPSG:4326")
+    # ── 3) GeoDataFrame
+    gdf_region = gpd.GeoDataFrame(geometry=[region], crs="EPSG:4326")
+    gdf = gpd.GeoDataFrame(df, geometry=gpd.points_from_xy(df["x"], df["y"]), crs="EPSG:4326")
 
-    # 투영(웹 타일용) : 3857
+    # 투영
     reg3857 = gdf_region.to_crs(3857)
-    fac3857 = gdf_fac.to_crs(3857) if not gdf_fac.empty else gdf_fac
-    par3857 = gdf_par.to_crs(3857) if not gdf_par.empty else gdf_par
+    fac3857 = gdf.to_crs(3857)
 
-    # 고정 팔레트(8그룹)
-    group_palette = {
-        "그룹1": "#1F77B4",        # 철도/버스/공항/지하철/터미널
-        "그룹2(개별)": "#FF7F0E",   # 상가업소
-        "그룹3(개별)": "#2CA02C",   # 의료기관
-        "그룹4(개별)": "#D62728",   # 공중화장실
-        "그룹5(개별)": "#9467BD",   # 주차장
-        "그룹6": "#8C564B",        # 관공서/공공기관/교육기관/은행점포
-        "그룹7(개별)": "#E377C2",   # 숙박시설
-        "그룹8": "#17BECF",        # 문화여가시설/상영관
-        "기타": "#7F7F7F"
+    # ── 4) 고정 팔레트(최대 5개). 그룹 안 ‘항목 위치’ 기준으로 항상 같은 색 배정
+    PALETTE = ["#1C75B3", "#FF7F0E", "#279D27", "#D62829", "#9467BD"]  # 파랑, 주황, 초록, 빨강, 보라
+
+    # 항목 정렬 규칙(그룹별로 보여줄 우선순서). 없으면 코드값 정렬로 동작.
+    order_hint = ["G","H","J","M","N","D","E","O","P","B","F","I","L","A","C","K"]
+
+    ordered_letters = [c for c in order_hint if c in letters]  # 또는 그냥 letters[:] 사용해도 됨
+    color_by_pos = {lc: PALETTE[i % len(PALETTE)] for i, lc in enumerate(ordered_letters)}
+
+
+    label_map = {
+        'G':'철도역','H':'버스정류장','J':'공항','M':'지하철','N':'터미널',
+        'D':'상가업소','E':'의료기관','O':'공중화장실','P':'주차장',
+        'B':'관공서','F':'공공기관','I':'교육기관','L':'은행점포',
+        'A':'숙박시설','C':'문화여가시설','K':'상영관'
     }
 
+    # ── 5) 그리기
     fig, ax = plt.subplots(figsize=(8, 7))
 
-    # (버퍼 외곽선은 숨김)  ← 원 안 보이게
-    # reg3857.boundary.plot(ax=ax, color="#005BAC", linewidth=2, alpha=0.8, zorder=5)
-
-    # 시설: 그룹별 색상
-    if not fac3857.empty:
-        for gnm, g in fac3857.sort_values("group_ord").groupby("group_nm"):
-            color = group_palette.get(gnm, "#7F7F7F")
-            g.plot(ax=ax,
-                   markersize=22, marker="o",
-                   edgecolor="k", linewidth=0.2,
-                   color=color, alpha=0.85,
-                   label=f"{gnm}", zorder=10)
-
-    # 주차장: 그룹5 색상, P 마커
-    if not par3857.empty:
-        color = group_palette["그룹5(개별)"]
-        par3857.plot(ax=ax,
-                     markersize=34, marker="P",
-                     edgecolor="k", linewidth=0.3,
-                     color=color, alpha=0.9,
-                     label="그룹5(개별)", zorder=11)
-
-    # 축 범위: 버퍼 전체 기준
+    # (A) 먼저 영역 기준으로 축 고정 → 타일이 흐릿해지는 리샘플 최소화
     xmin, ymin, xmax, ymax = reg3857.total_bounds
-    pad = 80
+    pad = max((xmax-xmin), (ymax-ymin)) * 0.05
     ax.set_xlim(xmin - pad, xmax + pad)
     ax.set_ylim(ymin - pad, ymax + pad)
 
-    # 베이스맵은 마지막에
-    add_basemap(ax, source=providers.CartoDB.Positron, crs=3857)
+    # (B) 베이스맵 먼저 깔기 (적절한 줌 고정, extent 유지)
+    # 15~17 사이에서 테스트해보고 선호 줌으로 고정
+    add_basemap(ax, source=providers.CartoDB.Positron, crs=3857, zoom=16, reset_extent=False)
 
+    # (C) 그 다음 포인트(항상 베이스맵 위에 또렷하게)
+    for lc, gsub in fac3857.groupby("lclas"):
+        gsub.plot(
+            ax=ax,
+            markersize=26,
+            color=color_by_pos.get(lc, "#666"),
+            alpha=0.95,
+            linewidth=0.2,
+            edgecolor="#1a1a1a",
+            label=label_map.get(lc, lc),
+            zorder=10
+        )
+
+    # reg3857.boundary.plot(ax=ax, color="#005BAC", linewidth=2, zorder=11)  # 경계선이 필요하면 주석 해제
     ax.set_axis_off()
     if title:
         ax.set_title(title, fontsize=13, fontweight="bold", pad=6)
 
-    # 범례 정리
-    # if not fac3857.empty or not par3857.empty:
-    #     leg = ax.legend(loc="lower left", fontsize=8, frameon=True, ncol=2, markerscale=1.0)
-    #     for lh in leg.legend_handles:
-    #         lh.set_alpha(1.0)
+    # 범례가 필요하면 주석 해제
+    # if not fac3857.empty:
+    #     leg = ax.legend(loc="lower left", fontsize=8, frameon=True, ncol=2, markerscale=1.2)
+    #     for h in leg.legend_handles:
+    #         h.set_alpha(1.0)
 
     os.makedirs(os.path.dirname(out_png), exist_ok=True)
     plt.savefig(out_png, dpi=300, bbox_inches="tight", pad_inches=0.1, transparent=True)
     plt.close(fig)
 
-    print(f"✅ 시설·주차장 지도 생성 완료 → {out_png}  "
-          f"(시설:{len(fac3857)} / 주차장:{len(par3857)})")
+    print(f"✅ 시설·주차장 지도 생성 완료 → {out_png}  (시설:{len(fac3857)})")
+
 
 
 # ------------------------------
@@ -326,8 +454,8 @@ engine = create_engine(
 with open("config/slides_tokens.yml", encoding="utf-8") as f:
     cfg = yaml.safe_load(f)
 
-OUTPUT_PPT = "out/test_.pptx"
-TEMPLATE_PPT = "template/master.pptx"
+OUTPUT_PPT = "out/test_주차장표1523.pptx"
+TEMPLATE_PPT = "template/master_pretendard.pptx"
 
 token_values = {}
 chart_data = {}
@@ -432,15 +560,95 @@ for s in cfg["slides"]:
 
 region_cd = cfg["params"]["REGION_CD"]
 
-# 3) 시설+주차장 지도
-plot_facility_and_parking(
-    engine=engine,
-    region_cd=region_cd,
+# 시설+주차장 지도
+# plot_facility_and_parking(
+#     engine=engine,
+#     region_cd=region_cd,
+#     buffer_m=500,
+#     out_png="out/img/facility_parking_map.png",
+#     title="500m내 주요 시설 및 주차장"
+# )
+# image_map["SL22_map_facility"] = "out/img/facility_parking_map.png"
+
+# 그룹1 페이지 지도
+plot_facility_group_map(
+    engine, cfg["params"]["REGION_CD"],
+    group_name="그룹1",
+    out_png="out/img/group1_map.png",
     buffer_m=500,
-    out_png="out/img/facility_parking_map.png",
-    title="500m내 주요 시설 및 주차장"
+    title="축제 반경 500m내 그룹1(철도·버스·공항·지하철·터미널)"
 )
-image_map["SL22_map_facility"] = "out/img/facility_parking_map.png"
+image_map["SL_G1_MAP"] = "out/img/group1_map.png"
+
+# 그룹2 페이지 지도
+plot_facility_group_map(
+    engine, cfg["params"]["REGION_CD"],
+    group_name="그룹2(개별)",
+    out_png="out/img/group2_map.png",
+    buffer_m=500,
+    title="축제 반경 500m내 그룹2(상가업소)"
+)
+image_map["SL_G2_MAP"] = "out/img/group2_map.png"
+
+# 그룹3 페이지 지도
+plot_facility_group_map(
+    engine, cfg["params"]["REGION_CD"],
+    group_name="그룹3(개별)",
+    out_png="out/img/group3_map.png",
+    buffer_m=500,
+    title="축제 반경 500m내 그룹3(의료기관)"
+)
+image_map["SL_G3_MAP"] = "out/img/group3_map.png"
+
+# 그룹1 페이지 지도
+plot_facility_group_map(
+    engine, cfg["params"]["REGION_CD"],
+    group_name="그룹4(개별)",
+    out_png="out/img/group4_map.png",
+    buffer_m=500,
+    title="축제 반경 500m내 그룹4(화장실)"
+)
+image_map["SL_G4_MAP"] = "out/img/group4_map.png"
+
+# 그룹1 페이지 지도
+plot_facility_group_map(
+    engine, cfg["params"]["REGION_CD"],
+    group_name="그룹5(개별)",
+    out_png="out/img/group5_map.png",
+    buffer_m=500,
+    title="축제 반경 500m내 그룹5(주차장)"
+)
+image_map["SL_G5_MAP"] = "out/img/group5_map.png"
+
+# 그룹6 페이지 지도
+plot_facility_group_map(
+    engine, cfg["params"]["REGION_CD"],
+    group_name="그룹6",
+    out_png="out/img/group6_map.png",
+    buffer_m=500,
+    title="축제 반경 500m내 그룹6(관공서·공공기관·교육기관·은행점포)"
+)
+image_map["SL_G6_MAP"] = "out/img/group6_map.png"
+
+# 그룹7 페이지 지도
+plot_facility_group_map(
+    engine, cfg["params"]["REGION_CD"],
+    group_name="그룹7(개별)",
+    out_png="out/img/group7_map.png",
+    buffer_m=500,
+    title="축제 반경 500m내 그룹7(숙박시설)"
+)
+image_map["SL_G7_MAP"] = "out/img/group7_map.png"
+
+# 그룹8 페이지 지도
+plot_facility_group_map(
+    engine, cfg["params"]["REGION_CD"],
+    group_name="그룹8",
+    out_png="out/img/group8_map.png",
+    buffer_m=500,
+    title="축제 반경 500m내 그룹8(문화여가시설·상영관)"
+)
+image_map["SL_G8_MAP"] = "out/img/group8_map.png"
 
 
 
@@ -527,6 +735,44 @@ update_treemap_chart(
     rows=rows_native,
     value_header="백만원"
 )
+
+# 1) DB에서 주차장 목록 조회 (표시 순서: 구획수 내림차순)
+parking_list_sql = """
+WITH reg AS (
+  SELECT ST_Transform(
+           ST_Buffer(ST_Transform(r.popltn_relm, 5179), :BUFFER_M),
+           4326
+         ) AS geom
+  FROM regionmonitor.tb_intrst_region_relm r
+  WHERE r.region_cd = :REGION_CD
+)
+SELECT
+  p.prkplce_nm AS name,
+  COALESCE(p.prkcmprt_co,0)::int AS slots
+FROM regionmonitor.TB_PRKPLCE_INFO p
+JOIN reg
+  ON ST_Within(ST_SetSRID(ST_MakePoint(p.Y_CRDNT, p.X_CRDNT), 4326), reg.geom)
+WHERE p.X_CRDNT IS NOT NULL AND p.Y_CRDNT IS NOT NULL
+ORDER BY slots DESC, name;
+"""
+
+with engine.connect() as conn:
+    dfp = pd.read_sql(text(parking_list_sql), conn, params={
+        "REGION_CD": cfg["params"]["REGION_CD"],
+        "BUFFER_M":  500,
+    })
+
+# 2) 표에 넣을 형식으로 가공
+rows_for_table = [(row["name"], f"{int(row['slots']):,}대") for _, row in dfp.iterrows()]
+
+# 3) PPT 열고 표 채우기 (행 수 고정, 남는 칸 공란)
+prs = Presentation(OUTPUT_PPT)
+tbl = find_table(prs, "SL23_table_parking")   # 도형 이름 맞추기
+if tbl is not None:
+    fill_table_with_padding(tbl, rows_for_table)
+    prs.save(OUTPUT_PPT)
+else:
+    print("⚠️ 도형 'SL23_table_parking' 표를 찾을 수 없습니다.")
 
 
 print("✅ 보고서 생성 완료:", OUTPUT_PPT)
