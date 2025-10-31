@@ -2,6 +2,7 @@ params:
   REGION_CD: "00000001"
   DATE_FROM: "20250927"
   DATE_TO:   "20250930"
+  BUFFER_M: 500
 
 slides:
   - name: "1: 표지"
@@ -5920,3 +5921,564 @@ slides:
             JOIN flag USING (seq)
             ORDER BY seq;
 
+  - name: "22: 시설물 및 주차장 현황"
+    tokens:
+      SL22_1:
+        sql: |
+          WITH
+          reg AS (
+            SELECT ST_Transform(ST_Buffer(ST_Transform(r.popltn_relm, 5179), :BUFFER_M), 4326) AS geom
+            FROM regionmonitor.tb_intrst_region_relm r
+            WHERE r.region_cd = :REGION_CD
+          ),
+          code_map(code, group_nm) AS (VALUES
+            ('A','그룹7(개별)'), ('B','그룹6'), ('C','그룹8'), ('D','그룹2(개별)'),
+            ('E','그룹3(개별)'), ('F','그룹6'), ('G','그룹1'), ('H','그룹1'),
+            ('I','그룹6'), ('J','그룹1'), ('K','그룹8'), ('L','그룹6'),
+            ('M','그룹1'), ('N','그룹1'), ('O','그룹4(개별)'), ('P','그룹5(개별)')
+          ),
+          fac AS (
+            SELECT
+              f.fclty_nm,
+              cm.group_nm
+            FROM regionmonitor.TB_MAIN_FCLTY_INFO f
+            JOIN reg ON ST_Within(ST_SetSRID(ST_MakePoint(f.Y_CRDNT,f.X_CRDNT),4326), reg.geom)
+            LEFT JOIN code_map cm
+              ON cm.code = SUBSTRING(TRIM(f.fclty_sclas_cd) FROM 1 FOR 1)
+            WHERE UPPER(TRIM(f.fclty_sclas_cd)) <> 'P01'
+          )
+          SELECT TO_CHAR(COALESCE(COUNT(*),0), 'FM999,999,999')
+          FROM fac
+          WHERE group_nm = '그룹1';
+
+      SL22_2:  # 그룹1 인당 시설수
+        sql: |
+          WITH
+          reg AS (
+            SELECT ST_Transform(ST_Buffer(ST_Transform(r.popltn_relm, 5179), :BUFFER_M), 4326) AS geom
+            FROM regionmonitor.tb_intrst_region_relm r
+            WHERE r.region_cd = :REGION_CD
+          ),
+          code_map(code, group_nm) AS (VALUES
+            ('A','그룹7(개별)'), ('B','그룹6'), ('C','그룹8'), ('D','그룹2(개별)'),
+            ('E','그룹3(개별)'), ('F','그룹6'), ('G','그룹1'), ('H','그룹1'),
+            ('I','그룹6'), ('J','그룹1'), ('K','그룹8'), ('L','그룹6'),
+            ('M','그룹1'), ('N','그룹1'), ('O','그룹4(개별)'), ('P','그룹5(개별)')
+          ),
+          fac AS (
+            SELECT
+              f.fclty_nm,
+              cm.group_nm
+            FROM regionmonitor.TB_MAIN_FCLTY_INFO f
+            JOIN reg ON ST_Within(ST_SetSRID(ST_MakePoint(f.Y_CRDNT,f.X_CRDNT),4326), reg.geom)
+            LEFT JOIN code_map cm
+              ON cm.code = SUBSTRING(TRIM(f.fclty_sclas_cd) FROM 1 FOR 1)
+            WHERE UPPER(TRIM(f.fclty_sclas_cd)) <> 'P01'
+          ),
+          vip AS (
+            SELECT COALESCE(SUM(TOT_VIPOP),0)::numeric AS v
+            FROM regionmonitor.TB_SEXDSTN_VISIT_POPLTN
+            WHERE REGION_CD = CAST(:REGION_CD AS VARCHAR)
+              AND STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
+          )
+          SELECT
+            TO_CHAR(
+              COALESCE(
+                ROUND(
+                  COUNT(*)::numeric / NULLIF((SELECT v FROM vip),0),
+                5),
+              0),
+              'FM0.0000'
+            ) || '개'
+          FROM fac
+          WHERE group_nm = '그룹1';
+
+      SL22_3:
+        sql: |
+          WITH
+          reg AS (
+            SELECT ST_Transform(ST_Buffer(ST_Transform(r.popltn_relm, 5179), :BUFFER_M), 4326) AS geom
+            FROM regionmonitor.tb_intrst_region_relm r
+            WHERE r.region_cd = :REGION_CD
+          ),
+          code_map(code, group_nm) AS (VALUES
+            ('A','그룹7(개별)'), ('B','그룹6'), ('C','그룹8'), ('D','그룹2(개별)'),
+            ('E','그룹3(개별)'), ('F','그룹6'), ('G','그룹1'), ('H','그룹1'),
+            ('I','그룹6'), ('J','그룹1'), ('K','그룹8'), ('L','그룹6'),
+            ('M','그룹1'), ('N','그룹1'), ('O','그룹4(개별)'), ('P','그룹5(개별)')
+          ),
+          fac AS (
+            SELECT
+              f.fclty_nm,
+              cm.group_nm
+            FROM regionmonitor.TB_MAIN_FCLTY_INFO f
+            JOIN reg ON ST_Within(ST_SetSRID(ST_MakePoint(f.Y_CRDNT,f.X_CRDNT),4326), reg.geom)
+            LEFT JOIN code_map cm
+              ON cm.code = SUBSTRING(TRIM(f.fclty_sclas_cd) FROM 1 FOR 1)
+            WHERE UPPER(TRIM(f.fclty_sclas_cd)) <> 'P01'
+          )
+          SELECT TO_CHAR(COALESCE(COUNT(*),0), 'FM999,999,999')
+          FROM fac
+          WHERE group_nm = '그룹6';
+
+      SL22_4:  # 그룹6 인당 시설수
+        sql: |
+          WITH
+          reg AS (
+            SELECT ST_Transform(ST_Buffer(ST_Transform(r.popltn_relm, 5179), :BUFFER_M), 4326) AS geom
+            FROM regionmonitor.tb_intrst_region_relm r
+            WHERE r.region_cd = :REGION_CD
+          ),
+          code_map(code, group_nm) AS (VALUES
+            ('A','그룹7(개별)'), ('B','그룹6'), ('C','그룹8'), ('D','그룹2(개별)'),
+            ('E','그룹3(개별)'), ('F','그룹6'), ('G','그룹1'), ('H','그룹1'),
+            ('I','그룹6'), ('J','그룹1'), ('K','그룹8'), ('L','그룹6'),
+            ('M','그룹1'), ('N','그룹1'), ('O','그룹4(개별)'), ('P','그룹5(개별)')
+          ),
+          fac AS (
+            SELECT
+              f.fclty_nm,
+              cm.group_nm
+            FROM regionmonitor.TB_MAIN_FCLTY_INFO f
+            JOIN reg ON ST_Within(ST_SetSRID(ST_MakePoint(f.Y_CRDNT,f.X_CRDNT),4326), reg.geom)
+            LEFT JOIN code_map cm
+              ON cm.code = SUBSTRING(TRIM(f.fclty_sclas_cd) FROM 1 FOR 1)
+            WHERE UPPER(TRIM(f.fclty_sclas_cd)) <> 'P01'
+          ),
+          vip AS (
+            SELECT COALESCE(SUM(TOT_VIPOP),0)::numeric AS v
+            FROM regionmonitor.TB_SEXDSTN_VISIT_POPLTN
+            WHERE REGION_CD = CAST(:REGION_CD AS VARCHAR)
+              AND STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
+          )
+          SELECT
+            TO_CHAR(
+              COALESCE(
+                ROUND(
+                  COUNT(*)::numeric / NULLIF((SELECT v FROM vip),0),
+                5),
+              0),
+              'FM0.0000'
+            ) || '개'
+          FROM fac
+          WHERE group_nm = '그룹6';
+
+      SL22_5:
+        sql: |
+          WITH
+          reg AS (
+            SELECT ST_Transform(ST_Buffer(ST_Transform(r.popltn_relm, 5179), :BUFFER_M), 4326) AS geom
+            FROM regionmonitor.tb_intrst_region_relm r
+            WHERE r.region_cd = :REGION_CD
+          ),
+          code_map(code, group_nm) AS (VALUES
+            ('A','그룹7(개별)'), ('B','그룹6'), ('C','그룹8'), ('D','그룹2(개별)'),
+            ('E','그룹3(개별)'), ('F','그룹6'), ('G','그룹1'), ('H','그룹1'),
+            ('I','그룹6'), ('J','그룹1'), ('K','그룹8'), ('L','그룹6'),
+            ('M','그룹1'), ('N','그룹1'), ('O','그룹4(개별)'), ('P','그룹5(개별)')
+          ),
+          fac AS (
+            SELECT
+              f.fclty_nm,
+              cm.group_nm
+            FROM regionmonitor.TB_MAIN_FCLTY_INFO f
+            JOIN reg ON ST_Within(ST_SetSRID(ST_MakePoint(f.Y_CRDNT,f.X_CRDNT),4326), reg.geom)
+            LEFT JOIN code_map cm
+              ON cm.code = SUBSTRING(TRIM(f.fclty_sclas_cd) FROM 1 FOR 1)
+            WHERE UPPER(TRIM(f.fclty_sclas_cd)) <> 'P01'
+          )
+          SELECT TO_CHAR(COALESCE(COUNT(*),0), 'FM999,999,999')
+          FROM fac
+          WHERE group_nm = '그룹8';
+
+      SL22_6:  # 그룹8 인당 시설수
+        sql: |
+          WITH
+          reg AS (
+            SELECT ST_Transform(ST_Buffer(ST_Transform(r.popltn_relm, 5179), :BUFFER_M), 4326) AS geom
+            FROM regionmonitor.tb_intrst_region_relm r
+            WHERE r.region_cd = :REGION_CD
+          ),
+          code_map(code, group_nm) AS (VALUES
+            ('A','그룹7(개별)'), ('B','그룹6'), ('C','그룹8'), ('D','그룹2(개별)'),
+            ('E','그룹3(개별)'), ('F','그룹6'), ('G','그룹1'), ('H','그룹1'),
+            ('I','그룹6'), ('J','그룹1'), ('K','그룹8'), ('L','그룹6'),
+            ('M','그룹1'), ('N','그룹1'), ('O','그룹4(개별)'), ('P','그룹5(개별)')
+          ),
+          fac AS (
+            SELECT
+              f.fclty_nm,
+              cm.group_nm
+            FROM regionmonitor.TB_MAIN_FCLTY_INFO f
+            JOIN reg ON ST_Within(ST_SetSRID(ST_MakePoint(f.Y_CRDNT,f.X_CRDNT),4326), reg.geom)
+            LEFT JOIN code_map cm
+              ON cm.code = SUBSTRING(TRIM(f.fclty_sclas_cd) FROM 1 FOR 1)
+            WHERE UPPER(TRIM(f.fclty_sclas_cd)) <> 'P01'
+          ),
+          vip AS (
+            SELECT COALESCE(SUM(TOT_VIPOP),0)::numeric AS v
+            FROM regionmonitor.TB_SEXDSTN_VISIT_POPLTN
+            WHERE REGION_CD = CAST(:REGION_CD AS VARCHAR)
+              AND STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
+          )
+          SELECT
+            TO_CHAR(
+              COALESCE(
+                ROUND(
+                  COUNT(*)::numeric / NULLIF((SELECT v FROM vip),0),
+                5),
+              0),
+              'FM0.0000'
+            ) || '개'
+          FROM fac
+          WHERE group_nm = '그룹8';
+
+      SL22_7:
+        sql: |
+          WITH
+          reg AS (
+            SELECT ST_Transform(ST_Buffer(ST_Transform(r.popltn_relm, 5179), :BUFFER_M), 4326) AS geom
+            FROM regionmonitor.tb_intrst_region_relm r
+            WHERE r.region_cd = :REGION_CD
+          ),
+          code_map(code, group_nm) AS (VALUES
+            ('A','그룹7(개별)'), ('B','그룹6'), ('C','그룹8'), ('D','그룹2(개별)'),
+            ('E','그룹3(개별)'), ('F','그룹6'), ('G','그룹1'), ('H','그룹1'),
+            ('I','그룹6'), ('J','그룹1'), ('K','그룹8'), ('L','그룹6'),
+            ('M','그룹1'), ('N','그룹1'), ('O','그룹4(개별)'), ('P','그룹5(개별)')
+          ),
+          fac AS (
+            SELECT
+              f.fclty_nm,
+              cm.group_nm
+            FROM regionmonitor.TB_MAIN_FCLTY_INFO f
+            JOIN reg ON ST_Within(ST_SetSRID(ST_MakePoint(f.Y_CRDNT,f.X_CRDNT),4326), reg.geom)
+            LEFT JOIN code_map cm
+              ON cm.code = SUBSTRING(TRIM(f.fclty_sclas_cd) FROM 1 FOR 1)
+            WHERE UPPER(TRIM(f.fclty_sclas_cd)) <> 'P01'
+          )
+          SELECT TO_CHAR(COALESCE(COUNT(*),0), 'FM999,999,999')
+          FROM fac
+          WHERE group_nm = '그룹2(개별)';
+
+      SL22_8:  # 그룹2 인당 시설수
+        sql: |
+          WITH
+          reg AS (
+            SELECT ST_Transform(ST_Buffer(ST_Transform(r.popltn_relm, 5179), :BUFFER_M), 4326) AS geom
+            FROM regionmonitor.tb_intrst_region_relm r
+            WHERE r.region_cd = :REGION_CD
+          ),
+          code_map(code, group_nm) AS (VALUES
+            ('A','그룹7(개별)'), ('B','그룹6'), ('C','그룹8'), ('D','그룹2(개별)'),
+            ('E','그룹3(개별)'), ('F','그룹6'), ('G','그룹1'), ('H','그룹1'),
+            ('I','그룹6'), ('J','그룹1'), ('K','그룹8'), ('L','그룹6'),
+            ('M','그룹1'), ('N','그룹1'), ('O','그룹4(개별)'), ('P','그룹5(개별)')
+          ),
+          fac AS (
+            SELECT
+              f.fclty_nm,
+              cm.group_nm
+            FROM regionmonitor.TB_MAIN_FCLTY_INFO f
+            JOIN reg ON ST_Within(ST_SetSRID(ST_MakePoint(f.Y_CRDNT,f.X_CRDNT),4326), reg.geom)
+            LEFT JOIN code_map cm
+              ON cm.code = SUBSTRING(TRIM(f.fclty_sclas_cd) FROM 1 FOR 1)
+            WHERE UPPER(TRIM(f.fclty_sclas_cd)) <> 'P01'
+          ),
+          vip AS (
+            SELECT COALESCE(SUM(TOT_VIPOP),0)::numeric AS v
+            FROM regionmonitor.TB_SEXDSTN_VISIT_POPLTN
+            WHERE REGION_CD = CAST(:REGION_CD AS VARCHAR)
+              AND STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
+          )
+          SELECT
+            TO_CHAR(
+              COALESCE(
+                ROUND(
+                  COUNT(*)::numeric / NULLIF((SELECT v FROM vip),0),
+                5),
+              0),
+              'FM0.0000'
+            ) || '개'
+          FROM fac
+          WHERE group_nm = '그룹2(개별)';
+
+      SL22_9:
+        sql: |
+          WITH
+          reg AS (
+            SELECT ST_Transform(ST_Buffer(ST_Transform(r.popltn_relm, 5179), :BUFFER_M), 4326) AS geom
+            FROM regionmonitor.tb_intrst_region_relm r
+            WHERE r.region_cd = :REGION_CD
+          ),
+          code_map(code, group_nm) AS (VALUES
+            ('A','그룹7(개별)'), ('B','그룹6'), ('C','그룹8'), ('D','그룹2(개별)'),
+            ('E','그룹3(개별)'), ('F','그룹6'), ('G','그룹1'), ('H','그룹1'),
+            ('I','그룹6'), ('J','그룹1'), ('K','그룹8'), ('L','그룹6'),
+            ('M','그룹1'), ('N','그룹1'), ('O','그룹4(개별)'), ('P','그룹5(개별)')
+          ),
+          fac AS (
+            SELECT
+              f.fclty_nm,
+              cm.group_nm
+            FROM regionmonitor.TB_MAIN_FCLTY_INFO f
+            JOIN reg ON ST_Within(ST_SetSRID(ST_MakePoint(f.Y_CRDNT,f.X_CRDNT),4326), reg.geom)
+            LEFT JOIN code_map cm
+              ON cm.code = SUBSTRING(TRIM(f.fclty_sclas_cd) FROM 1 FOR 1)
+            WHERE UPPER(TRIM(f.fclty_sclas_cd)) <> 'P01'
+          )
+          SELECT TO_CHAR(COALESCE(COUNT(*),0), 'FM999,999,999')
+          FROM fac
+          WHERE group_nm = '그룹3(개별)';
+
+      SL22_10:  # 그룹3 인당 시설수
+        sql: |
+          WITH
+          reg AS (
+            SELECT ST_Transform(ST_Buffer(ST_Transform(r.popltn_relm, 5179), :BUFFER_M), 4326) AS geom
+            FROM regionmonitor.tb_intrst_region_relm r
+            WHERE r.region_cd = :REGION_CD
+          ),
+          code_map(code, group_nm) AS (VALUES
+            ('A','그룹7(개별)'), ('B','그룹6'), ('C','그룹8'), ('D','그룹2(개별)'),
+            ('E','그룹3(개별)'), ('F','그룹6'), ('G','그룹1'), ('H','그룹1'),
+            ('I','그룹6'), ('J','그룹1'), ('K','그룹8'), ('L','그룹6'),
+            ('M','그룹1'), ('N','그룹1'), ('O','그룹4(개별)'), ('P','그룹5(개별)')
+          ),
+          fac AS (
+            SELECT
+              f.fclty_nm,
+              cm.group_nm
+            FROM regionmonitor.TB_MAIN_FCLTY_INFO f
+            JOIN reg ON ST_Within(ST_SetSRID(ST_MakePoint(f.Y_CRDNT,f.X_CRDNT),4326), reg.geom)
+            LEFT JOIN code_map cm
+              ON cm.code = SUBSTRING(TRIM(f.fclty_sclas_cd) FROM 1 FOR 1)
+            WHERE UPPER(TRIM(f.fclty_sclas_cd)) <> 'P01'
+          ),
+          vip AS (
+            SELECT COALESCE(SUM(TOT_VIPOP),0)::numeric AS v
+            FROM regionmonitor.TB_SEXDSTN_VISIT_POPLTN
+            WHERE REGION_CD = CAST(:REGION_CD AS VARCHAR)
+              AND STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
+          )
+          SELECT
+            TO_CHAR(
+              COALESCE(
+                ROUND(
+                  COUNT(*)::numeric / NULLIF((SELECT v FROM vip),0),
+                5),
+              0),
+              'FM0.0000'
+            ) || '개'
+          FROM fac
+          WHERE group_nm = '그룹3(개별)';
+
+      SL22_11:
+        sql: |
+          WITH
+          reg AS (
+            SELECT ST_Transform(ST_Buffer(ST_Transform(r.popltn_relm, 5179), :BUFFER_M), 4326) AS geom
+            FROM regionmonitor.tb_intrst_region_relm r
+            WHERE r.region_cd = :REGION_CD
+          ),
+          code_map(code, group_nm) AS (VALUES
+            ('A','그룹7(개별)'), ('B','그룹6'), ('C','그룹8'), ('D','그룹2(개별)'),
+            ('E','그룹3(개별)'), ('F','그룹6'), ('G','그룹1'), ('H','그룹1'),
+            ('I','그룹6'), ('J','그룹1'), ('K','그룹8'), ('L','그룹6'),
+            ('M','그룹1'), ('N','그룹1'), ('O','그룹4(개별)'), ('P','그룹5(개별)')
+          ),
+          fac AS (
+            SELECT
+              f.fclty_nm,
+              cm.group_nm
+            FROM regionmonitor.TB_MAIN_FCLTY_INFO f
+            JOIN reg ON ST_Within(ST_SetSRID(ST_MakePoint(f.Y_CRDNT,f.X_CRDNT),4326), reg.geom)
+            LEFT JOIN code_map cm
+              ON cm.code = SUBSTRING(TRIM(f.fclty_sclas_cd) FROM 1 FOR 1)
+            WHERE UPPER(TRIM(f.fclty_sclas_cd)) <> 'P01'
+          )
+          SELECT TO_CHAR(COALESCE(COUNT(*),0), 'FM999,999,999')
+          FROM fac
+          WHERE group_nm = '그룹4(개별)';
+
+      SL22_12:  # 그룹4 인당 시설수
+        sql: |
+          WITH
+          reg AS (
+            SELECT ST_Transform(ST_Buffer(ST_Transform(r.popltn_relm, 5179), :BUFFER_M), 4326) AS geom
+            FROM regionmonitor.tb_intrst_region_relm r
+            WHERE r.region_cd = :REGION_CD
+          ),
+          code_map(code, group_nm) AS (VALUES
+            ('A','그룹7(개별)'), ('B','그룹6'), ('C','그룹8'), ('D','그룹2(개별)'),
+            ('E','그룹3(개별)'), ('F','그룹6'), ('G','그룹1'), ('H','그룹1'),
+            ('I','그룹6'), ('J','그룹1'), ('K','그룹8'), ('L','그룹6'),
+            ('M','그룹1'), ('N','그룹1'), ('O','그룹4(개별)'), ('P','그룹5(개별)')
+          ),
+          fac AS (
+            SELECT
+              f.fclty_nm,
+              cm.group_nm
+            FROM regionmonitor.TB_MAIN_FCLTY_INFO f
+            JOIN reg ON ST_Within(ST_SetSRID(ST_MakePoint(f.Y_CRDNT,f.X_CRDNT),4326), reg.geom)
+            LEFT JOIN code_map cm
+              ON cm.code = SUBSTRING(TRIM(f.fclty_sclas_cd) FROM 1 FOR 1)
+            WHERE UPPER(TRIM(f.fclty_sclas_cd)) <> 'P01'
+          ),
+          vip AS (
+            SELECT COALESCE(SUM(TOT_VIPOP),0)::numeric AS v
+            FROM regionmonitor.TB_SEXDSTN_VISIT_POPLTN
+            WHERE REGION_CD = CAST(:REGION_CD AS VARCHAR)
+              AND STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
+          )
+          SELECT
+            TO_CHAR(
+              COALESCE(
+                ROUND(
+                  COUNT(*)::numeric / NULLIF((SELECT v FROM vip),0),
+                5),
+              0),
+              'FM0.0000'
+            ) || '개'
+          FROM fac
+          WHERE group_nm = '그룹4(개별)';
+
+      SL22_13:
+        sql: |
+          WITH
+          reg AS (
+            SELECT ST_Transform(ST_Buffer(ST_Transform(r.popltn_relm, 5179), :BUFFER_M), 4326) AS geom
+            FROM regionmonitor.tb_intrst_region_relm r
+            WHERE r.region_cd = :REGION_CD
+          ),
+          code_map(code, group_nm) AS (VALUES
+            ('A','그룹7(개별)'), ('B','그룹6'), ('C','그룹8'), ('D','그룹2(개별)'),
+            ('E','그룹3(개별)'), ('F','그룹6'), ('G','그룹1'), ('H','그룹1'),
+            ('I','그룹6'), ('J','그룹1'), ('K','그룹8'), ('L','그룹6'),
+            ('M','그룹1'), ('N','그룹1'), ('O','그룹4(개별)'), ('P','그룹5(개별)')
+          ),
+          fac AS (
+            SELECT
+              f.fclty_nm,
+              cm.group_nm
+            FROM regionmonitor.TB_MAIN_FCLTY_INFO f
+            JOIN reg ON ST_Within(ST_SetSRID(ST_MakePoint(f.Y_CRDNT,f.X_CRDNT),4326), reg.geom)
+            LEFT JOIN code_map cm
+              ON cm.code = SUBSTRING(TRIM(f.fclty_sclas_cd) FROM 1 FOR 1)
+            WHERE UPPER(TRIM(f.fclty_sclas_cd)) <> 'P01'
+          )
+          SELECT TO_CHAR(COALESCE(COUNT(*),0), 'FM999,999,999')
+          FROM fac
+          WHERE group_nm = '그룹5(개별)';
+
+      SL22_14:  # 그룹5 인당 시설수
+        sql: |
+          WITH
+          reg AS (
+            SELECT ST_Transform(ST_Buffer(ST_Transform(r.popltn_relm, 5179), :BUFFER_M), 4326) AS geom
+            FROM regionmonitor.tb_intrst_region_relm r
+            WHERE r.region_cd = :REGION_CD
+          ),
+          code_map(code, group_nm) AS (VALUES
+            ('A','그룹7(개별)'), ('B','그룹6'), ('C','그룹8'), ('D','그룹2(개별)'),
+            ('E','그룹3(개별)'), ('F','그룹6'), ('G','그룹1'), ('H','그룹1'),
+            ('I','그룹6'), ('J','그룹1'), ('K','그룹8'), ('L','그룹6'),
+            ('M','그룹1'), ('N','그룹1'), ('O','그룹4(개별)'), ('P','그룹5(개별)')
+          ),
+          fac AS (
+            SELECT
+              f.fclty_nm,
+              cm.group_nm
+            FROM regionmonitor.TB_MAIN_FCLTY_INFO f
+            JOIN reg ON ST_Within(ST_SetSRID(ST_MakePoint(f.Y_CRDNT,f.X_CRDNT),4326), reg.geom)
+            LEFT JOIN code_map cm
+              ON cm.code = SUBSTRING(TRIM(f.fclty_sclas_cd) FROM 1 FOR 1)
+            WHERE UPPER(TRIM(f.fclty_sclas_cd)) <> 'P01'
+          ),
+          vip AS (
+            SELECT COALESCE(SUM(TOT_VIPOP),0)::numeric AS v
+            FROM regionmonitor.TB_SEXDSTN_VISIT_POPLTN
+            WHERE REGION_CD = CAST(:REGION_CD AS VARCHAR)
+              AND STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
+          )
+          SELECT
+            TO_CHAR(
+              COALESCE(
+                ROUND(
+                  COUNT(*)::numeric / NULLIF((SELECT v FROM vip),0),
+                5),
+              0),
+              'FM0.0000'
+            ) || '개'
+          FROM fac
+          WHERE group_nm = '그룹5(개별)';
+
+      SL22_15:
+        sql: |
+          WITH
+          reg AS (
+            SELECT ST_Transform(ST_Buffer(ST_Transform(r.popltn_relm, 5179), :BUFFER_M), 4326) AS geom
+            FROM regionmonitor.tb_intrst_region_relm r
+            WHERE r.region_cd = :REGION_CD
+          ),
+          code_map(code, group_nm) AS (VALUES
+            ('A','그룹7(개별)'), ('B','그룹6'), ('C','그룹8'), ('D','그룹2(개별)'),
+            ('E','그룹3(개별)'), ('F','그룹6'), ('G','그룹1'), ('H','그룹1'),
+            ('I','그룹6'), ('J','그룹1'), ('K','그룹8'), ('L','그룹6'),
+            ('M','그룹1'), ('N','그룹1'), ('O','그룹4(개별)'), ('P','그룹5(개별)')
+          ),
+          fac AS (
+            SELECT
+              f.fclty_nm,
+              cm.group_nm
+            FROM regionmonitor.TB_MAIN_FCLTY_INFO f
+            JOIN reg ON ST_Within(ST_SetSRID(ST_MakePoint(f.Y_CRDNT,f.X_CRDNT),4326), reg.geom)
+            LEFT JOIN code_map cm
+              ON cm.code = SUBSTRING(TRIM(f.fclty_sclas_cd) FROM 1 FOR 1)
+            WHERE UPPER(TRIM(f.fclty_sclas_cd)) <> 'P01'
+          )
+          SELECT TO_CHAR(COALESCE(COUNT(*),0), 'FM999,999,999')
+          FROM fac
+          WHERE group_nm = '그룹7(개별)';
+
+      SL22_16:  # 그룹7 인당 시설수
+        sql: |
+          WITH
+          reg AS (
+            SELECT ST_Transform(ST_Buffer(ST_Transform(r.popltn_relm, 5179), :BUFFER_M), 4326) AS geom
+            FROM regionmonitor.tb_intrst_region_relm r
+            WHERE r.region_cd = :REGION_CD
+          ),
+          code_map(code, group_nm) AS (VALUES
+            ('A','그룹7(개별)'), ('B','그룹6'), ('C','그룹8'), ('D','그룹2(개별)'),
+            ('E','그룹3(개별)'), ('F','그룹6'), ('G','그룹1'), ('H','그룹1'),
+            ('I','그룹6'), ('J','그룹1'), ('K','그룹8'), ('L','그룹6'),
+            ('M','그룹1'), ('N','그룹1'), ('O','그룹4(개별)'), ('P','그룹5(개별)')
+          ),
+          fac AS (
+            SELECT
+              f.fclty_nm,
+              cm.group_nm
+            FROM regionmonitor.TB_MAIN_FCLTY_INFO f
+            JOIN reg ON ST_Within(ST_SetSRID(ST_MakePoint(f.Y_CRDNT,f.X_CRDNT),4326), reg.geom)
+            LEFT JOIN code_map cm
+              ON cm.code = SUBSTRING(TRIM(f.fclty_sclas_cd) FROM 1 FOR 1)
+            WHERE UPPER(TRIM(f.fclty_sclas_cd)) <> 'P01'
+          ),
+          vip AS (
+            SELECT COALESCE(SUM(TOT_VIPOP),0)::numeric AS v
+            FROM regionmonitor.TB_SEXDSTN_VISIT_POPLTN
+            WHERE REGION_CD = CAST(:REGION_CD AS VARCHAR)
+              AND STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
+          )
+          SELECT
+            TO_CHAR(
+              COALESCE(
+                ROUND(
+                  COUNT(*)::numeric / NULLIF((SELECT v FROM vip),0),
+                5),
+              0),
+              'FM0.0000'
+            ) || '개'
+          FROM fac
+          WHERE group_nm = '그룹7(개별)';
