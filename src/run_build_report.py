@@ -299,10 +299,10 @@ def plot_facility_and_parking(engine, region_cd, out_png, buffer_m=500, title=No
         ax.set_title(title, fontsize=13, fontweight="bold", pad=6)
 
     # 범례 정리
-    if not fac3857.empty or not par3857.empty:
-        leg = ax.legend(loc="lower left", fontsize=8, frameon=True, ncol=2, markerscale=1.0)
-        for lh in leg.legend_handles:
-            lh.set_alpha(1.0)
+    # if not fac3857.empty or not par3857.empty:
+    #     leg = ax.legend(loc="lower left", fontsize=8, frameon=True, ncol=2, markerscale=1.0)
+    #     for lh in leg.legend_handles:
+    #         lh.set_alpha(1.0)
 
     os.makedirs(os.path.dirname(out_png), exist_ok=True)
     plt.savefig(out_png, dpi=300, bbox_inches="tight", pad_inches=0.1, transparent=True)
@@ -326,7 +326,7 @@ engine = create_engine(
 with open("config/slides_tokens.yml", encoding="utf-8") as f:
     cfg = yaml.safe_load(f)
 
-OUTPUT_PPT = "out/test_0930.pptx"
+OUTPUT_PPT = "out/test_.pptx"
 TEMPLATE_PPT = "template/master.pptx"
 
 token_values = {}

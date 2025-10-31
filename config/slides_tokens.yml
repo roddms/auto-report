@@ -1173,15 +1173,15 @@ slides:
           LEFT JOIN (
             SELECT SUM(MVIPOP) AS male_prev
             FROM regionmonitor.tb_sexdstn_visit_popltn
-            WHERE STDR_YMD BETWEEN
-                  to_char(to_date(CAST(:DATE_FROM AS text),'YYYYMMDD') - INTERVAL '1 year','YYYYMMDD')
-              AND to_char(to_date(CAST(:DATE_TO   AS text),'YYYYMMDD') - INTERVAL '1 year','YYYYMMDD')
+            WHERE STDR_YMD BETWEEN  
+                  find_date(:DATE_FROM, 1)
+              AND find_date(:DATE_TO, 1)
               AND REGION_CD = :REGION_CD
           ) yoy ON TRUE
-        fmt: signed_percent_1
+        fmt: signed_percent_1;
 
       SL6_f:
-        sql: | # 전년대비 여성 방문인구 수 증감율
+        sql: | # 전년대비 여성 방문인구 수 증감율 (find_date() 적용)
           SELECT 
             CASE
               WHEN (cur.female - COALESCE(yoy.female_prev,0)) * 100.0 / NULLIF(yoy.female_prev,0) > 0
@@ -1199,12 +1199,13 @@ slides:
           LEFT JOIN (
             SELECT SUM(FVIPOP) AS female_prev
             FROM regionmonitor.tb_sexdstn_visit_popltn
-            WHERE STDR_YMD BETWEEN
-                  to_char(to_date(CAST(:DATE_FROM AS text),'YYYYMMDD') - INTERVAL '1 year','YYYYMMDD')
-              AND to_char(to_date(CAST(:DATE_TO   AS text),'YYYYMMDD') - INTERVAL '1 year','YYYYMMDD')
+            WHERE STDR_YMD BETWEEN  
+                  find_date(:DATE_FROM, 1)
+              AND find_date(:DATE_TO, 1)
               AND REGION_CD = :REGION_CD
           ) yoy ON TRUE
         fmt: signed_percent_1
+
 
     charts:
       SL6_chart:
@@ -1310,9 +1311,7 @@ slides:
               COALESCE(SUM(GNR70_VIPOP),0) AS A70
             FROM regionmonitor.TB_AGRDE_VISIT_POPLTN
             WHERE REGION_CD = CAST(:REGION_CD AS VARCHAR)
-              AND STDR_YMD BETWEEN
-                to_char(to_date(:DATE_FROM,'YYYYMMDD') - INTERVAL '1 year','YYYYMMDD')
-              AND to_char(to_date(:DATE_TO  ,'YYYYMMDD') - INTERVAL '1 year','YYYYMMDD')
+              AND STDR_YMD BETWEEN find_date(:DATE_FROM, 1) AND find_date(:DATE_TO, 1)
           ),
           u AS (
             SELECT '20대' AS age, A20 AS c, (SELECT A20 FROM prv) AS p FROM cur UNION ALL
@@ -1354,9 +1353,7 @@ slides:
               COALESCE(SUM(GNR70_VIPOP),0) AS A70
             FROM regionmonitor.TB_AGRDE_VISIT_POPLTN
             WHERE REGION_CD = CAST(:REGION_CD AS VARCHAR)
-              AND STDR_YMD BETWEEN
-                to_char(to_date(:DATE_FROM,'YYYYMMDD') - INTERVAL '1 year','YYYYMMDD')
-              AND to_char(to_date(:DATE_TO  ,'YYYYMMDD') - INTERVAL '1 year','YYYYMMDD')
+              AND STDR_YMD BETWEEN find_date(:DATE_FROM, 1) AND find_date(:DATE_TO, 1)
           ),
           u AS (
             SELECT '20대' AS age, A20 AS c, (SELECT A20 FROM prv) AS p FROM cur UNION ALL
@@ -1406,9 +1403,7 @@ slides:
               COALESCE(SUM(GNR70_VIPOP),0) AS A70
             FROM regionmonitor.TB_AGRDE_VISIT_POPLTN
             WHERE REGION_CD = CAST(:REGION_CD AS VARCHAR)
-              AND STDR_YMD BETWEEN
-                to_char(to_date(:DATE_FROM,'YYYYMMDD') - INTERVAL '1 year','YYYYMMDD')
-              AND to_char(to_date(:DATE_TO  ,'YYYYMMDD') - INTERVAL '1 year','YYYYMMDD')
+              AND STDR_YMD BETWEEN find_date(:DATE_FROM, 1) AND find_date(:DATE_TO, 1)
           ),
           u AS (
             SELECT '20대' AS age, A20 AS c, (SELECT A20 FROM prv) AS p FROM cur UNION ALL
@@ -1450,9 +1445,7 @@ slides:
               COALESCE(SUM(GNR70_VIPOP),0) AS A70
             FROM regionmonitor.TB_AGRDE_VISIT_POPLTN
             WHERE REGION_CD = CAST(:REGION_CD AS VARCHAR)
-              AND STDR_YMD BETWEEN
-                to_char(to_date(:DATE_FROM,'YYYYMMDD') - INTERVAL '1 year','YYYYMMDD')
-              AND to_char(to_date(:DATE_TO  ,'YYYYMMDD') - INTERVAL '1 year','YYYYMMDD')
+              AND STDR_YMD BETWEEN find_date(:DATE_FROM, 1) AND find_date(:DATE_TO, 1)
           ),
           u AS (
             SELECT '20대' AS age, A20 AS c, (SELECT A20 FROM prv) AS p FROM cur UNION ALL
@@ -1514,8 +1507,8 @@ slides:
             WITH p AS (
               SELECT :REGION_CD rc,
                      :DATE_FROM dfrom, :DATE_TO dto,
-                     to_char(to_date(:DATE_FROM,'YYYYMMDD') - interval '1 year','YYYYMMDD') pfrom,
-                     to_char(to_date(:DATE_TO,'YYYYMMDD') - interval '1 year','YYYYMMDD') pto
+                     find_date(:DATE_FROM, 1) pfrom,
+                     find_date(:DATE_TO,   1) pto
             ),
             cur AS (
               SELECT '20대' lbl, SUM(GNR20_VIPOP)::NUMERIC v FROM regionmonitor.TB_AGRDE_VISIT_POPLTN t, p WHERE t.REGION_CD=p.rc AND t.STDR_YMD BETWEEN p.dfrom AND p.dto
@@ -2047,9 +2040,7 @@ slides:
             SELECT COALESCE(SUM(WHTHRC_VIPOP),0) AS v
             FROM regionmonitor.TB_INFLOW_VISIT_POPLTN
             WHERE REGION_CD = CAST(:REGION_CD AS VARCHAR)
-              AND STDR_YMD BETWEEN
-                  to_char(to_date(:DATE_FROM,'YYYYMMDD') - INTERVAL '1 year','YYYYMMDD')
-              AND to_char(to_date(:DATE_TO  ,'YYYYMMDD') - INTERVAL '1 year','YYYYMMDD')
+              AND STDR_YMD BETWEEN find_date(:DATE_FROM, 1) AND find_date(:DATE_TO, 1)
           )
           SELECT 
             CASE
@@ -2080,9 +2071,7 @@ slides:
             SELECT COALESCE(SUM(NEARBY_VIPOP),0) AS v
             FROM regionmonitor.TB_INFLOW_VISIT_POPLTN
             WHERE REGION_CD = CAST(:REGION_CD AS VARCHAR)
-              AND STDR_YMD BETWEEN
-                  to_char(to_date(:DATE_FROM,'YYYYMMDD') - INTERVAL '1 year','YYYYMMDD')
-              AND to_char(to_date(:DATE_TO  ,'YYYYMMDD') - INTERVAL '1 year','YYYYMMDD')
+              AND STDR_YMD BETWEEN find_date(:DATE_FROM, 1) AND find_date(:DATE_TO, 1)
           )
           SELECT 
             CASE
@@ -2113,9 +2102,7 @@ slides:
             SELECT COALESCE(SUM(OUTHRC_VIPOP),0) AS v
             FROM regionmonitor.TB_INFLOW_VISIT_POPLTN
             WHERE REGION_CD = CAST(:REGION_CD AS VARCHAR)
-              AND STDR_YMD BETWEEN
-                  to_char(to_date(:DATE_FROM,'YYYYMMDD') - INTERVAL '1 year','YYYYMMDD')
-              AND to_char(to_date(:DATE_TO  ,'YYYYMMDD') - INTERVAL '1 year','YYYYMMDD')
+              AND STDR_YMD BETWEEN find_date(:DATE_FROM, 1) AND find_date(:DATE_TO, 1)
           )
           SELECT 
             CASE
@@ -2135,59 +2122,66 @@ slides:
           WITH p AS (SELECT CAST(SUBSTRING(:DATE_FROM,1,4) AS INT) y)
           SELECT (y-2)::TEXT FROM p
           UNION ALL SELECT (y-1)::TEXT FROM p
-          UNION ALL SELECT (y)::TEXT FROM p;
+          UNION ALL SELECT (y  )::TEXT FROM p;
 
         series:
           관내: |-
-            WITH p AS (SELECT CAST(SUBSTRING(:DATE_FROM,1,4) AS INT) y, :DATE_FROM df, :DATE_TO dt),
+            WITH p AS (
+              SELECT CAST(SUBSTRING(:DATE_FROM,1,4) AS INT) y, :DATE_FROM df, :DATE_TO dt
+            ),
             yrs_data AS (
-              SELECT 1 ord, y-2 yy, df, dt FROM p
-              UNION ALL SELECT 2, y-1, df, dt FROM p
-              UNION ALL SELECT 3, y, df, dt FROM p
+              SELECT 1 ord, y-2 yy, df, dt, (y-(y-2)) AS off FROM p
+              UNION ALL SELECT 2, y-1, df, dt, (y-(y-1)) FROM p
+              UNION ALL SELECT 3, y  , df, dt, (y-y)     FROM p
             )
             SELECT (
               SELECT COALESCE(SUM(t.WHTHRC_VIPOP),0)::NUMERIC/100000
               FROM regionmonitor.TB_INFLOW_VISIT_POPLTN t
               WHERE t.REGION_CD = :REGION_CD
                 AND t.STDR_YMD BETWEEN
-                    CASE WHEN yrs_data.yy = CAST(SUBSTRING(yrs_data.df,1,4) AS INT) THEN yrs_data.df ELSE (yrs_data.yy::TEXT||'0101') END
-                AND CASE WHEN yrs_data.yy = CAST(SUBSTRING(yrs_data.dt,1,4) AS INT) THEN yrs_data.dt ELSE (yrs_data.yy::TEXT||'1231') END
+                    CASE WHEN yrs_data.off = 0 THEN yrs_data.df ELSE find_date(yrs_data.df, yrs_data.off) END
+                AND CASE WHEN yrs_data.off = 0 THEN yrs_data.dt ELSE find_date(yrs_data.dt, yrs_data.off) END
             )
             FROM yrs_data ORDER BY ord;
 
           인접: |-
-            WITH p AS (SELECT CAST(SUBSTRING(:DATE_FROM,1,4) AS INT) y, :DATE_FROM df, :DATE_TO dt),
+            WITH p AS (
+              SELECT CAST(SUBSTRING(:DATE_FROM,1,4) AS INT) y, :DATE_FROM df, :DATE_TO dt
+            ),
             yrs_data AS (
-              SELECT 1 ord, y-2 yy, df, dt FROM p
-              UNION ALL SELECT 2, y-1, df, dt FROM p
-              UNION ALL SELECT 3, y, df, dt FROM p
+              SELECT 1 ord, y-2 yy, df, dt, (y-(y-2)) AS off FROM p
+              UNION ALL SELECT 2, y-1, df, dt, (y-(y-1)) FROM p
+              UNION ALL SELECT 3, y  , df, dt, (y-y)     FROM p
             )
             SELECT (
               SELECT COALESCE(SUM(t.NEARBY_VIPOP),0)::NUMERIC/100000
               FROM regionmonitor.TB_INFLOW_VISIT_POPLTN t
               WHERE t.REGION_CD = :REGION_CD
                 AND t.STDR_YMD BETWEEN
-                    CASE WHEN yrs_data.yy = CAST(SUBSTRING(yrs_data.df,1,4) AS INT) THEN yrs_data.df ELSE (yrs_data.yy::TEXT||'0101') END
-                AND CASE WHEN yrs_data.yy = CAST(SUBSTRING(yrs_data.dt,1,4) AS INT) THEN yrs_data.dt ELSE (yrs_data.yy::TEXT||'1231') END
+                    CASE WHEN yrs_data.off = 0 THEN yrs_data.df ELSE find_date(yrs_data.df, yrs_data.off) END
+                AND CASE WHEN yrs_data.off = 0 THEN yrs_data.dt ELSE find_date(yrs_data.dt, yrs_data.off) END
             )
             FROM yrs_data ORDER BY ord;
 
           관외: |-
-            WITH p AS (SELECT CAST(SUBSTRING(:DATE_FROM,1,4) AS INT) y, :DATE_FROM df, :DATE_TO dt),
+            WITH p AS (
+              SELECT CAST(SUBSTRING(:DATE_FROM,1,4) AS INT) y, :DATE_FROM df, :DATE_TO dt
+            ),
             yrs_data AS (
-              SELECT 1 ord, y-2 yy, df, dt FROM p
-              UNION ALL SELECT 2, y-1, df, dt FROM p
-              UNION ALL SELECT 3, y, df, dt FROM p
+              SELECT 1 ord, y-2 yy, df, dt, (y-(y-2)) AS off FROM p
+              UNION ALL SELECT 2, y-1, df, dt, (y-(y-1)) FROM p
+              UNION ALL SELECT 3, y  , df, dt, (y-y)     FROM p
             )
             SELECT (
               SELECT COALESCE(SUM(t.OUTHRC_VIPOP),0)::NUMERIC/100000
               FROM regionmonitor.TB_INFLOW_VISIT_POPLTN t
               WHERE t.REGION_CD = :REGION_CD
                 AND t.STDR_YMD BETWEEN
-                    CASE WHEN yrs_data.yy = CAST(SUBSTRING(yrs_data.df,1,4) AS INT) THEN yrs_data.df ELSE (yrs_data.yy::TEXT||'0101') END
-                AND CASE WHEN yrs_data.yy = CAST(SUBSTRING(yrs_data.dt,1,4) AS INT) THEN yrs_data.dt ELSE (yrs_data.yy::TEXT||'1231') END
+                    CASE WHEN yrs_data.off = 0 THEN yrs_data.df ELSE find_date(yrs_data.df, yrs_data.off) END
+                AND CASE WHEN yrs_data.off = 0 THEN yrs_data.dt ELSE find_date(yrs_data.dt, yrs_data.off) END
             )
             FROM yrs_data ORDER BY ord;
+
 
   - name: "11 : 내국인 vs 외국인 방문 비교"
     tokens:
@@ -2236,9 +2230,7 @@ slides:
             SELECT COALESCE(SUM(NATIVE_VIPOP),0) AS v
             FROM regionmonitor.TB_NATION_VISIT_POPLTN
             WHERE REGION_CD = CAST(:REGION_CD AS VARCHAR)
-              AND STDR_YMD BETWEEN
-                  to_char(to_date(:DATE_FROM,'YYYYMMDD') - INTERVAL '1 year','YYYYMMDD')
-              AND to_char(to_date(:DATE_TO  ,'YYYYMMDD') - INTERVAL '1 year','YYYYMMDD')
+              AND STDR_YMD BETWEEN find_date(:DATE_FROM, 1) AND find_date(:DATE_TO, 1)
           )
           SELECT 
             CASE
@@ -2269,9 +2261,7 @@ slides:
             SELECT COALESCE(SUM(FRGNR_VIPOP),0) AS v
             FROM regionmonitor.TB_NATION_VISIT_POPLTN
             WHERE REGION_CD = CAST(:REGION_CD AS VARCHAR)
-              AND STDR_YMD BETWEEN
-                  to_char(to_date(:DATE_FROM,'YYYYMMDD') - INTERVAL '1 year','YYYYMMDD')
-              AND to_char(to_date(:DATE_TO  ,'YYYYMMDD') - INTERVAL '1 year','YYYYMMDD')
+              AND STDR_YMD BETWEEN find_date(:DATE_FROM, 1) AND find_date(:DATE_TO, 1)
           )
           SELECT 
             CASE
@@ -6343,75 +6333,69 @@ slides:
           FROM fac
           WHERE group_nm = '그룹4(개별)';
 
-      SL22_13:
+      SL22_13:  # 주차장 개수(총 주차구획수)
         sql: |
           WITH
           reg AS (
-            SELECT ST_Transform(ST_Buffer(ST_Transform(r.popltn_relm, 5179), :BUFFER_M), 4326) AS geom
+            SELECT ST_Transform(
+                    ST_Buffer(ST_Transform(r.popltn_relm, 5179), :BUFFER_M),
+                    4326
+                  ) AS geom
             FROM regionmonitor.tb_intrst_region_relm r
             WHERE r.region_cd = :REGION_CD
           ),
-          code_map(code, group_nm) AS (VALUES
-            ('A','그룹7(개별)'), ('B','그룹6'), ('C','그룹8'), ('D','그룹2(개별)'),
-            ('E','그룹3(개별)'), ('F','그룹6'), ('G','그룹1'), ('H','그룹1'),
-            ('I','그룹6'), ('J','그룹1'), ('K','그룹8'), ('L','그룹6'),
-            ('M','그룹1'), ('N','그룹1'), ('O','그룹4(개별)'), ('P','그룹5(개별)')
-          ),
-          fac AS (
+          park AS (
             SELECT
-              f.fclty_nm,
-              cm.group_nm
-            FROM regionmonitor.TB_MAIN_FCLTY_INFO f
-            JOIN reg ON ST_Within(ST_SetSRID(ST_MakePoint(f.Y_CRDNT,f.X_CRDNT),4326), reg.geom)
-            LEFT JOIN code_map cm
-              ON cm.code = SUBSTRING(TRIM(f.fclty_sclas_cd) FROM 1 FOR 1)
-            WHERE UPPER(TRIM(f.fclty_sclas_cd)) <> 'P01'
+              COALESCE(COUNT(*), 0)                     AS lot_cnt,   -- 주차장 개수
+              COALESCE(SUM(p.prkcmprt_co), 0)           AS slot_cnt   -- 총 주차구획수
+            FROM regionmonitor.TB_PRKPLCE_INFO p
+            JOIN reg
+              ON ST_Within(
+                  ST_SetSRID(ST_MakePoint(p.y_crdnt, p.x_crdnt), 4326),  -- (lon, lat)
+                  reg.geom
+                )
+            WHERE p.x_crdnt IS NOT NULL AND p.y_crdnt IS NOT NULL
           )
-          SELECT TO_CHAR(COALESCE(COUNT(*),0), 'FM999,999,999')
-          FROM fac
-          WHERE group_nm = '그룹5(개별)';
+          SELECT
+            TO_CHAR(lot_cnt, 'FM999,999') || '개 (' ||
+            TO_CHAR(slot_cnt, 'FM999,999') || '대)'
+          FROM park;
 
-      SL22_14:  # 그룹5 인당 시설수
+
+      SL22_14:  # 인당 주차구획수
         sql: |
           WITH
           reg AS (
-            SELECT ST_Transform(ST_Buffer(ST_Transform(r.popltn_relm, 5179), :BUFFER_M), 4326) AS geom
+            SELECT ST_Transform(
+                    ST_Buffer(ST_Transform(r.popltn_relm, 5179), :BUFFER_M),
+                    4326
+                  ) AS geom
             FROM regionmonitor.tb_intrst_region_relm r
             WHERE r.region_cd = :REGION_CD
           ),
-          code_map(code, group_nm) AS (VALUES
-            ('A','그룹7(개별)'), ('B','그룹6'), ('C','그룹8'), ('D','그룹2(개별)'),
-            ('E','그룹3(개별)'), ('F','그룹6'), ('G','그룹1'), ('H','그룹1'),
-            ('I','그룹6'), ('J','그룹1'), ('K','그룹8'), ('L','그룹6'),
-            ('M','그룹1'), ('N','그룹1'), ('O','그룹4(개별)'), ('P','그룹5(개별)')
-          ),
-          fac AS (
-            SELECT
-              f.fclty_nm,
-              cm.group_nm
-            FROM regionmonitor.TB_MAIN_FCLTY_INFO f
-            JOIN reg ON ST_Within(ST_SetSRID(ST_MakePoint(f.Y_CRDNT,f.X_CRDNT),4326), reg.geom)
-            LEFT JOIN code_map cm
-              ON cm.code = SUBSTRING(TRIM(f.fclty_sclas_cd) FROM 1 FOR 1)
-            WHERE UPPER(TRIM(f.fclty_sclas_cd)) <> 'P01'
+          park AS (
+            SELECT COALESCE(SUM(p.prkcmprt_co), 0)::numeric AS slots    -- 총 구획수
+            FROM regionmonitor.TB_PRKPLCE_INFO p
+            JOIN reg
+              ON ST_Within(
+                  ST_SetSRID(ST_MakePoint(p.y_crdnt, p.x_crdnt), 4326), -- (lon, lat)
+                  reg.geom
+                )
+            WHERE p.x_crdnt IS NOT NULL AND p.y_crdnt IS NOT NULL
           ),
           vip AS (
-            SELECT COALESCE(SUM(TOT_VIPOP),0)::numeric AS v
+            SELECT COALESCE(SUM(TOT_VIPOP), 0)::numeric AS v            -- 기간 총 방문인구
             FROM regionmonitor.TB_SEXDSTN_VISIT_POPLTN
             WHERE REGION_CD = CAST(:REGION_CD AS VARCHAR)
               AND STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
           )
           SELECT
             TO_CHAR(
-              COALESCE(
-                ROUND(
-                  COUNT(*)::numeric / NULLIF((SELECT v FROM vip),0),
-                5),
-              0),
-              'FM0.0000'
-            ) || '개'
-          FROM fac
-          WHERE group_nm = '그룹5(개별)';
+              COALESCE(ROUND( (SELECT slots FROM park) / NULLIF((SELECT v FROM vip), 0), 5), 0),
+              'FM0.00000'
+            ) || '대'
+          ;
+
 
       SL22_15:
         sql: |
