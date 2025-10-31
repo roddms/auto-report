@@ -9,6 +9,7 @@ from pptx.enum.chart import XL_MARKER_STYLE
 import win32com.client as win32
 import pandas as pd
 import pythoncom
+from pptx.util import Pt
 from pptx.enum.text import PP_ALIGN
 
 # ---------------------------
@@ -100,29 +101,38 @@ def fill_table(table, dataframe):
             table.cell(r, c).text = val
 
 
+def _set_cell(cell, text, align=PP_ALIGN.LEFT, bold=False, font_name="Pretendard", font_size_pt=8):
+    tf = cell.text_frame
+    tf.clear()                         # 기존 문단/런 비우기
+    p = tf.paragraphs[0]               # clear() 후 항상 1개 생김
+    run = p.add_run()                  # 최소 1개 run 보장
+    run.text = "" if text is None else str(text)
+
+    p.alignment = align
+    font = run.font
+    font.name = font_name
+    font.size = Pt(font_size_pt)
+    font.bold = bold
+    font.color.rgb = RGBColor(50, 50, 50)
+
 def fill_table_with_padding(table, rows):
     """
     헤더 없는 표에 데이터를 채움.
     table: python-pptx Table 객체
     rows:  [("주차장명", "1,234대"), ...]
+    - 표 행 수보다 데이터가 많으면 잘라내고, 부족하면 빈칸으로 패딩.
+    - 좌/우 정렬 및 서식 일괄 적용.
     """
-    n_total = len(table.rows)
-    n_cols = len(table.columns)
-
-    cap = n_total  # 전체가 데이터 영역
-    data = rows[:cap]  # 초과는 잘림
-
-    for i in range(cap):
-        if i < len(data):
-            name, slots = data[i]
-            table.cell(i, 0).text = str(name or "")
-            table.cell(i, 1).text = str(slots or "")
+    n_rows = len(table.rows)
+    # 표는 2열 가정: [이름, 값]. 더 많은 열이면 필요에 맞게 수정.
+    for i in range(n_rows):
+        if i < len(rows):
+            name, slots = rows[i]
+            _set_cell(table.cell(i, 0), name, align=PP_ALIGN.LEFT)
+            _set_cell(table.cell(i, 1), slots, align=PP_ALIGN.LEFT)
         else:
-            table.cell(i, 0).text = ""
-            table.cell(i, 1).text = ""
-        # 간단 서식
-        table.cell(i, 0).text_frame.paragraphs[0].alignment = PP_ALIGN.LEFT
-        table.cell(i, 1).text_frame.paragraphs[0].alignment = PP_ALIGN.RIGHT
+            _set_cell(table.cell(i, 0), "", align=PP_ALIGN.LEFT)
+            _set_cell(table.cell(i, 1), "", align=PP_ALIGN.LEFT)
 
 
 # ---------------------------
@@ -136,7 +146,6 @@ def add_images_to_presentation(prs: Presentation, image_map: dict):
     """
     import io
     
-    # ⭐️ TARGET_SLIDE_INDEX 대신 모든 슬라이드를 반복합니다.
     # prs.slides는 인덱스 0부터 시작합니다.
     for slide_idx, slide in enumerate(prs.slides):
         idx_to_replace = []
