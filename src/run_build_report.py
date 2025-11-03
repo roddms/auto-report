@@ -282,7 +282,7 @@ engine = create_engine(
 with open("config/slides_tokens.yml", encoding="utf-8") as f:
     cfg = yaml.safe_load(f)
 
-OUTPUT_PPT = "out/test_폰트변경1559.pptx"
+OUTPUT_PPT = "out/test_시설부족여부0923.pptx"
 TEMPLATE_PPT = "template/master_pretendard.pptx"
 
 token_values = {}
@@ -403,8 +403,8 @@ plot_facility_group_map(
     engine, cfg["params"]["REGION_CD"],
     group_name="그룹1",
     out_png="out/img/group1_map.png",
-    buffer_m=500,
-    title="축제 반경 500m내 그룹1(철도·버스·공항·지하철·터미널)"
+    buffer_m=500
+    #title="축제 반경 500m내 그룹1(철도·버스·공항·지하철·터미널)"
 )
 image_map["SL_G1_MAP"] = "out/img/group1_map.png"
 
@@ -413,8 +413,8 @@ plot_facility_group_map(
     engine, cfg["params"]["REGION_CD"],
     group_name="그룹2(개별)",
     out_png="out/img/group2_map.png",
-    buffer_m=500,
-    title="축제 반경 500m내 그룹2(상가업소)"
+    buffer_m=500
+    #title="축제 반경 500m내 그룹2(상가업소)"
 )
 image_map["SL_G2_MAP"] = "out/img/group2_map.png"
 
@@ -423,8 +423,8 @@ plot_facility_group_map(
     engine, cfg["params"]["REGION_CD"],
     group_name="그룹3(개별)",
     out_png="out/img/group3_map.png",
-    buffer_m=500,
-    title="축제 반경 500m내 그룹3(의료기관)"
+    buffer_m=500
+    #title="축제 반경 500m내 그룹3(의료기관)"
 )
 image_map["SL_G3_MAP"] = "out/img/group3_map.png"
 
@@ -433,8 +433,8 @@ plot_facility_group_map(
     engine, cfg["params"]["REGION_CD"],
     group_name="그룹4(개별)",
     out_png="out/img/group4_map.png",
-    buffer_m=500,
-    title="축제 반경 500m내 그룹4(화장실)"
+    buffer_m=500
+    #title="축제 반경 500m내 그룹4(화장실)"
 )
 image_map["SL_G4_MAP"] = "out/img/group4_map.png"
 
@@ -443,8 +443,8 @@ plot_facility_group_map(
     engine, cfg["params"]["REGION_CD"],
     group_name="그룹5(개별)",
     out_png="out/img/group5_map.png",
-    buffer_m=500,
-    title="축제 반경 500m내 그룹5(주차장)"
+    buffer_m=500
+    #title="축제 반경 500m내 그룹5(주차장)"
 )
 image_map["SL_G5_MAP"] = "out/img/group5_map.png"
 
@@ -453,8 +453,8 @@ plot_facility_group_map(
     engine, cfg["params"]["REGION_CD"],
     group_name="그룹6",
     out_png="out/img/group6_map.png",
-    buffer_m=500,
-    title="축제 반경 500m내 그룹6(관공서·공공기관·교육기관·은행점포)"
+    buffer_m=500
+    #title="축제 반경 500m내 그룹6(관공서·공공기관·교육기관·은행점포)"
 )
 image_map["SL_G6_MAP"] = "out/img/group6_map.png"
 
@@ -463,8 +463,8 @@ plot_facility_group_map(
     engine, cfg["params"]["REGION_CD"],
     group_name="그룹7(개별)",
     out_png="out/img/group7_map.png",
-    buffer_m=500,
-    title="축제 반경 500m내 그룹7(숙박시설)"
+    buffer_m=500
+    #title="축제 반경 500m내 그룹7(숙박시설)"
 )
 image_map["SL_G7_MAP"] = "out/img/group7_map.png"
 
@@ -473,8 +473,8 @@ plot_facility_group_map(
     engine, cfg["params"]["REGION_CD"],
     group_name="그룹8",
     out_png="out/img/group8_map.png",
-    buffer_m=500,
-    title="축제 반경 500m내 그룹8(문화여가시설·상영관)"
+    buffer_m=500
+    #title="축제 반경 500m내 그룹8(문화여가시설·상영관)"
 )
 image_map["SL_G8_MAP"] = "out/img/group8_map.png"
 

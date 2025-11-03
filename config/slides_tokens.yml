@@ -1,7 +1,7 @@
 params:
-  REGION_CD: "00000001"
+  REGION_CD: "00000011"
   DATE_FROM: "20250927"
-  DATE_TO:   "20250930"
+  DATE_TO:   "20251004"
   BUFFER_M: 500
 
 slides:
@@ -296,7 +296,7 @@ slides:
             SELECT '40대', a40 FROM base UNION ALL
             SELECT '50대', a50 FROM base UNION ALL
             SELECT '60대', a60 FROM base UNION ALL
-            SELECT '70대', a70 FROM base
+            SELECT '70대 이상', a70 FROM base
           )
           SELECT seg
           FROM unpivot
@@ -324,7 +324,7 @@ slides:
             SELECT '40대', a40 FROM base UNION ALL
             SELECT '50대', a50 FROM base UNION ALL
             SELECT '60대', a60 FROM base UNION ALL
-            SELECT '70대', a70 FROM base
+            SELECT '70대 이상', a70 FROM base
           )
           SELECT ROUND(100.0 * v / NULLIF(SUM(v) OVER (), 0), 1)
           FROM u
@@ -657,7 +657,7 @@ slides:
             SELECT '40대', a40 FROM base UNION ALL
             SELECT '50대', a50 FROM base UNION ALL
             SELECT '60대', a60 FROM base UNION ALL
-            SELECT '70대', a70 FROM base
+            SELECT '70대 이상', a70 FROM base
           )
           SELECT seg
           FROM unpivot
@@ -685,7 +685,7 @@ slides:
             SELECT '40대', a40 FROM base UNION ALL
             SELECT '50대', a50 FROM base UNION ALL
             SELECT '60대', a60 FROM base UNION ALL
-            SELECT '70대', a70 FROM base
+            SELECT '70대 이상', a70 FROM base
           )
           SELECT ROUND(100.0 * v / NULLIF(SUM(v) OVER (), 0), 1)
           FROM unpivot
@@ -920,7 +920,7 @@ slides:
       SL5_chart_2:
         category_sql: |
           SELECT lbl
-          FROM (VALUES ('20대'), ('30대'), ('40대'), ('50대'), ('60대'), ('70대')) v(lbl);
+          FROM (VALUES ('20대'), ('30대'), ('40대'), ('50대'), ('60대'), ('70대 이상')) v(lbl);
         series:
           방문인구(만 명): |
             SELECT val
@@ -950,7 +950,7 @@ slides:
               FROM regionmonitor.TB_AGRDE_VISIT_POPLTN
               WHERE REGION_CD = :REGION_CD AND STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
               UNION ALL
-              SELECT '70대',
+              SELECT '70대 이상',
                      SUM(GNR70_VIPOP)::NUMERIC / 10000.0
               FROM regionmonitor.TB_AGRDE_VISIT_POPLTN
               WHERE REGION_CD = :REGION_CD AND STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
@@ -1252,7 +1252,7 @@ slides:
             SELECT '40대', A40 FROM cur UNION ALL
             SELECT '50대', A50 FROM cur UNION ALL
             SELECT '60대', A60 FROM cur UNION ALL
-            SELECT '70대', A70 FROM cur
+            SELECT '70대 이상', A70 FROM cur
           )
           SELECT age
           FROM u
@@ -1279,7 +1279,7 @@ slides:
             SELECT '40대', A40 FROM cur UNION ALL
             SELECT '50대', A50 FROM cur UNION ALL
             SELECT '60대', A60 FROM cur UNION ALL
-            SELECT '70대', A70 FROM cur
+            SELECT '70대 이상', A70 FROM cur
           )
           SELECT age
           FROM u
@@ -1319,7 +1319,7 @@ slides:
             SELECT '40대', A40, (SELECT A40 FROM prv) FROM cur UNION ALL
             SELECT '50대', A50, (SELECT A50 FROM prv) FROM cur UNION ALL
             SELECT '60대', A60, (SELECT A60 FROM prv) FROM cur UNION ALL
-            SELECT '70대', A70, (SELECT A70 FROM prv) FROM cur
+            SELECT '70대 이상', A70, (SELECT A70 FROM prv) FROM cur
           )
           SELECT age
           FROM (
@@ -1361,7 +1361,7 @@ slides:
             SELECT '40대', A40, (SELECT A40 FROM prv) FROM cur UNION ALL
             SELECT '50대', A50, (SELECT A50 FROM prv) FROM cur UNION ALL
             SELECT '60대', A60, (SELECT A60 FROM prv) FROM cur UNION ALL
-            SELECT '70대', A70, (SELECT A70 FROM prv) FROM cur
+            SELECT '70대 이상', A70, (SELECT A70 FROM prv) FROM cur
           ),
           calc AS (
               SELECT 
@@ -1411,7 +1411,7 @@ slides:
             SELECT '40대', A40, (SELECT A40 FROM prv) FROM cur UNION ALL
             SELECT '50대', A50, (SELECT A50 FROM prv) FROM cur UNION ALL
             SELECT '60대', A60, (SELECT A60 FROM prv) FROM cur UNION ALL
-            SELECT '70대', A70, (SELECT A70 FROM prv) FROM cur
+            SELECT '70대 이상', A70, (SELECT A70 FROM prv) FROM cur
           )
           SELECT age
           FROM (
@@ -1453,7 +1453,7 @@ slides:
             SELECT '40대', A40, (SELECT A40 FROM prv) FROM cur UNION ALL
             SELECT '50대', A50, (SELECT A50 FROM prv) FROM cur UNION ALL
             SELECT '60대', A60, (SELECT A60 FROM prv) FROM cur UNION ALL
-            SELECT '70대', A70, (SELECT A70 FROM prv) FROM cur
+            SELECT '70대 이상', A70, (SELECT A70 FROM prv) FROM cur
           ),
           calc AS (
               SELECT 
@@ -1475,7 +1475,7 @@ slides:
       SL7_chart:
         category_sql: |
           SELECT lbl
-          FROM (VALUES ('20대'), ('30대'), ('40대'), ('50대'), ('60대'), ('70대')) v(lbl);
+          FROM (VALUES ('20대'), ('30대'), ('40대'), ('50대'), ('60대'), ('70대 이상')) v(lbl);
         series:
           방문인구(만명): |
             WITH p AS (
@@ -1498,7 +1498,7 @@ slides:
               UNION ALL SELECT '60대', SUM(GNR60_VIPOP)
               FROM regionmonitor.TB_AGRDE_VISIT_POPLTN t, p
               WHERE t.REGION_CD=p.rc AND t.STDR_YMD BETWEEN p.dfrom AND p.dto
-              UNION ALL SELECT '70대', SUM(GNR70_VIPOP)
+              UNION ALL SELECT '70대 이상', SUM(GNR70_VIPOP)
               FROM regionmonitor.TB_AGRDE_VISIT_POPLTN t, p
               WHERE t.REGION_CD=p.rc AND t.STDR_YMD BETWEEN p.dfrom AND p.dto
             ) x ORDER BY lbl;
@@ -1516,7 +1516,7 @@ slides:
               UNION ALL SELECT '40대', SUM(GNR40_VIPOP) FROM regionmonitor.TB_AGRDE_VISIT_POPLTN t, p WHERE t.REGION_CD=p.rc AND t.STDR_YMD BETWEEN p.dfrom AND p.dto
               UNION ALL SELECT '50대', SUM(GNR50_VIPOP) FROM regionmonitor.TB_AGRDE_VISIT_POPLTN t, p WHERE t.REGION_CD=p.rc AND t.STDR_YMD BETWEEN p.dfrom AND p.dto
               UNION ALL SELECT '60대', SUM(GNR60_VIPOP) FROM regionmonitor.TB_AGRDE_VISIT_POPLTN t, p WHERE t.REGION_CD=p.rc AND t.STDR_YMD BETWEEN p.dfrom AND p.dto
-              UNION ALL SELECT '70대', SUM(GNR70_VIPOP) FROM regionmonitor.TB_AGRDE_VISIT_POPLTN t, p WHERE t.REGION_CD=p.rc AND t.STDR_YMD BETWEEN p.dfrom AND p.dto
+              UNION ALL SELECT '70대 이상', SUM(GNR70_VIPOP) FROM regionmonitor.TB_AGRDE_VISIT_POPLTN t, p WHERE t.REGION_CD=p.rc AND t.STDR_YMD BETWEEN p.dfrom AND p.dto
             ),
             prv AS (
               SELECT '20대' lbl, SUM(GNR20_VIPOP)::NUMERIC v FROM regionmonitor.TB_AGRDE_VISIT_POPLTN t, p WHERE t.REGION_CD=p.rc AND t.STDR_YMD BETWEEN p.pfrom AND p.pto
@@ -1524,7 +1524,7 @@ slides:
               UNION ALL SELECT '40대', SUM(GNR40_VIPOP) FROM regionmonitor.TB_AGRDE_VISIT_POPLTN t, p WHERE t.REGION_CD=p.rc AND t.STDR_YMD BETWEEN p.pfrom AND p.pto
               UNION ALL SELECT '50대', SUM(GNR50_VIPOP) FROM regionmonitor.TB_AGRDE_VISIT_POPLTN t, p WHERE t.REGION_CD=p.rc AND t.STDR_YMD BETWEEN p.pfrom AND p.pto
               UNION ALL SELECT '60대', SUM(GNR60_VIPOP) FROM regionmonitor.TB_AGRDE_VISIT_POPLTN t, p WHERE t.REGION_CD=p.rc AND t.STDR_YMD BETWEEN p.pfrom AND p.pto
-              UNION ALL SELECT '70대', SUM(GNR70_VIPOP) FROM regionmonitor.TB_AGRDE_VISIT_POPLTN t, p WHERE t.REGION_CD=p.rc AND t.STDR_YMD BETWEEN p.pfrom AND p.pto
+              UNION ALL SELECT '70대 이상', SUM(GNR70_VIPOP) FROM regionmonitor.TB_AGRDE_VISIT_POPLTN t, p WHERE t.REGION_CD=p.rc AND t.STDR_YMD BETWEEN p.pfrom AND p.pto
             )
             SELECT CASE WHEN p.v IS NULL OR p.v=0 THEN 0 ELSE ROUND(((c.v - p.v)/p.v)*100, 2) END
             FROM cur c LEFT JOIN prv p USING(lbl)
@@ -2425,7 +2425,7 @@ slides:
             SELECT '40대', a40 FROM a UNION ALL
             SELECT '50대', a50 FROM a UNION ALL
             SELECT '60대', a60 FROM a UNION ALL
-            SELECT '70대', a70 FROM a
+            SELECT '70대 이상', a70 FROM a
           )
           SELECT seg
           FROM u
@@ -2460,7 +2460,7 @@ slides:
             WHERE REGION_CD = CAST(:REGION_CD AS VARCHAR)
               AND STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
             UNION ALL
-            SELECT '70대', COALESCE(SUM(GNR70_SALAMT),0)
+            SELECT '70대 이상', COALESCE(SUM(GNR70_SALAMT),0)
             FROM regionmonitor.TB_AGRDE_SELNG
             WHERE REGION_CD = CAST(:REGION_CD AS VARCHAR)
               AND STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
@@ -2622,7 +2622,7 @@ slides:
               FROM regionmonitor.tb_agrde_selng
               WHERE REGION_CD=:REGION_CD AND STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
             UNION ALL
-            SELECT '70대', COALESCE(SUM(GNR70_SALAMT),0)
+            SELECT '70대 이상', COALESCE(SUM(GNR70_SALAMT),0)
               FROM regionmonitor.tb_agrde_selng
               WHERE REGION_CD=:REGION_CD AND STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
           )
@@ -2650,7 +2650,7 @@ slides:
                 FROM regionmonitor.tb_agrde_selng
                 WHERE REGION_CD=:REGION_CD AND STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
               UNION ALL
-              SELECT '70대', COALESCE(SUM(GNR70_SALAMT),0)
+              SELECT '70대 이상', COALESCE(SUM(GNR70_SALAMT),0)
                 FROM regionmonitor.tb_agrde_selng
                 WHERE REGION_CD=:REGION_CD AND STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
             )
@@ -3353,7 +3353,7 @@ slides:
     tokens:
       # 전체에서 가장 많이 소비한 연령대(라벨) & 그 비중(%)
       SL15_1:
-        sql: | # 최다 연령 라벨('20대'..'70대')
+        sql: | # 최다 연령 라벨('20대'..'70대 이상')
           WITH a AS (
             SELECT '20대' AS g, SUM(GNR20_SALAMT) AS amt FROM regionmonitor.TB_AGRDE_SELNG
             WHERE REGION_CD = CAST(:REGION_CD AS VARCHAR) AND STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
@@ -3365,7 +3365,7 @@ slides:
             WHERE REGION_CD = CAST(:REGION_CD AS VARCHAR) AND STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
             UNION ALL SELECT '60대', SUM(GNR60_SALAMT) FROM regionmonitor.TB_AGRDE_SELNG
             WHERE REGION_CD = CAST(:REGION_CD AS VARCHAR) AND STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
-            UNION ALL SELECT '70대', SUM(GNR70_SALAMT) FROM regionmonitor.TB_AGRDE_SELNG
+            UNION ALL SELECT '70대 이상', SUM(GNR70_SALAMT) FROM regionmonitor.TB_AGRDE_SELNG
             WHERE REGION_CD = CAST(:REGION_CD AS VARCHAR) AND STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
           )
           SELECT g FROM a ORDER BY amt DESC, g LIMIT 1;
@@ -3383,7 +3383,7 @@ slides:
             WHERE REGION_CD = CAST(:REGION_CD AS VARCHAR) AND STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
             UNION ALL SELECT '60대', SUM(GNR60_SALAMT) FROM regionmonitor.TB_AGRDE_SELNG
             WHERE REGION_CD = CAST(:REGION_CD AS VARCHAR) AND STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
-            UNION ALL SELECT '70대', SUM(GNR70_SALAMT) FROM regionmonitor.TB_AGRDE_SELNG
+            UNION ALL SELECT '70대 이상', SUM(GNR70_SALAMT) FROM regionmonitor.TB_AGRDE_SELNG
             WHERE REGION_CD = CAST(:REGION_CD AS VARCHAR) AND STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
           )
           SELECT ROUND(100.0 * amt / NULLIF(SUM(amt) OVER (),0), 1)
@@ -3401,14 +3401,38 @@ slides:
           SELECT to_char(ROUND(v/1000000, 0), 'FM999,999,999') || '백만' FROM age;
 
 
+      # SL15_4:
+      #   sql: | # 20대 비중(%)
+      #     WITH a AS (
+      #       SELECT SUM(GNR20_SALAMT) AS v,
+      #             SUM(TOT_SALAMT) AS t
+      #       FROM regionmonitor.TB_AGRDE_SELNG
+      #       WHERE REGION_CD = CAST(:REGION_CD AS VARCHAR) AND STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
+      #     ) SELECT ROUND(100.0 * v / NULLIF(t,0), 1) FROM a;
+
+
       SL15_4:
-        sql: | # 20대 비중(%)
+        sql: |
           WITH a AS (
-            SELECT SUM(GNR20_SALAMT) AS v,
-                  SUM(TOT_SALAMT) AS t
+            SELECT
+              COALESCE(SUM(GNR20_SALAMT),0)::numeric AS a20,
+              COALESCE(SUM(GNR30_SALAMT),0)::numeric AS a30,
+              COALESCE(SUM(GNR40_SALAMT),0)::numeric AS a40,
+              COALESCE(SUM(GNR50_SALAMT),0)::numeric AS a50,
+              COALESCE(SUM(GNR60_SALAMT),0)::numeric AS a60,
+              COALESCE(SUM(GNR70_SALAMT),0)::numeric AS a70
             FROM regionmonitor.TB_AGRDE_SELNG
-            WHERE REGION_CD = CAST(:REGION_CD AS VARCHAR) AND STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
-          ) SELECT ROUND(100.0 * v / NULLIF(t,0), 1) FROM a;
+            WHERE REGION_CD = CAST(:REGION_CD AS VARCHAR)
+              AND STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
+          )
+          SELECT ROUND(
+                  100.0 * a.a20
+                  / NULLIF(a.a20 + a.a30 + a.a40 + a.a50 + a.a60 + a.a70, 0)
+                , 1
+                ) AS pct_a20
+          FROM a;
+
+
 
       SL15_5:
         sql: | # 50대 금액(원)
@@ -3488,7 +3512,7 @@ slides:
           ) SELECT ROUND(100.0 * v / NULLIF(t,0), 1) FROM a;
 
       SL15_13:
-        sql: | # 70대 금액(원)
+        sql: | # 70대 이상 금액(원)
           WITH age AS (
             SELECT SUM(GNR70_SALAMT) AS v
             FROM regionmonitor.TB_AGRDE_SELNG
@@ -3499,7 +3523,7 @@ slides:
 
 
       SL15_14:
-        sql: | # 70대 비중(%)
+        sql: | # 70대 이상 비중(%)
           WITH a AS (
             SELECT SUM(GNR70_SALAMT) AS v, SUM(TOT_SALAMT) AS t
             FROM regionmonitor.TB_AGRDE_SELNG
@@ -3538,7 +3562,7 @@ slides:
             COALESCE(ROUND(100.0 * a40 / NULLIF(tot,0), 1), 0.0) AS "40대",
             COALESCE(ROUND(100.0 * a50 / NULLIF(tot,0), 1), 0.0) AS "50대",
             COALESCE(ROUND(100.0 * a60 / NULLIF(tot,0), 1), 0.0) AS "60대",
-            COALESCE(ROUND(100.0 * a70 / NULLIF(tot,0), 1), 0.0) AS "70대"
+            COALESCE(ROUND(100.0 * a70 / NULLIF(tot,0), 1), 0.0) AS "70대 이상"
           FROM st
           LEFT JOIN regionmonitor.tb_svc_induty_sclas i
                 ON st.cd = i.svc_induty_sclas_cd
@@ -5932,7 +5956,8 @@ slides:
 
       SL22_2:  # 철도역 인당 개수
         sql: |
-          WITH reg AS (
+          WITH
+          reg AS (
             SELECT ST_Transform(ST_Buffer(ST_Transform(r.popltn_relm,5179), :BUFFER_M), 4326) AS geom
             FROM regionmonitor.tb_intrst_region_relm r
             WHERE r.region_cd = :REGION_CD
@@ -5943,13 +5968,26 @@ slides:
             WHERE ST_Within(ST_SetSRID(ST_MakePoint(f.Y_CRDNT,f.X_CRDNT),4326), reg.geom)
           ),
           vip AS (
-            SELECT COALESCE(SUM(TOT_VIPOP),0)::numeric AS v
+            SELECT
+              COALESCE(SUM(TOT_VIPOP),0)::numeric /
+              NULLIF(
+                (to_date(:DATE_TO,'YYYYMMDD') - to_date(:DATE_FROM,'YYYYMMDD')) + 1,
+                0
+              ) AS v_daily
             FROM regionmonitor.TB_SEXDSTN_VISIT_POPLTN
             WHERE REGION_CD = CAST(:REGION_CD AS VARCHAR)
               AND STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
           )
-          SELECT TO_CHAR(ROUND(COUNT(*)::numeric / NULLIF((SELECT v FROM vip),0), 5), 'FM0.00000') || '개'
-          FROM fac WHERE code = 'G';
+          SELECT
+            TO_CHAR(
+              ROUND(
+                COUNT(*)::numeric / NULLIF((SELECT v_daily FROM vip), 0),
+                5
+              ),
+              'FM0.00000'
+            ) || '개'
+          FROM fac
+          WHERE code = 'G';
 
       SL22_3:
         sql: | # 버스정류장 개수
@@ -5969,7 +6007,8 @@ slides:
 
       SL22_4:  # 버정 인당 시설수
         sql: |
-          WITH reg AS (
+          WITH
+          reg AS (
             SELECT ST_Transform(ST_Buffer(ST_Transform(r.popltn_relm,5179), :BUFFER_M), 4326) AS geom
             FROM regionmonitor.tb_intrst_region_relm r
             WHERE r.region_cd = :REGION_CD
@@ -5980,13 +6019,26 @@ slides:
             WHERE ST_Within(ST_SetSRID(ST_MakePoint(f.Y_CRDNT,f.X_CRDNT),4326), reg.geom)
           ),
           vip AS (
-            SELECT COALESCE(SUM(TOT_VIPOP),0)::numeric AS v
+            SELECT
+              COALESCE(SUM(TOT_VIPOP),0)::numeric /
+              NULLIF(
+                (to_date(:DATE_TO,'YYYYMMDD') - to_date(:DATE_FROM,'YYYYMMDD')) + 1,
+                0
+              ) AS v_daily
             FROM regionmonitor.TB_SEXDSTN_VISIT_POPLTN
             WHERE REGION_CD = CAST(:REGION_CD AS VARCHAR)
               AND STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
           )
-          SELECT TO_CHAR(ROUND(COUNT(*)::numeric / NULLIF((SELECT v FROM vip),0), 5), 'FM0.00000') || '개'
-          FROM fac WHERE code = 'H';
+          SELECT
+            TO_CHAR(
+              ROUND(
+                COUNT(*)::numeric / NULLIF((SELECT v_daily FROM vip), 0),
+                5
+              ),
+              'FM0.00000'
+            ) || '개'
+          FROM fac
+          WHERE code = 'H';
 
       SL22_5:
         sql: |
@@ -6006,7 +6058,8 @@ slides:
 
       SL22_6: 
         sql: |
-          WITH reg AS (
+          WITH
+          reg AS (
             SELECT ST_Transform(ST_Buffer(ST_Transform(r.popltn_relm,5179), :BUFFER_M), 4326) AS geom
             FROM regionmonitor.tb_intrst_region_relm r
             WHERE r.region_cd = :REGION_CD
@@ -6017,13 +6070,26 @@ slides:
             WHERE ST_Within(ST_SetSRID(ST_MakePoint(f.Y_CRDNT,f.X_CRDNT),4326), reg.geom)
           ),
           vip AS (
-            SELECT COALESCE(SUM(TOT_VIPOP),0)::numeric AS v
+            SELECT
+              COALESCE(SUM(TOT_VIPOP),0)::numeric /
+              NULLIF(
+                (to_date(:DATE_TO,'YYYYMMDD') - to_date(:DATE_FROM,'YYYYMMDD')) + 1,
+                0
+              ) AS v_daily
             FROM regionmonitor.TB_SEXDSTN_VISIT_POPLTN
             WHERE REGION_CD = CAST(:REGION_CD AS VARCHAR)
               AND STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
           )
-          SELECT TO_CHAR(ROUND(COUNT(*)::numeric / NULLIF((SELECT v FROM vip),0), 5), 'FM0.00000') || '개'
-          FROM fac WHERE code = 'J';
+          SELECT
+            TO_CHAR(
+              ROUND(
+                COUNT(*)::numeric / NULLIF((SELECT v_daily FROM vip), 0),
+                5
+              ),
+              'FM0.00000'
+            ) || '개'
+          FROM fac
+          WHERE code = 'J';
 
       SL22_7:
         sql: |
@@ -6043,7 +6109,8 @@ slides:
 
       SL22_8:
         sql: |
-          WITH reg AS (
+          WITH
+          reg AS (
             SELECT ST_Transform(ST_Buffer(ST_Transform(r.popltn_relm,5179), :BUFFER_M), 4326) AS geom
             FROM regionmonitor.tb_intrst_region_relm r
             WHERE r.region_cd = :REGION_CD
@@ -6054,13 +6121,26 @@ slides:
             WHERE ST_Within(ST_SetSRID(ST_MakePoint(f.Y_CRDNT,f.X_CRDNT),4326), reg.geom)
           ),
           vip AS (
-            SELECT COALESCE(SUM(TOT_VIPOP),0)::numeric AS v
+            SELECT
+              COALESCE(SUM(TOT_VIPOP),0)::numeric /
+              NULLIF(
+                (to_date(:DATE_TO,'YYYYMMDD') - to_date(:DATE_FROM,'YYYYMMDD')) + 1,
+                0
+              ) AS v_daily
             FROM regionmonitor.TB_SEXDSTN_VISIT_POPLTN
             WHERE REGION_CD = CAST(:REGION_CD AS VARCHAR)
               AND STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
           )
-          SELECT TO_CHAR(ROUND(COUNT(*)::numeric / NULLIF((SELECT v FROM vip),0), 5), 'FM0.00000') || '개'
-          FROM fac WHERE code = 'M';
+          SELECT
+            TO_CHAR(
+              ROUND(
+                COUNT(*)::numeric / NULLIF((SELECT v_daily FROM vip), 0),
+                5
+              ),
+              'FM0.00000'
+            ) || '개'
+          FROM fac
+          WHERE code = 'M';
 
       SL22_9:
         sql: |
@@ -6080,7 +6160,8 @@ slides:
 
       SL22_10: 
         sql: |
-          WITH reg AS (
+          WITH
+          reg AS (
             SELECT ST_Transform(ST_Buffer(ST_Transform(r.popltn_relm,5179), :BUFFER_M), 4326) AS geom
             FROM regionmonitor.tb_intrst_region_relm r
             WHERE r.region_cd = :REGION_CD
@@ -6091,13 +6172,26 @@ slides:
             WHERE ST_Within(ST_SetSRID(ST_MakePoint(f.Y_CRDNT,f.X_CRDNT),4326), reg.geom)
           ),
           vip AS (
-            SELECT COALESCE(SUM(TOT_VIPOP),0)::numeric AS v
+            SELECT
+              COALESCE(SUM(TOT_VIPOP),0)::numeric /
+              NULLIF(
+                (to_date(:DATE_TO,'YYYYMMDD') - to_date(:DATE_FROM,'YYYYMMDD')) + 1,
+                0
+              ) AS v_daily
             FROM regionmonitor.TB_SEXDSTN_VISIT_POPLTN
             WHERE REGION_CD = CAST(:REGION_CD AS VARCHAR)
               AND STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
           )
-          SELECT TO_CHAR(ROUND(COUNT(*)::numeric / NULLIF((SELECT v FROM vip),0), 5), 'FM0.00000') || '개'
-          FROM fac WHERE code = 'N';
+          SELECT
+            TO_CHAR(
+              ROUND(
+                COUNT(*)::numeric / NULLIF((SELECT v_daily FROM vip), 0),
+                5
+              ),
+              'FM0.00000'
+            ) || '개'
+          FROM fac
+          WHERE code = 'N';
 
   - name: "23"
     tokens:
@@ -6120,7 +6214,8 @@ slides:
 
       SL23_2: 
         sql: |
-          WITH reg AS (
+          WITH
+          reg AS (
             SELECT ST_Transform(ST_Buffer(ST_Transform(r.popltn_relm,5179), :BUFFER_M), 4326) AS geom
             FROM regionmonitor.tb_intrst_region_relm r
             WHERE r.region_cd = :REGION_CD
@@ -6131,13 +6226,26 @@ slides:
             WHERE ST_Within(ST_SetSRID(ST_MakePoint(f.Y_CRDNT,f.X_CRDNT),4326), reg.geom)
           ),
           vip AS (
-            SELECT COALESCE(SUM(TOT_VIPOP),0)::numeric AS v
+            SELECT
+              COALESCE(SUM(TOT_VIPOP),0)::numeric /
+              NULLIF(
+                (to_date(:DATE_TO,'YYYYMMDD') - to_date(:DATE_FROM,'YYYYMMDD')) + 1,
+                0
+              ) AS v_daily
             FROM regionmonitor.TB_SEXDSTN_VISIT_POPLTN
             WHERE REGION_CD = CAST(:REGION_CD AS VARCHAR)
               AND STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
           )
-          SELECT TO_CHAR(ROUND(COUNT(*)::numeric / NULLIF((SELECT v FROM vip),0), 5), 'FM0.00000') || '개'
-          FROM fac WHERE code = 'B';
+          SELECT
+            TO_CHAR(
+              ROUND(
+                COUNT(*)::numeric / NULLIF((SELECT v_daily FROM vip), 0),
+                5
+              ),
+              'FM0.00000'
+            ) || '개'
+          FROM fac
+          WHERE code = 'B';
 
 
       SL23_3:
@@ -6158,7 +6266,8 @@ slides:
 
       SL23_4: 
         sql: |
-          WITH reg AS (
+          WITH
+          reg AS (
             SELECT ST_Transform(ST_Buffer(ST_Transform(r.popltn_relm,5179), :BUFFER_M), 4326) AS geom
             FROM regionmonitor.tb_intrst_region_relm r
             WHERE r.region_cd = :REGION_CD
@@ -6169,13 +6278,26 @@ slides:
             WHERE ST_Within(ST_SetSRID(ST_MakePoint(f.Y_CRDNT,f.X_CRDNT),4326), reg.geom)
           ),
           vip AS (
-            SELECT COALESCE(SUM(TOT_VIPOP),0)::numeric AS v
+            SELECT
+              COALESCE(SUM(TOT_VIPOP),0)::numeric /
+              NULLIF(
+                (to_date(:DATE_TO,'YYYYMMDD') - to_date(:DATE_FROM,'YYYYMMDD')) + 1,
+                0
+              ) AS v_daily
             FROM regionmonitor.TB_SEXDSTN_VISIT_POPLTN
             WHERE REGION_CD = CAST(:REGION_CD AS VARCHAR)
               AND STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
           )
-          SELECT TO_CHAR(ROUND(COUNT(*)::numeric / NULLIF((SELECT v FROM vip),0), 5), 'FM0.00000') || '개'
-          FROM fac WHERE code = 'F';
+          SELECT
+            TO_CHAR(
+              ROUND(
+                COUNT(*)::numeric / NULLIF((SELECT v_daily FROM vip), 0),
+                5
+              ),
+              'FM0.00000'
+            ) || '개'
+          FROM fac
+          WHERE code = 'F';
 
       SL23_5:
         sql: |
@@ -6195,7 +6317,8 @@ slides:
 
       SL23_6: 
         sql: |
-          WITH reg AS (
+          WITH
+          reg AS (
             SELECT ST_Transform(ST_Buffer(ST_Transform(r.popltn_relm,5179), :BUFFER_M), 4326) AS geom
             FROM regionmonitor.tb_intrst_region_relm r
             WHERE r.region_cd = :REGION_CD
@@ -6206,13 +6329,26 @@ slides:
             WHERE ST_Within(ST_SetSRID(ST_MakePoint(f.Y_CRDNT,f.X_CRDNT),4326), reg.geom)
           ),
           vip AS (
-            SELECT COALESCE(SUM(TOT_VIPOP),0)::numeric AS v
+            SELECT
+              COALESCE(SUM(TOT_VIPOP),0)::numeric /
+              NULLIF(
+                (to_date(:DATE_TO,'YYYYMMDD') - to_date(:DATE_FROM,'YYYYMMDD')) + 1,
+                0
+              ) AS v_daily
             FROM regionmonitor.TB_SEXDSTN_VISIT_POPLTN
             WHERE REGION_CD = CAST(:REGION_CD AS VARCHAR)
               AND STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
           )
-          SELECT TO_CHAR(ROUND(COUNT(*)::numeric / NULLIF((SELECT v FROM vip),0), 5), 'FM0.00000') || '개'
-          FROM fac WHERE code = 'I';
+          SELECT
+            TO_CHAR(
+              ROUND(
+                COUNT(*)::numeric / NULLIF((SELECT v_daily FROM vip), 0),
+                5
+              ),
+              'FM0.00000'
+            ) || '개'
+          FROM fac
+          WHERE code = 'I';
 
       SL23_7:
         sql: |
@@ -6232,7 +6368,8 @@ slides:
 
       SL23_8: 
         sql: |
-          WITH reg AS (
+          WITH
+          reg AS (
             SELECT ST_Transform(ST_Buffer(ST_Transform(r.popltn_relm,5179), :BUFFER_M), 4326) AS geom
             FROM regionmonitor.tb_intrst_region_relm r
             WHERE r.region_cd = :REGION_CD
@@ -6243,13 +6380,26 @@ slides:
             WHERE ST_Within(ST_SetSRID(ST_MakePoint(f.Y_CRDNT,f.X_CRDNT),4326), reg.geom)
           ),
           vip AS (
-            SELECT COALESCE(SUM(TOT_VIPOP),0)::numeric AS v
+            SELECT
+              COALESCE(SUM(TOT_VIPOP),0)::numeric /
+              NULLIF(
+                (to_date(:DATE_TO,'YYYYMMDD') - to_date(:DATE_FROM,'YYYYMMDD')) + 1,
+                0
+              ) AS v_daily
             FROM regionmonitor.TB_SEXDSTN_VISIT_POPLTN
             WHERE REGION_CD = CAST(:REGION_CD AS VARCHAR)
               AND STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
           )
-          SELECT TO_CHAR(ROUND(COUNT(*)::numeric / NULLIF((SELECT v FROM vip),0), 5), 'FM0.00000') || '개'
-          FROM fac WHERE code = 'L';
+          SELECT
+            TO_CHAR(
+              ROUND(
+                COUNT(*)::numeric / NULLIF((SELECT v_daily FROM vip), 0),
+                5
+              ),
+              'FM0.00000'
+            ) || '개'
+          FROM fac
+          WHERE code = 'L';
 
 
   - name: "24"
@@ -6272,7 +6422,8 @@ slides:
 
       SL24_2: 
         sql: |
-          WITH reg AS (
+          WITH
+          reg AS (
             SELECT ST_Transform(ST_Buffer(ST_Transform(r.popltn_relm,5179), :BUFFER_M), 4326) AS geom
             FROM regionmonitor.tb_intrst_region_relm r
             WHERE r.region_cd = :REGION_CD
@@ -6283,13 +6434,26 @@ slides:
             WHERE ST_Within(ST_SetSRID(ST_MakePoint(f.Y_CRDNT,f.X_CRDNT),4326), reg.geom)
           ),
           vip AS (
-            SELECT COALESCE(SUM(TOT_VIPOP),0)::numeric AS v
+            SELECT
+              COALESCE(SUM(TOT_VIPOP),0)::numeric /
+              NULLIF(
+                (to_date(:DATE_TO,'YYYYMMDD') - to_date(:DATE_FROM,'YYYYMMDD')) + 1,
+                0
+              ) AS v_daily
             FROM regionmonitor.TB_SEXDSTN_VISIT_POPLTN
             WHERE REGION_CD = CAST(:REGION_CD AS VARCHAR)
               AND STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
           )
-          SELECT TO_CHAR(ROUND(COUNT(*)::numeric / NULLIF((SELECT v FROM vip),0), 5), 'FM0.00000') || '개'
-          FROM fac WHERE code = 'C';
+          SELECT
+            TO_CHAR(
+              ROUND(
+                COUNT(*)::numeric / NULLIF((SELECT v_daily FROM vip), 0),
+                5
+              ),
+              'FM0.00000'
+            ) || '개'
+          FROM fac
+          WHERE code = 'C';
 
       SL24_3:
         sql: |
@@ -6309,7 +6473,8 @@ slides:
           
       SL24_4: 
         sql: |
-          WITH reg AS (
+          WITH
+          reg AS (
             SELECT ST_Transform(ST_Buffer(ST_Transform(r.popltn_relm,5179), :BUFFER_M), 4326) AS geom
             FROM regionmonitor.tb_intrst_region_relm r
             WHERE r.region_cd = :REGION_CD
@@ -6320,13 +6485,26 @@ slides:
             WHERE ST_Within(ST_SetSRID(ST_MakePoint(f.Y_CRDNT,f.X_CRDNT),4326), reg.geom)
           ),
           vip AS (
-            SELECT COALESCE(SUM(TOT_VIPOP),0)::numeric AS v
+            SELECT
+              COALESCE(SUM(TOT_VIPOP),0)::numeric /
+              NULLIF(
+                (to_date(:DATE_TO,'YYYYMMDD') - to_date(:DATE_FROM,'YYYYMMDD')) + 1,
+                0
+              ) AS v_daily
             FROM regionmonitor.TB_SEXDSTN_VISIT_POPLTN
             WHERE REGION_CD = CAST(:REGION_CD AS VARCHAR)
               AND STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
           )
-          SELECT TO_CHAR(ROUND(COUNT(*)::numeric / NULLIF((SELECT v FROM vip),0), 5), 'FM0.00000') || '개'
-          FROM fac WHERE code = 'K';
+          SELECT
+            TO_CHAR(
+              ROUND(
+                COUNT(*)::numeric / NULLIF((SELECT v_daily FROM vip), 0),
+                5
+              ),
+              'FM0.00000'
+            ) || '개'
+          FROM fac
+          WHERE code = 'K';
 
 
   - name: "25"
@@ -6349,7 +6527,8 @@ slides:
 
       SL25_2: 
         sql: |
-          WITH reg AS (
+          WITH
+          reg AS (
             SELECT ST_Transform(ST_Buffer(ST_Transform(r.popltn_relm,5179), :BUFFER_M), 4326) AS geom
             FROM regionmonitor.tb_intrst_region_relm r
             WHERE r.region_cd = :REGION_CD
@@ -6360,13 +6539,26 @@ slides:
             WHERE ST_Within(ST_SetSRID(ST_MakePoint(f.Y_CRDNT,f.X_CRDNT),4326), reg.geom)
           ),
           vip AS (
-            SELECT COALESCE(SUM(TOT_VIPOP),0)::numeric AS v
+            SELECT
+              COALESCE(SUM(TOT_VIPOP),0)::numeric /
+              NULLIF(
+                (to_date(:DATE_TO,'YYYYMMDD') - to_date(:DATE_FROM,'YYYYMMDD')) + 1,
+                0
+              ) AS v_daily
             FROM regionmonitor.TB_SEXDSTN_VISIT_POPLTN
             WHERE REGION_CD = CAST(:REGION_CD AS VARCHAR)
               AND STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
           )
-          SELECT TO_CHAR(ROUND(COUNT(*)::numeric / NULLIF((SELECT v FROM vip),0), 5), 'FM0.00000') || '개'
-          FROM fac WHERE code = 'D';
+          SELECT
+            TO_CHAR(
+              ROUND(
+                COUNT(*)::numeric / NULLIF((SELECT v_daily FROM vip), 0),
+                5
+              ),
+              'FM0.00000'
+            ) || '개'
+          FROM fac
+          WHERE code = 'D';
 
 
   - name: "26"
@@ -6389,7 +6581,8 @@ slides:
 
       SL26_2: 
         sql: |
-          WITH reg AS (
+          WITH
+          reg AS (
             SELECT ST_Transform(ST_Buffer(ST_Transform(r.popltn_relm,5179), :BUFFER_M), 4326) AS geom
             FROM regionmonitor.tb_intrst_region_relm r
             WHERE r.region_cd = :REGION_CD
@@ -6400,13 +6593,26 @@ slides:
             WHERE ST_Within(ST_SetSRID(ST_MakePoint(f.Y_CRDNT,f.X_CRDNT),4326), reg.geom)
           ),
           vip AS (
-            SELECT COALESCE(SUM(TOT_VIPOP),0)::numeric AS v
+            SELECT
+              COALESCE(SUM(TOT_VIPOP),0)::numeric /
+              NULLIF(
+                (to_date(:DATE_TO,'YYYYMMDD') - to_date(:DATE_FROM,'YYYYMMDD')) + 1,
+                0
+              ) AS v_daily
             FROM regionmonitor.TB_SEXDSTN_VISIT_POPLTN
             WHERE REGION_CD = CAST(:REGION_CD AS VARCHAR)
               AND STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
           )
-          SELECT TO_CHAR(ROUND(COUNT(*)::numeric / NULLIF((SELECT v FROM vip),0), 5), 'FM0.00000') || '개'
-          FROM fac WHERE code = 'E';
+          SELECT
+            TO_CHAR(
+              ROUND(
+                COUNT(*)::numeric / NULLIF((SELECT v_daily FROM vip), 0),
+                5
+              ),
+              'FM0.00000'
+            ) || '개'
+          FROM fac
+          WHERE code = 'E';
 
   - name: "27"
     tokens:
@@ -6428,7 +6634,8 @@ slides:
 
       SL27_2: 
         sql: |
-          WITH reg AS (
+          WITH
+          reg AS (
             SELECT ST_Transform(ST_Buffer(ST_Transform(r.popltn_relm,5179), :BUFFER_M), 4326) AS geom
             FROM regionmonitor.tb_intrst_region_relm r
             WHERE r.region_cd = :REGION_CD
@@ -6439,13 +6646,65 @@ slides:
             WHERE ST_Within(ST_SetSRID(ST_MakePoint(f.Y_CRDNT,f.X_CRDNT),4326), reg.geom)
           ),
           vip AS (
-            SELECT COALESCE(SUM(TOT_VIPOP),0)::numeric AS v
+            SELECT
+              COALESCE(SUM(TOT_VIPOP),0)::numeric /
+              NULLIF(
+                (to_date(:DATE_TO,'YYYYMMDD') - to_date(:DATE_FROM,'YYYYMMDD')) + 1,
+                0
+              ) AS v_daily
             FROM regionmonitor.TB_SEXDSTN_VISIT_POPLTN
             WHERE REGION_CD = CAST(:REGION_CD AS VARCHAR)
               AND STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
           )
-          SELECT TO_CHAR(ROUND(COUNT(*)::numeric / NULLIF((SELECT v FROM vip),0), 5), 'FM0.00000') || '개'
-          FROM fac WHERE code = 'O';
+          SELECT
+            TO_CHAR(
+              ROUND(
+                COUNT(*)::numeric / NULLIF((SELECT v_daily FROM vip), 0),
+                5
+              ),
+              'FM0.00000'
+            ) || '개'
+          FROM fac
+          WHERE code = 'O';
+
+      SL27_3:
+        sql: |
+          WITH
+          reg AS (
+            SELECT ST_Transform(ST_Buffer(ST_Transform(r.popltn_relm,5179), :BUFFER_M), 4326) AS geom
+            FROM regionmonitor.tb_intrst_region_relm r
+            WHERE r.region_cd = :REGION_CD
+          ),
+          fac AS (
+            SELECT SUBSTRING(TRIM(f.fclty_sclas_cd) FROM 1 FOR 1) AS code
+            FROM regionmonitor.TB_MAIN_FCLTY_INFO f, reg
+            WHERE ST_Within(ST_SetSRID(ST_MakePoint(f.Y_CRDNT,f.X_CRDNT),4326), reg.geom)
+              AND SUBSTRING(TRIM(f.fclty_sclas_cd) FROM 1 FOR 1) = 'O'
+          ),
+          vip AS (
+            SELECT
+              COALESCE(SUM(TOT_VIPOP),0)::numeric /
+              NULLIF(
+                (to_date(:DATE_TO,'YYYYMMDD') - to_date(:DATE_FROM,'YYYYMMDD')) + 1,
+                0
+              ) AS v_daily
+            FROM regionmonitor.TB_SEXDSTN_VISIT_POPLTN
+            WHERE REGION_CD = CAST(:REGION_CD AS VARCHAR)
+              AND STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
+          ),
+          ratio AS (
+            SELECT
+              COUNT(*)::numeric / NULLIF((SELECT v_daily FROM vip), 0) AS val
+            FROM fac
+          )
+          SELECT
+            CASE
+              WHEN val = 0 THEN '데이터없음'
+              WHEN val > (1.0/606.0) THEN '부족'
+              ELSE '충분'
+            END
+          FROM ratio;
+
 
   - name: "28"
     tokens:
@@ -6511,6 +6770,44 @@ slides:
             ) || '대'
           ;
 
+      SL28_3:
+        sql: |
+          WITH
+          reg AS (
+            SELECT ST_Transform(
+                    ST_Buffer(ST_Transform(r.popltn_relm, 5179), :BUFFER_M),
+                    4326
+                  ) AS geom
+            FROM regionmonitor.tb_intrst_region_relm r
+            WHERE r.region_cd = :REGION_CD
+          ),
+          park AS (
+            SELECT COALESCE(SUM(p.prkcmprt_co), 0)::numeric AS slots
+            FROM regionmonitor.TB_PRKPLCE_INFO p
+            JOIN reg
+              ON ST_Within(
+                  ST_SetSRID(ST_MakePoint(p.y_crdnt, p.x_crdnt), 4326), -- (lon, lat)
+                  reg.geom
+                )
+            WHERE p.x_crdnt IS NOT NULL AND p.y_crdnt IS NOT NULL
+          ),
+          vip AS (
+            SELECT COALESCE(SUM(TOT_VIPOP), 0)::numeric AS v
+            FROM regionmonitor.TB_SEXDSTN_VISIT_POPLTN
+            WHERE REGION_CD = CAST(:REGION_CD AS VARCHAR)
+              AND STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
+          ),
+          ratio AS (
+            SELECT (SELECT slots FROM park) / NULLIF((SELECT v FROM vip), 0) AS r
+          )
+          SELECT
+            CASE
+              WHEN (SELECT v FROM vip) = 0 THEN '데이터없음'
+              WHEN (SELECT r FROM ratio) > 1.0/5000 THEN '부족'
+              ELSE '충분'
+            END;
+
+
   - name: "29"
     tokens:
       SL29_1:
@@ -6531,7 +6828,8 @@ slides:
 
       SL29_2: 
         sql: |
-          WITH reg AS (
+          WITH
+          reg AS (
             SELECT ST_Transform(ST_Buffer(ST_Transform(r.popltn_relm,5179), :BUFFER_M), 4326) AS geom
             FROM regionmonitor.tb_intrst_region_relm r
             WHERE r.region_cd = :REGION_CD
@@ -6542,11 +6840,24 @@ slides:
             WHERE ST_Within(ST_SetSRID(ST_MakePoint(f.Y_CRDNT,f.X_CRDNT),4326), reg.geom)
           ),
           vip AS (
-            SELECT COALESCE(SUM(TOT_VIPOP),0)::numeric AS v
+            SELECT
+              COALESCE(SUM(TOT_VIPOP),0)::numeric /
+              NULLIF(
+                (to_date(:DATE_TO,'YYYYMMDD') - to_date(:DATE_FROM,'YYYYMMDD')) + 1,
+                0
+              ) AS v_daily
             FROM regionmonitor.TB_SEXDSTN_VISIT_POPLTN
             WHERE REGION_CD = CAST(:REGION_CD AS VARCHAR)
               AND STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
           )
-          SELECT TO_CHAR(ROUND(COUNT(*)::numeric / NULLIF((SELECT v FROM vip),0), 5), 'FM0.00000') || '개'
-          FROM fac WHERE code = 'A';
+          SELECT
+            TO_CHAR(
+              ROUND(
+                COUNT(*)::numeric / NULLIF((SELECT v_daily FROM vip), 0),
+                5
+              ),
+              'FM0.00000'
+            ) || '개'
+          FROM fac
+          WHERE code = 'A';
 

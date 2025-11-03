@@ -101,7 +101,7 @@ def fill_table(table, dataframe):
             table.cell(r, c).text = val
 
 
-def _set_cell(cell, text, align=PP_ALIGN.LEFT, bold=False, font_name="Pretendard", font_size_pt=8):
+def _set_cell(cell, text, align=PP_ALIGN.LEFT, bold=False, font_name="Pretendard", font_size_pt=10):
     tf = cell.text_frame
     tf.clear()                         # 기존 문단/런 비우기
     p = tf.paragraphs[0]               # clear() 후 항상 1개 생김
@@ -113,7 +113,7 @@ def _set_cell(cell, text, align=PP_ALIGN.LEFT, bold=False, font_name="Pretendard
     font.name = font_name
     font.size = Pt(font_size_pt)
     font.bold = bold
-    font.color.rgb = RGBColor(50, 50, 50)
+    font.color.rgb = RGBColor(0,0,0)
 
 def fill_table_with_padding(table, rows):
     """
@@ -210,6 +210,29 @@ def colorize_arrows(prs):
                 elif "▼" in full_text:
                     for r in p.runs:
                         r.font.color.rgb = RGBColor(0, 112, 192)     # 파랑
+
+
+def colorize_condition(prs):
+    """
+    문단 내 텍스트에서 '충분'/'부족' 단어만 색상 적용
+    """
+    for slide in prs.slides:
+        for shp in iter_shapes(slide):
+            if not getattr(shp, "has_text_frame", False):
+                continue
+
+            for p in shp.text_frame.paragraphs:
+                full_text = "".join(r.text for r in p.runs)
+
+                # 정규식으로 단어 단위 검색
+                if re.search(r"\b충분\b", full_text):
+                    for r in p.runs:
+                        if "충분" in r.text:
+                            r.font.color.rgb = RGBColor(71, 187, 120)  # 초록
+                elif re.search(r"\b부족\b", full_text):
+                    for r in p.runs:
+                        if "부족" in r.text:
+                            r.font.color.rgb = RGBColor(192, 57, 43)   # 빨강
 
 
 # 막대 그래프 
@@ -385,6 +408,8 @@ def apply_tokens_and_charts(prs_path, out_path, token_map, chart_map=None, image
     replace_text_tokens(prs, token_map)
 
     colorize_arrows(prs)
+
+    colorize_condition(prs)
 
 
     if chart_map:
