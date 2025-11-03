@@ -147,7 +147,7 @@ slides:
         sql: | # 피크타임 라벨(일자별 피크 빈도 최다)
           WITH base AS (
             SELECT to_date(STDR_YMD,'YYYYMMDD')::date AS d,
-                  SUM(T0_T6_VIPOP)  AS T0_6, SUM(T7_VIPOP)  AS T7,  SUM(T8_VIPOP)  AS T8,
+                  SUM(T6_VIPOP)  AS T6, SUM(T7_VIPOP)  AS T7,  SUM(T8_VIPOP)  AS T8,
                   SUM(T9_VIPOP)     AS T9,   SUM(T10_VIPOP) AS T10, SUM(T11_VIPOP) AS T11,
                   SUM(T12_VIPOP)    AS T12,  SUM(T13_VIPOP) AS T13, SUM(T14_VIPOP) AS T14,
                   SUM(T15_VIPOP)    AS T15,  SUM(T16_VIPOP) AS T16, SUM(T17_VIPOP) AS T17,
@@ -161,7 +161,7 @@ slides:
           unpivot AS (
             SELECT d, h, v
             FROM base b, LATERAL (VALUES
-              ('00-06', T0_6), ('07', T7), ('08', T8), ('09', T9), ('10', T10), ('11', T11),
+              ('06', T6), ('07', T7), ('08', T8), ('09', T9), ('10', T10), ('11', T11),
               ('12', T12), ('13', T13), ('14', T14), ('15', T15), ('16', T16), ('17', T17),
               ('18', T18), ('19', T19), ('20', T20), ('21', T21), ('22', T22), ('23', T23)
             ) AS x(h, v)
@@ -181,7 +181,7 @@ slides:
         sql: | # 피크타임 '일 평균' 방문인구(콤마)
           WITH base AS (
             SELECT to_date(STDR_YMD,'YYYYMMDD')::date AS d,
-                  SUM(T0_T6_VIPOP) AS T0_6, SUM(T7_VIPOP) AS T7,  SUM(T8_VIPOP) AS T8,
+                  SUM(T6_VIPOP) AS T6, SUM(T7_VIPOP) AS T7,  SUM(T8_VIPOP) AS T8,
                   SUM(T9_VIPOP) AS T9,   SUM(T10_VIPOP) AS T10, SUM(T11_VIPOP) AS T11,
                   SUM(T12_VIPOP) AS T12, SUM(T13_VIPOP) AS T13, SUM(T14_VIPOP) AS T14,
                   SUM(T15_VIPOP) AS T15, SUM(T16_VIPOP) AS T16, SUM(T17_VIPOP) AS T17,
@@ -195,7 +195,7 @@ slides:
           unpivot AS (
             SELECT d, h, v
             FROM base b, LATERAL (VALUES
-              ('00-06', T0_6), ('07', T7), ('08', T8), ('09', T9), ('10', T10), ('11', T11),
+              ('06', T6), ('07', T7), ('08', T8), ('09', T9), ('10', T10), ('11', T11),
               ('12', T12), ('13', T13), ('14', T14), ('15', T15), ('16', T16), ('17', T17),
               ('18', T18), ('19', T19), ('20', T20), ('21', T21), ('22', T22), ('23', T23)
             ) AS x(h, v)
@@ -213,7 +213,7 @@ slides:
           SELECT to_char(
                   ROUND(AVG(
                     CASE (SELECT h FROM best)
-                      WHEN '00-06' THEN T0_6 WHEN '07' THEN T7 WHEN '08' THEN T8 WHEN '09' THEN T9
+                      WHEN '06' THEN T6 WHEN '07' THEN T7 WHEN '08' THEN T8 WHEN '09' THEN T9
                       WHEN '10' THEN T10 WHEN '11' THEN T11 WHEN '12' THEN T12 WHEN '13' THEN T13
                       WHEN '14' THEN T14 WHEN '15' THEN T15 WHEN '16' THEN T16 WHEN '17' THEN T17
                       WHEN '18' THEN T18 WHEN '19' THEN T19 WHEN '20' THEN T20 WHEN '21' THEN T21
@@ -227,7 +227,7 @@ slides:
         sql: | # 피크타임 비중(%): (해당 시간대 일평균) / (일평균 전체) × 100
           WITH base AS (
             SELECT to_date(STDR_YMD,'YYYYMMDD')::date AS d,
-                  SUM(T0_T6_VIPOP) AS T0_6, SUM(T7_VIPOP) AS T7,  SUM(T8_VIPOP) AS T8,
+                  SUM(T6_VIPOP) AS T6, SUM(T7_VIPOP) AS T7,  SUM(T8_VIPOP) AS T8,
                   SUM(T9_VIPOP) AS T9,   SUM(T10_VIPOP) AS T10, SUM(T11_VIPOP) AS T11,
                   SUM(T12_VIPOP) AS T12, SUM(T13_VIPOP) AS T13, SUM(T14_VIPOP) AS T14,
                   SUM(T15_VIPOP) AS T15, SUM(T16_VIPOP) AS T16, SUM(T17_VIPOP) AS T17,
@@ -240,7 +240,7 @@ slides:
           ),
           u AS (
             SELECT d, h, v FROM base b, LATERAL (VALUES
-              ('00-06', T0_6), ('07', T7), ('08', T8), ('09', T9), ('10', T10), ('11', T11),
+              ('06', T6), ('07', T7), ('08', T8), ('09', T9), ('10', T10), ('11', T11),
               ('12', T12), ('13', T13), ('14', T14), ('15', T15), ('16', T16), ('17', T17),
               ('18', T18), ('19', T19), ('20', T20), ('21', T21), ('22', T22), ('23', T23)
             ) AS x(h, v)
@@ -255,14 +255,14 @@ slides:
           best AS (SELECT h FROM freq ORDER BY days_cnt DESC, h LIMIT 1),
           day_total AS (
             SELECT d,
-                  (T0_6+T7+T8+T9+T10+T11+T12+T13+T14+T15+T16+T17+T18+T19+T20+T21+T22+T23)::numeric AS tot
+                  (T6+T7+T8+T9+T10+T11+T12+T13+T14+T15+T16+T17+T18+T19+T20+T21+T22+T23)::numeric AS tot
             FROM base
           )
           SELECT ROUND(
                   100.0 *
                   AVG(
                     CASE (SELECT h FROM best)
-                      WHEN '00-06' THEN T0_6 WHEN '07' THEN T7 WHEN '08' THEN T8 WHEN '09' THEN T9
+                      WHEN '06' THEN T6 WHEN '07' THEN T7 WHEN '08' THEN T8 WHEN '09' THEN T9
                       WHEN '10' THEN T10 WHEN '11' THEN T11 WHEN '12' THEN T12 WHEN '13' THEN T13
                       WHEN '14' THEN T14 WHEN '15' THEN T15 WHEN '16' THEN T16 WHEN '17' THEN T17
                       WHEN '18' THEN T18 WHEN '19' THEN T19 WHEN '20' THEN T20 WHEN '21' THEN T21
@@ -334,23 +334,25 @@ slides:
 
   - name : "4: 3개년 비교 분석"
     tokens:
-      SL4_p_1:
-        sql: | # 전전년도 방문인구
+      SL4_p_1: # 전전년도 방문인구
+        sql: |
           SELECT to_char(COALESCE(SUM(TOT_VIPOP),0), 'FM999,999,999,999')
           FROM regionmonitor.tb_sexdstn_visit_popltn
           WHERE REGION_CD = CAST(:REGION_CD AS VARCHAR)
             AND STDR_YMD BETWEEN
-                to_char(to_date(:DATE_FROM,'YYYYMMDD') - INTERVAL '2 year','YYYYMMDD')
-            AND to_char(to_date(:DATE_TO  ,'YYYYMMDD') - INTERVAL '2 year','YYYYMMDD');
+                find_date(:DATE_FROM, 2)
+            AND find_date(:DATE_TO  , 2);
 
-      SL4_p_2:
-        sql: | # 전년도 방문인구
+
+      SL4_p_2: # 전년도 방문인구
+        sql: |
           SELECT to_char(COALESCE(SUM(TOT_VIPOP),0), 'FM999,999,999,999')
           FROM regionmonitor.tb_sexdstn_visit_popltn
           WHERE REGION_CD = CAST(:REGION_CD AS VARCHAR)
             AND STDR_YMD BETWEEN
-                to_char(to_date(:DATE_FROM,'YYYYMMDD') - INTERVAL '1 year','YYYYMMDD')
-            AND to_char(to_date(:DATE_TO  ,'YYYYMMDD') - INTERVAL '1 year','YYYYMMDD');
+                find_date(:DATE_FROM, 1)
+            AND find_date(:DATE_TO  , 1);
+
 
       SL4_p_3:
         sql: | # 전년도 vs 전전년도 방문인구 증감률(%)
@@ -401,23 +403,24 @@ slides:
               AND REGION_CD = :REGION_CD
           ) cur;
 
-      SL4_p_6:
-        sql: | # 2023년 매출액
+      SL4_p_6: # 전전년도 매출액
+        sql: |
           SELECT to_char(ROUND(SUM(TOT_SALAMT)/1000000, 0), 'FM999,999,999') || '백만'
           FROM regionmonitor.tb_sexdstn_selng
           WHERE REGION_CD = CAST(:REGION_CD AS VARCHAR)
             AND STDR_YMD BETWEEN
-                to_char(to_date(:DATE_FROM,'YYYYMMDD') - INTERVAL '2 year','YYYYMMDD')
-            AND to_char(to_date(:DATE_TO  ,'YYYYMMDD') - INTERVAL '2 year','YYYYMMDD');
+                find_date(:DATE_FROM, 2)
+            AND find_date(:DATE_TO  , 2);
 
-      SL4_p_7:
-        sql: | # 2024년 매출액
+      SL4_p_7: # 전년도 매출액
+        sql: |
           SELECT to_char(ROUND(SUM(TOT_SALAMT)/1000000, 0), 'FM999,999,999') || '백만'
           FROM regionmonitor.tb_sexdstn_selng
           WHERE REGION_CD = CAST(:REGION_CD AS VARCHAR)
             AND STDR_YMD BETWEEN
-                to_char(to_date(:DATE_FROM,'YYYYMMDD') - INTERVAL '1 year','YYYYMMDD')
-            AND to_char(to_date(:DATE_TO  ,'YYYYMMDD') - INTERVAL '1 year','YYYYMMDD');
+                find_date(:DATE_FROM, 1)
+            AND find_date(:DATE_TO  , 1);
+
 
       SL4_p_8:
         sql: | # 전년도 vs 전전년도 매출 증감율(%)
@@ -475,7 +478,7 @@ slides:
           UNION ALL SELECT (y)::TEXT FROM p;
 
         series:
-          방문인구 수(만 명): |-
+          방문인구 수(만명): |-
             SELECT val
             FROM (
               WITH sums AS (
@@ -697,7 +700,7 @@ slides:
           -- SL3_p_10과 동일 쿼리 사용 가능
           WITH base AS (
             SELECT to_date(STDR_YMD,'YYYYMMDD')::date AS d,
-                  SUM(T0_T6_VIPOP)  AS T0_6, SUM(T7_VIPOP)  AS T7,  SUM(T8_VIPOP)  AS T8,
+                  SUM(T6_VIPOP)  AS T6, SUM(T7_VIPOP)  AS T7,  SUM(T8_VIPOP)  AS T8,
                   SUM(T9_VIPOP)     AS T9,   SUM(T10_VIPOP) AS T10, SUM(T11_VIPOP) AS T11,
                   SUM(T12_VIPOP)    AS T12,  SUM(T13_VIPOP) AS T13, SUM(T14_VIPOP) AS T14,
                   SUM(T15_VIPOP)    AS T15,  SUM(T16_VIPOP) AS T16, SUM(T17_VIPOP) AS T17,
@@ -711,7 +714,7 @@ slides:
           unpivot AS (
             SELECT d, h, v
             FROM base b, LATERAL (VALUES
-              ('00-06', T0_6), ('07', T7), ('08', T8), ('09', T9), ('10', T10), ('11', T11),
+              ('06', T6), ('07', T7), ('08', T8), ('09', T9), ('10', T10), ('11', T11),
               ('12', T12), ('13', T13), ('14', T14), ('15', T15), ('16', T16), ('17', T17),
               ('18', T18), ('19', T19), ('20', T20), ('21', T21), ('22', T22), ('23', T23)
             ) AS x(h, v)
@@ -730,7 +733,7 @@ slides:
           -- SL3_p_11과 동일 로직
           WITH base AS (
             SELECT to_date(STDR_YMD,'YYYYMMDD')::date AS d,
-                  SUM(T0_T6_VIPOP) AS T0_6, SUM(T7_VIPOP) AS T7,  SUM(T8_VIPOP) AS T8,
+                  SUM(T6_VIPOP) AS T6, SUM(T7_VIPOP) AS T7,  SUM(T8_VIPOP) AS T8,
                   SUM(T9_VIPOP) AS T9,   SUM(T10_VIPOP) AS T10, SUM(T11_VIPOP) AS T11,
                   SUM(T12_VIPOP) AS T12, SUM(T13_VIPOP) AS T13, SUM(T14_VIPOP) AS T14,
                   SUM(T15_VIPOP) AS T15, SUM(T16_VIPOP) AS T16, SUM(T17_VIPOP) AS T17,
@@ -743,7 +746,7 @@ slides:
           ),
           unpivot AS (
             SELECT d, h, v FROM base b, LATERAL (VALUES
-              ('00-06', T0_6), ('07', T7), ('08', T8), ('09', T9), ('10', T10), ('11', T11),
+              ('06', T6), ('07', T7), ('08', T8), ('09', T9), ('10', T10), ('11', T11),
               ('12', T12), ('13', T13), ('14', T14), ('15', T15), ('16', T16), ('17', T17),
               ('18', T18), ('19', T19), ('20', T20), ('21', T21), ('22', T22), ('23', T23)
             ) AS x(h, v)
@@ -759,7 +762,7 @@ slides:
           SELECT to_char(
                   ROUND(AVG(
                     CASE (SELECT h FROM best)
-                      WHEN '00-06' THEN T0_6 WHEN '07' THEN T7 WHEN '08' THEN T8 WHEN '09' THEN T9
+                      WHEN '06' THEN T6 WHEN '07' THEN T7 WHEN '08' THEN T8 WHEN '09' THEN T9
                       WHEN '10' THEN T10 WHEN '11' THEN T11 WHEN '12' THEN T12 WHEN '13' THEN T13
                       WHEN '14' THEN T14 WHEN '15' THEN T15 WHEN '16' THEN T16 WHEN '17' THEN T17
                       WHEN '18' THEN T18 WHEN '19' THEN T19 WHEN '20' THEN T20 WHEN '21' THEN T21
@@ -774,7 +777,7 @@ slides:
           -- SL3_p_12와 동일 로직
           WITH base AS (
             SELECT to_date(STDR_YMD,'YYYYMMDD')::date AS d,
-                  SUM(T0_T6_VIPOP) AS T0_6, SUM(T7_VIPOP) AS T7,  SUM(T8_VIPOP) AS T8,
+                  SUM(T6_VIPOP) AS T6, SUM(T7_VIPOP) AS T7,  SUM(T8_VIPOP) AS T8,
                   SUM(T9_VIPOP) AS T9,   SUM(T10_VIPOP) AS T10, SUM(T11_VIPOP) AS T11,
                   SUM(T12_VIPOP) AS T12, SUM(T13_VIPOP) AS T13, SUM(T14_VIPOP) AS T14,
                   SUM(T15_VIPOP) AS T15, SUM(T16_VIPOP) AS T16, SUM(T17_VIPOP) AS T17,
@@ -786,12 +789,12 @@ slides:
             GROUP BY 1
           ),
           day_total AS (
-            SELECT d, (T0_6+T7+T8+T9+T10+T11+T12+T13+T14+T15+T16+T17+T18+T19+T20+T21+T22+T23)::numeric AS tot
+            SELECT d, (T6+T7+T8+T9+T10+T11+T12+T13+T14+T15+T16+T17+T18+T19+T20+T21+T22+T23)::numeric AS tot
             FROM base
           ),
           unpivot AS (
             SELECT d, h, v FROM base b, LATERAL (VALUES
-              ('00-06', T0_6), ('07', T7), ('08', T8), ('09', T9), ('10', T10), ('11', T11),
+              ('06', T6), ('07', T7), ('08', T8), ('09', T9), ('10', T10), ('11', T11),
               ('12', T12), ('13', T13), ('14', T14), ('15', T15), ('16', T16), ('17', T17),
               ('18', T18), ('19', T19), ('20', T20), ('21', T21), ('22', T22), ('23', T23)
             ) AS x(h, v)
@@ -807,7 +810,7 @@ slides:
           SELECT ROUND(
                   100.0 * AVG(
                     CASE (SELECT h FROM best)
-                      WHEN '00-06' THEN T0_6 WHEN '07' THEN T7 WHEN '08' THEN T8 WHEN '09' THEN T9
+                      WHEN '06' THEN T6 WHEN '07' THEN T7 WHEN '08' THEN T8 WHEN '09' THEN T9
                       WHEN '10' THEN T10 WHEN '11' THEN T11 WHEN '12' THEN T12 WHEN '13' THEN T13
                       WHEN '14' THEN T14 WHEN '15' THEN T15 WHEN '16' THEN T16 WHEN '17' THEN T17
                       WHEN '18' THEN T18 WHEN '19' THEN T19 WHEN '20' THEN T20 WHEN '21' THEN T21
@@ -1015,7 +1018,7 @@ slides:
           SELECT to_char(dte, 'MM.DD') FROM d ORDER BY dte;
 
         series:
-          방문인구(만 명): |
+          방문인구(만명): |
             WITH d AS (
               SELECT gs::date AS dte
               FROM generate_series(
@@ -1042,7 +1045,7 @@ slides:
           WITH cat AS (
             SELECT lbl, ord
             FROM unnest(
-              ARRAY['0-6','7','8','9','10','11','12','13','14','15','16','17','18','19','20','21','22','23']
+              ARRAY['6','7','8','9','10','11','12','13','14','15','16','17','18','19','20','21','22','23']
             ) WITH ORDINALITY AS t(lbl, ord)
           )
           SELECT lbl FROM cat ORDER BY ord;
@@ -1057,7 +1060,7 @@ slides:
             ),
             s AS (  -- 분자: 시간대별 합계
               SELECT
-                SUM(COALESCE(T0_T6_VIPOP,0))  AS v0_6,
+                SUM(COALESCE(T6_VIPOP,0))  AS v0_6,
                 SUM(COALESCE(T7_VIPOP,0))     AS v7,
                 SUM(COALESCE(T8_VIPOP,0))     AS v8,
                 SUM(COALESCE(T9_VIPOP,0))     AS v9,
@@ -1477,7 +1480,7 @@ slides:
           SELECT lbl
           FROM (VALUES ('20대'), ('30대'), ('40대'), ('50대'), ('60대'), ('70대 이상')) v(lbl);
         series:
-          방문인구(만명): |
+          방문인구(명): |
             WITH p AS (
               SELECT :REGION_CD rc,
                      :DATE_FROM dfrom, :DATE_TO dto
@@ -1692,7 +1695,7 @@ slides:
           ORDER BY dte;
 
         series:
-          방문인구(명): |
+          방문인구(만명): |
             WITH d AS (
               SELECT gs::date AS dte
               FROM generate_series(
@@ -1723,7 +1726,7 @@ slides:
           WITH base AS (  -- 날짜별 시간대 합계
             SELECT
               to_date(STDR_YMD,'YYYYMMDD')::date AS d,
-              SUM(T0_T6_VIPOP)  AS T0_6, SUM(T7_VIPOP)  AS T7,  SUM(T8_VIPOP)  AS T8,
+              SUM(T6_VIPOP)  AS T6, SUM(T7_VIPOP)  AS T7,  SUM(T8_VIPOP)  AS T8,
               SUM(T9_VIPOP)     AS T9,   SUM(T10_VIPOP) AS T10, SUM(T11_VIPOP) AS T11,
               SUM(T12_VIPOP)    AS T12,  SUM(T13_VIPOP) AS T13, SUM(T14_VIPOP) AS T14,
               SUM(T15_VIPOP)    AS T15,  SUM(T16_VIPOP) AS T16, SUM(T17_VIPOP) AS T17,
@@ -1739,7 +1742,7 @@ slides:
             SELECT d, h, v
             FROM base b,
             LATERAL (VALUES
-              ('00-06', T0_6), ('07', T7), ('08', T8), ('09', T9), ('10', T10), ('11', T11),
+              ('06', T6), ('07', T7), ('08', T8), ('09', T9), ('10', T10), ('11', T11),
               ('12', T12), ('13', T13), ('14', T14), ('15', T15), ('16', T16), ('17', T17),
               ('18', T18), ('19', T19), ('20', T20), ('21', T21), ('22', T22), ('23', T23)
             ) AS x(h, v)
@@ -1767,7 +1770,7 @@ slides:
         sql: | # 평일 비중(%): (피크시간대 '일평균') / (평일 '일평균 전체') × 100
           WITH base AS (
             SELECT to_date(STDR_YMD,'YYYYMMDD')::date AS d,
-                  SUM(T0_T6_VIPOP) AS T0_6, SUM(T7_VIPOP) AS T7,  SUM(T8_VIPOP) AS T8,
+                  SUM(T6_VIPOP) AS T6, SUM(T7_VIPOP) AS T7,  SUM(T8_VIPOP) AS T8,
                   SUM(T9_VIPOP) AS T9,   SUM(T10_VIPOP) AS T10, SUM(T11_VIPOP) AS T11,
                   SUM(T12_VIPOP) AS T12, SUM(T13_VIPOP) AS T13, SUM(T14_VIPOP) AS T14,
                   SUM(T15_VIPOP) AS T15, SUM(T16_VIPOP) AS T16, SUM(T17_VIPOP) AS T17,
@@ -1781,7 +1784,7 @@ slides:
           ),
           unpivot AS (
             SELECT d, h, v FROM base b, LATERAL (VALUES
-              ('00-06', T0_6), ('07', T7), ('08', T8), ('09', T9), ('10', T10), ('11', T11),
+              ('06', T6), ('07', T7), ('08', T8), ('09', T9), ('10', T10), ('11', T11),
               ('12', T12), ('13', T13), ('14', T14), ('15', T15), ('16', T16), ('17', T17),
               ('18', T18), ('19', T19), ('20', T20), ('21', T21), ('22', T22), ('23', T23)
             ) AS x(h, v)
@@ -1798,13 +1801,13 @@ slides:
                   100.0 *
                   AVG(
                     CASE (SELECT h FROM best)
-                      WHEN '00-06' THEN T0_6 WHEN '07' THEN T7 WHEN '08' THEN T8 WHEN '09' THEN T9
+                      WHEN '06' THEN T6 WHEN '07' THEN T7 WHEN '08' THEN T8 WHEN '09' THEN T9
                       WHEN '10' THEN T10 WHEN '11' THEN T11 WHEN '12' THEN T12 WHEN '13' THEN T13
                       WHEN '14' THEN T14 WHEN '15' THEN T15 WHEN '16' THEN T16 WHEN '17' THEN T17
                       WHEN '18' THEN T18 WHEN '19' THEN T19 WHEN '20' THEN T20 WHEN '21' THEN T21
                       WHEN '22' THEN T22 ELSE T23 END
                   )
-                  / NULLIF(AVG(T0_6+T7+T8+T9+T10+T11+T12+T13+T14+T15+T16+T17+T18+T19+T20+T21+T22+T23), 0),
+                  / NULLIF(AVG(T6+T7+T8+T9+T10+T11+T12+T13+T14+T15+T16+T17+T18+T19+T20+T21+T22+T23), 0),
                   1
                 )
           FROM base;
@@ -1816,7 +1819,7 @@ slides:
           WITH base AS (
             SELECT
               to_date(STDR_YMD,'YYYYMMDD')::date AS d,
-              SUM(T0_T6_VIPOP)  AS T0_6, SUM(T7_VIPOP)  AS T7,  SUM(T8_VIPOP)  AS T8,
+              SUM(T6_VIPOP)  AS T6, SUM(T7_VIPOP)  AS T7,  SUM(T8_VIPOP)  AS T8,
               SUM(T9_VIPOP)     AS T9,   SUM(T10_VIPOP) AS T10, SUM(T11_VIPOP) AS T11,
               SUM(T12_VIPOP)    AS T12,  SUM(T13_VIPOP) AS T13, SUM(T14_VIPOP) AS T14,
               SUM(T15_VIPOP)    AS T15,  SUM(T16_VIPOP) AS T16, SUM(T17_VIPOP) AS T17,
@@ -1832,7 +1835,7 @@ slides:
             SELECT d, h, v
             FROM base b,
             LATERAL (VALUES
-              ('00-06', T0_6), ('07', T7), ('08', T8), ('09', T9), ('10', T10), ('11', T11),
+              ('06', T6), ('07', T7), ('08', T8), ('09', T9), ('10', T10), ('11', T11),
               ('12', T12), ('13', T13), ('14', T14), ('15', T15), ('16', T16), ('17', T17),
               ('18', T18), ('19', T19), ('20', T20), ('21', T21), ('22', T22), ('23', T23)
             ) AS x(h, v)
@@ -1860,7 +1863,7 @@ slides:
         sql: | # 주말 비중(%): (피크시간대 '일평균') / (주말 '일평균 전체') × 100
           WITH base AS (
             SELECT to_date(STDR_YMD,'YYYYMMDD')::date AS d,
-                  SUM(T0_T6_VIPOP) AS T0_6, SUM(T7_VIPOP) AS T7,  SUM(T8_VIPOP) AS T8,
+                  SUM(T6_VIPOP) AS T6, SUM(T7_VIPOP) AS T7,  SUM(T8_VIPOP) AS T8,
                   SUM(T9_VIPOP) AS T9,   SUM(T10_VIPOP) AS T10, SUM(T11_VIPOP) AS T11,
                   SUM(T12_VIPOP) AS T12, SUM(T13_VIPOP) AS T13, SUM(T14_VIPOP) AS T14,
                   SUM(T15_VIPOP) AS T15, SUM(T16_VIPOP) AS T16, SUM(T17_VIPOP) AS T17,
@@ -1874,7 +1877,7 @@ slides:
           ),
           unpivot AS (
             SELECT d, h, v FROM base b, LATERAL (VALUES
-              ('00-06', T0_6), ('07', T7), ('08', T8), ('09', T9), ('10', T10), ('11', T11),
+              ('06', T6), ('07', T7), ('08', T8), ('09', T9), ('10', T10), ('11', T11),
               ('12', T12), ('13', T13), ('14', T14), ('15', T15), ('16', T16), ('17', T17),
               ('18', T18), ('19', T19), ('20', T20), ('21', T21), ('22', T22), ('23', T23)
             ) AS x(h, v)
@@ -1891,13 +1894,13 @@ slides:
                   100.0 *
                   AVG(
                     CASE (SELECT h FROM best)
-                      WHEN '00-06' THEN T0_6 WHEN '07' THEN T7 WHEN '08' THEN T8 WHEN '09' THEN T9
+                      WHEN '06' THEN T6 WHEN '07' THEN T7 WHEN '08' THEN T8 WHEN '09' THEN T9
                       WHEN '10' THEN T10 WHEN '11' THEN T11 WHEN '12' THEN T12 WHEN '13' THEN T13
                       WHEN '14' THEN T14 WHEN '15' THEN T15 WHEN '16' THEN T16 WHEN '17' THEN T17
                       WHEN '18' THEN T18 WHEN '19' THEN T19 WHEN '20' THEN T20 WHEN '21' THEN T21
                       WHEN '22' THEN T22 ELSE T23 END
                   )
-                  / NULLIF(AVG(T0_6+T7+T8+T9+T10+T11+T12+T13+T14+T15+T16+T17+T18+T19+T20+T21+T22+T23), 0),
+                  / NULLIF(AVG(T6+T7+T8+T9+T10+T11+T12+T13+T14+T15+T16+T17+T18+T19+T20+T21+T22+T23), 0),
                   1
                 )
           FROM base;
@@ -1908,7 +1911,7 @@ slides:
           SELECT lbl
           FROM (
             VALUES
-              ('0~6시'), ('7시'), ('8시'), ('9시'), ('10시'), ('11시'),
+              ('6시'), ('7시'), ('8시'), ('9시'), ('10시'), ('11시'),
               ('12시'), ('13시'), ('14시'), ('15시'), ('16시'),
               ('17시'), ('18시'), ('19시'), ('20시'), ('21시'),
               ('22시'), ('23시')
@@ -1920,7 +1923,7 @@ slides:
               SELECT
                 to_date(STDR_YMD,'YYYYMMDD') AS d,
                 REGION_CD,
-                T0_T6_VIPOP, T7_VIPOP, T8_VIPOP, T9_VIPOP, T10_VIPOP, T11_VIPOP,
+                T6_VIPOP, T7_VIPOP, T8_VIPOP, T9_VIPOP, T10_VIPOP, T11_VIPOP,
                 T12_VIPOP, T13_VIPOP, T14_VIPOP, T15_VIPOP, T16_VIPOP, T17_VIPOP,
                 T18_VIPOP, T19_VIPOP, T20_VIPOP, T21_VIPOP, T22_VIPOP, T23_VIPOP
               FROM regionmonitor.TB_TMZON_VISIT_POPLTN
@@ -1929,7 +1932,7 @@ slides:
             ),
             weekday AS (
               SELECT
-                AVG(T0_T6_VIPOP)::NUMERIC/10000.0 AS t0,
+                AVG(T6_VIPOP)::NUMERIC/10000.0 AS t0,
                 AVG(T7_VIPOP)::NUMERIC/10000.0   AS t7,
                 AVG(T8_VIPOP)::NUMERIC/10000.0   AS t8,
                 AVG(T9_VIPOP)::NUMERIC/10000.0   AS t9,
@@ -1961,7 +1964,7 @@ slides:
               SELECT
                 to_date(STDR_YMD,'YYYYMMDD') AS d,
                 REGION_CD,
-                T0_T6_VIPOP, T7_VIPOP, T8_VIPOP, T9_VIPOP, T10_VIPOP, T11_VIPOP,
+                T6_VIPOP, T7_VIPOP, T8_VIPOP, T9_VIPOP, T10_VIPOP, T11_VIPOP,
                 T12_VIPOP, T13_VIPOP, T14_VIPOP, T15_VIPOP, T16_VIPOP, T17_VIPOP,
                 T18_VIPOP, T19_VIPOP, T20_VIPOP, T21_VIPOP, T22_VIPOP, T23_VIPOP
               FROM regionmonitor.TB_TMZON_VISIT_POPLTN
@@ -1970,7 +1973,7 @@ slides:
             ),
             weekend AS (
               SELECT
-                AVG(T0_T6_VIPOP)::NUMERIC/10000.0 AS t0,
+                AVG(T6_VIPOP)::NUMERIC/10000.0 AS t0,
                 AVG(T7_VIPOP)::NUMERIC/10000.0   AS t7,
                 AVG(T8_VIPOP)::NUMERIC/10000.0   AS t8,
                 AVG(T9_VIPOP)::NUMERIC/10000.0   AS t9,
@@ -2005,7 +2008,7 @@ slides:
             SELECT
               COALESCE(SUM(WHTHRC_VIPOP),0) AS in_local,
               COALESCE(SUM(NEARBY_VIPOP),0) AS nearby,
-              COALESCE(SUM(OUTHRC_VIPOP),0) AS out_v   -- ← outer 금지
+              COALESCE(SUM(OUTHRC_VIPOP),0) AS out_v 
             FROM regionmonitor.TB_INFLOW_VISIT_POPLTN
             WHERE REGION_CD = CAST(:REGION_CD AS VARCHAR)
               AND STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
@@ -2735,7 +2738,7 @@ slides:
           GROUP BY i.svc_induty_sclas_cd_nm, t.SVC_INDUTY_SCLAS_CD
           ORDER BY
             SUM(
-              COALESCE(t.T0_T6_SALAMT,0)+COALESCE(t.T7_SALAMT,0)+COALESCE(t.T8_SALAMT,0)+COALESCE(t.T9_SALAMT,0)+
+              COALESCE(t.T6_SALAMT,0)+COALESCE(t.T7_SALAMT,0)+COALESCE(t.T8_SALAMT,0)+COALESCE(t.T9_SALAMT,0)+
               COALESCE(t.T10_SALAMT,0)+COALESCE(t.T11_SALAMT,0)+COALESCE(t.T12_SALAMT,0)+COALESCE(t.T13_SALAMT,0)+
               COALESCE(t.T14_SALAMT,0)+COALESCE(t.T15_SALAMT,0)+COALESCE(t.T16_SALAMT,0)+COALESCE(t.T17_SALAMT,0)+
               COALESCE(t.T18_SALAMT,0)+COALESCE(t.T19_SALAMT,0)+COALESCE(t.T20_SALAMT,0)+COALESCE(t.T21_SALAMT,0)+
@@ -2748,7 +2751,7 @@ slides:
         sql: | # 소비금액 1위 업종의 총금액(원)
           SELECT to_char(
                   SUM(
-                    COALESCE(t.T0_T6_SALAMT,0)+COALESCE(t.T7_SALAMT,0)+COALESCE(t.T8_SALAMT,0)+COALESCE(t.T9_SALAMT,0)+
+                    COALESCE(t.T6_SALAMT,0)+COALESCE(t.T7_SALAMT,0)+COALESCE(t.T8_SALAMT,0)+COALESCE(t.T9_SALAMT,0)+
                     COALESCE(t.T10_SALAMT,0)+COALESCE(t.T11_SALAMT,0)+COALESCE(t.T12_SALAMT,0)+COALESCE(t.T13_SALAMT,0)+
                     COALESCE(t.T14_SALAMT,0)+COALESCE(t.T15_SALAMT,0)+COALESCE(t.T16_SALAMT,0)+COALESCE(t.T17_SALAMT,0)+
                     COALESCE(t.T18_SALAMT,0)+COALESCE(t.T19_SALAMT,0)+COALESCE(t.T20_SALAMT,0)+COALESCE(t.T21_SALAMT,0)+
@@ -2761,7 +2764,7 @@ slides:
             AND t.STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
           GROUP BY t.SVC_INDUTY_SCLAS_CD
           ORDER BY SUM(
-            COALESCE(t.T0_T6_SALAMT,0)+COALESCE(t.T7_SALAMT,0)+COALESCE(t.T8_SALAMT,0)+COALESCE(t.T9_SALAMT,0)+
+            COALESCE(t.T6_SALAMT,0)+COALESCE(t.T7_SALAMT,0)+COALESCE(t.T8_SALAMT,0)+COALESCE(t.T9_SALAMT,0)+
             COALESCE(t.T10_SALAMT,0)+COALESCE(t.T11_SALAMT,0)+COALESCE(t.T12_SALAMT,0)+COALESCE(t.T13_SALAMT,0)+
             COALESCE(t.T14_SALAMT,0)+COALESCE(t.T15_SALAMT,0)+COALESCE(t.T16_SALAMT,0)+COALESCE(t.T17_SALAMT,0)+
             COALESCE(t.T18_SALAMT,0)+COALESCE(t.T19_SALAMT,0)+COALESCE(t.T20_SALAMT,0)+COALESCE(t.T21_SALAMT,0)+
@@ -2774,7 +2777,7 @@ slides:
         sql: | # 소비금액 1위 업종의 총건수(건)
           SELECT to_char(
                   SUM(
-                    COALESCE(t.T0_T6_DCNT,0)+COALESCE(t.T7_DCNT,0)+COALESCE(t.T8_DCNT,0)+COALESCE(t.T9_DCNT,0)+
+                    COALESCE(t.T6_DCNT,0)+COALESCE(t.T7_DCNT,0)+COALESCE(t.T8_DCNT,0)+COALESCE(t.T9_DCNT,0)+
                     COALESCE(t.T10_DCNT,0)+COALESCE(t.T11_DCNT,0)+COALESCE(t.T12_DCNT,0)+COALESCE(t.T13_DCNT,0)+
                     COALESCE(t.T14_DCNT,0)+COALESCE(t.T15_DCNT,0)+COALESCE(t.T16_DCNT,0)+COALESCE(t.T17_DCNT,0)+
                     COALESCE(t.T18_DCNT,0)+COALESCE(t.T19_DCNT,0)+COALESCE(t.T20_DCNT,0)+COALESCE(t.T21_DCNT,0)+
@@ -2787,7 +2790,7 @@ slides:
             AND t.STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
           GROUP BY t.SVC_INDUTY_SCLAS_CD
           ORDER BY SUM(
-            COALESCE(t.T0_T6_SALAMT,0)+COALESCE(t.T7_SALAMT,0)+COALESCE(t.T8_SALAMT,0)+COALESCE(t.T9_SALAMT,0)+
+            COALESCE(t.T6_SALAMT,0)+COALESCE(t.T7_SALAMT,0)+COALESCE(t.T8_SALAMT,0)+COALESCE(t.T9_SALAMT,0)+
             COALESCE(t.T10_SALAMT,0)+COALESCE(t.T11_SALAMT,0)+COALESCE(t.T12_SALAMT,0)+COALESCE(t.T13_SALAMT,0)+
             COALESCE(t.T14_SALAMT,0)+COALESCE(t.T15_SALAMT,0)+COALESCE(t.T16_SALAMT,0)+COALESCE(t.T17_SALAMT,0)+
             COALESCE(t.T18_SALAMT,0)+COALESCE(t.T19_SALAMT,0)+COALESCE(t.T20_SALAMT,0)+COALESCE(t.T21_SALAMT,0)+
@@ -2807,7 +2810,7 @@ slides:
           GROUP BY i.svc_induty_sclas_cd_nm, t.SVC_INDUTY_SCLAS_CD
           ORDER BY
             SUM(
-              COALESCE(t.T0_T6_DCNT,0)+COALESCE(t.T7_DCNT,0)+COALESCE(t.T8_DCNT,0)+COALESCE(t.T9_DCNT,0)+
+              COALESCE(t.T6_DCNT,0)+COALESCE(t.T7_DCNT,0)+COALESCE(t.T8_DCNT,0)+COALESCE(t.T9_DCNT,0)+
               COALESCE(t.T10_DCNT,0)+COALESCE(t.T11_DCNT,0)+COALESCE(t.T12_DCNT,0)+COALESCE(t.T13_DCNT,0)+
               COALESCE(t.T14_DCNT,0)+COALESCE(t.T15_DCNT,0)+COALESCE(t.T16_DCNT,0)+COALESCE(t.T17_DCNT,0)+
               COALESCE(t.T18_DCNT,0)+COALESCE(t.T19_DCNT,0)+COALESCE(t.T20_DCNT,0)+COALESCE(t.T21_DCNT,0)+
@@ -2820,7 +2823,7 @@ slides:
         sql: | # 소비건수 1위 업종의 총금액(원)
           SELECT to_char(
                   SUM(
-                    COALESCE(t.T0_T6_SALAMT,0)+COALESCE(t.T7_SALAMT,0)+COALESCE(t.T8_SALAMT,0)+COALESCE(t.T9_SALAMT,0)+
+                    COALESCE(t.T6_SALAMT,0)+COALESCE(t.T7_SALAMT,0)+COALESCE(t.T8_SALAMT,0)+COALESCE(t.T9_SALAMT,0)+
                     COALESCE(t.T10_SALAMT,0)+COALESCE(t.T11_SALAMT,0)+COALESCE(t.T12_SALAMT,0)+COALESCE(t.T13_SALAMT,0)+
                     COALESCE(t.T14_SALAMT,0)+COALESCE(t.T15_SALAMT,0)+COALESCE(t.T16_SALAMT,0)+COALESCE(t.T17_SALAMT,0)+
                     COALESCE(t.T18_SALAMT,0)+COALESCE(t.T19_SALAMT,0)+COALESCE(t.T20_SALAMT,0)+COALESCE(t.T21_SALAMT,0)+
@@ -2833,7 +2836,7 @@ slides:
             AND t.STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
           GROUP BY t.SVC_INDUTY_SCLAS_CD
           ORDER BY SUM(
-            COALESCE(t.T0_T6_DCNT,0)+COALESCE(t.T7_DCNT,0)+COALESCE(t.T8_DCNT,0)+COALESCE(t.T9_DCNT,0)+
+            COALESCE(t.T6_DCNT,0)+COALESCE(t.T7_DCNT,0)+COALESCE(t.T8_DCNT,0)+COALESCE(t.T9_DCNT,0)+
             COALESCE(t.T10_DCNT,0)+COALESCE(t.T11_DCNT,0)+COALESCE(t.T12_DCNT,0)+COALESCE(t.T13_DCNT,0)+
             COALESCE(t.T14_DCNT,0)+COALESCE(t.T15_DCNT,0)+COALESCE(t.T16_DCNT,0)+COALESCE(t.T17_DCNT,0)+
             COALESCE(t.T18_DCNT,0)+COALESCE(t.T19_DCNT,0)+COALESCE(t.T20_DCNT,0)+COALESCE(t.T21_DCNT,0)+
@@ -2846,7 +2849,7 @@ slides:
         sql: | # 소비건수 1위 업종의 총건수(건)
           SELECT to_char(
                   SUM(
-                    COALESCE(t.T0_T6_DCNT,0)+COALESCE(t.T7_DCNT,0)+COALESCE(t.T8_DCNT,0)+COALESCE(t.T9_DCNT,0)+
+                    COALESCE(t.T6_DCNT,0)+COALESCE(t.T7_DCNT,0)+COALESCE(t.T8_DCNT,0)+COALESCE(t.T9_DCNT,0)+
                     COALESCE(t.T10_DCNT,0)+COALESCE(t.T11_DCNT,0)+COALESCE(t.T12_DCNT,0)+COALESCE(t.T13_DCNT,0)+
                     COALESCE(t.T14_DCNT,0)+COALESCE(t.T15_DCNT,0)+COALESCE(t.T16_DCNT,0)+COALESCE(t.T17_DCNT,0)+
                     COALESCE(t.T18_DCNT,0)+COALESCE(t.T19_DCNT,0)+COALESCE(t.T20_DCNT,0)+COALESCE(t.T21_DCNT,0)+
@@ -2859,7 +2862,7 @@ slides:
             AND t.STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
           GROUP BY t.SVC_INDUTY_SCLAS_CD
           ORDER BY SUM(
-            COALESCE(t.T0_T6_DCNT,0)+COALESCE(t.T7_DCNT,0)+COALESCE(t.T8_DCNT,0)+COALESCE(t.T9_DCNT,0)+
+            COALESCE(t.T6_DCNT,0)+COALESCE(t.T7_DCNT,0)+COALESCE(t.T8_DCNT,0)+COALESCE(t.T9_DCNT,0)+
             COALESCE(t.T10_DCNT,0)+COALESCE(t.T11_DCNT,0)+COALESCE(t.T12_DCNT,0)+COALESCE(t.T13_DCNT,0)+
             COALESCE(t.T14_DCNT,0)+COALESCE(t.T15_DCNT,0)+COALESCE(t.T16_DCNT,0)+COALESCE(t.T17_DCNT,0)+
             COALESCE(t.T18_DCNT,0)+COALESCE(t.T19_DCNT,0)+COALESCE(t.T20_DCNT,0)+COALESCE(t.T21_DCNT,0)+
@@ -2879,7 +2882,7 @@ slides:
           GROUP BY i.svc_induty_sclas_cd_nm, t.SVC_INDUTY_SCLAS_CD
           ORDER BY
             ( SUM(
-                COALESCE(t.T0_T6_SALAMT,0)+COALESCE(t.T7_SALAMT,0)+COALESCE(t.T8_SALAMT,0)+COALESCE(t.T9_SALAMT,0)+
+                COALESCE(t.T6_SALAMT,0)+COALESCE(t.T7_SALAMT,0)+COALESCE(t.T8_SALAMT,0)+COALESCE(t.T9_SALAMT,0)+
                 COALESCE(t.T10_SALAMT,0)+COALESCE(t.T11_SALAMT,0)+COALESCE(t.T12_SALAMT,0)+COALESCE(t.T13_SALAMT,0)+
                 COALESCE(t.T14_SALAMT,0)+COALESCE(t.T15_SALAMT,0)+COALESCE(t.T16_SALAMT,0)+COALESCE(t.T17_SALAMT,0)+
                 COALESCE(t.T18_SALAMT,0)+COALESCE(t.T19_SALAMT,0)+COALESCE(t.T20_SALAMT,0)+COALESCE(t.T21_SALAMT,0)+
@@ -2887,7 +2890,7 @@ slides:
               )::numeric
               / NULLIF(
                 SUM(
-                  COALESCE(t.T0_T6_DCNT,0)+COALESCE(t.T7_DCNT,0)+COALESCE(t.T8_DCNT,0)+COALESCE(t.T9_DCNT,0)+
+                  COALESCE(t.T6_DCNT,0)+COALESCE(t.T7_DCNT,0)+COALESCE(t.T8_DCNT,0)+COALESCE(t.T9_DCNT,0)+
                   COALESCE(t.T10_DCNT,0)+COALESCE(t.T11_DCNT,0)+COALESCE(t.T12_DCNT,0)+COALESCE(t.T13_DCNT,0)+
                   COALESCE(t.T14_DCNT,0)+COALESCE(t.T15_DCNT,0)+COALESCE(t.T16_DCNT,0)+COALESCE(t.T17_DCNT,0)+
                   COALESCE(t.T18_DCNT,0)+COALESCE(t.T19_DCNT,0)+COALESCE(t.T20_DCNT,0)+COALESCE(t.T21_DCNT,0)+
@@ -2901,7 +2904,7 @@ slides:
         sql: | # 인당 평균매출액 1위 업종의 평균금액(원)
           SELECT to_char(
             ( SUM(
-                COALESCE(t.T0_T6_SALAMT,0)+COALESCE(t.T7_SALAMT,0)+COALESCE(t.T8_SALAMT,0)+COALESCE(t.T9_SALAMT,0)+
+                COALESCE(t.T6_SALAMT,0)+COALESCE(t.T7_SALAMT,0)+COALESCE(t.T8_SALAMT,0)+COALESCE(t.T9_SALAMT,0)+
                 COALESCE(t.T10_SALAMT,0)+COALESCE(t.T11_SALAMT,0)+COALESCE(t.T12_SALAMT,0)+COALESCE(t.T13_SALAMT,0)+
                 COALESCE(t.T14_SALAMT,0)+COALESCE(t.T15_SALAMT,0)+COALESCE(t.T16_SALAMT,0)+COALESCE(t.T17_SALAMT,0)+
                 COALESCE(t.T18_SALAMT,0)+COALESCE(t.T19_SALAMT,0)+COALESCE(t.T20_SALAMT,0)+COALESCE(t.T21_SALAMT,0)+
@@ -2909,7 +2912,7 @@ slides:
               )::numeric
               / NULLIF(
                 SUM(
-                  COALESCE(t.T0_T6_DCNT,0)+COALESCE(t.T7_DCNT,0)+COALESCE(t.T8_DCNT,0)+COALESCE(t.T9_DCNT,0)+
+                  COALESCE(t.T6_DCNT,0)+COALESCE(t.T7_DCNT,0)+COALESCE(t.T8_DCNT,0)+COALESCE(t.T9_DCNT,0)+
                   COALESCE(t.T10_DCNT,0)+COALESCE(t.T11_DCNT,0)+COALESCE(t.T12_DCNT,0)+COALESCE(t.T13_DCNT,0)+
                   COALESCE(t.T14_DCNT,0)+COALESCE(t.T15_DCNT,0)+COALESCE(t.T16_DCNT,0)+COALESCE(t.T17_DCNT,0)+
                   COALESCE(t.T18_DCNT,0)+COALESCE(t.T19_DCNT,0)+COALESCE(t.T20_DCNT,0)+COALESCE(t.T21_DCNT,0)+
@@ -2923,7 +2926,7 @@ slides:
           GROUP BY t.SVC_INDUTY_SCLAS_CD
           ORDER BY
             ( SUM(
-                COALESCE(t.T0_T6_SALAMT,0)+COALESCE(t.T7_SALAMT,0)+COALESCE(t.T8_SALAMT,0)+COALESCE(t.T9_SALAMT,0)+
+                COALESCE(t.T6_SALAMT,0)+COALESCE(t.T7_SALAMT,0)+COALESCE(t.T8_SALAMT,0)+COALESCE(t.T9_SALAMT,0)+
                 COALESCE(t.T10_SALAMT,0)+COALESCE(t.T11_SALAMT,0)+COALESCE(t.T12_SALAMT,0)+COALESCE(t.T13_SALAMT,0)+
                 COALESCE(t.T14_SALAMT,0)+COALESCE(t.T15_SALAMT,0)+COALESCE(t.T16_SALAMT,0)+COALESCE(t.T17_SALAMT,0)+
                 COALESCE(t.T18_SALAMT,0)+COALESCE(t.T19_SALAMT,0)+COALESCE(t.T20_SALAMT,0)+COALESCE(t.T21_SALAMT,0)+
@@ -2931,7 +2934,7 @@ slides:
               )::numeric
               / NULLIF(
                 SUM(
-                  COALESCE(t.T0_T6_DCNT,0)+COALESCE(t.T7_DCNT,0)+COALESCE(t.T8_DCNT,0)+COALESCE(t.T9_DCNT,0)+
+                  COALESCE(t.T6_DCNT,0)+COALESCE(t.T7_DCNT,0)+COALESCE(t.T8_DCNT,0)+COALESCE(t.T9_DCNT,0)+
                   COALESCE(t.T10_DCNT,0)+COALESCE(t.T11_DCNT,0)+COALESCE(t.T12_DCNT,0)+COALESCE(t.T13_DCNT,0)+
                   COALESCE(t.T14_DCNT,0)+COALESCE(t.T15_DCNT,0)+COALESCE(t.T16_DCNT,0)+COALESCE(t.T17_DCNT,0)+
                   COALESCE(t.T18_DCNT,0)+COALESCE(t.T19_DCNT,0)+COALESCE(t.T20_DCNT,0)+COALESCE(t.T21_DCNT,0)+
@@ -2945,7 +2948,7 @@ slides:
         sql: | # 인당 평균매출액 1위 업종의 총건수(건)
           SELECT to_char(
             SUM(
-              COALESCE(t.T0_T6_DCNT,0)+COALESCE(t.T7_DCNT,0)+COALESCE(t.T8_DCNT,0)+COALESCE(t.T9_DCNT,0)+
+              COALESCE(t.T6_DCNT,0)+COALESCE(t.T7_DCNT,0)+COALESCE(t.T8_DCNT,0)+COALESCE(t.T9_DCNT,0)+
               COALESCE(t.T10_DCNT,0)+COALESCE(t.T11_DCNT,0)+COALESCE(t.T12_DCNT,0)+COALESCE(t.T13_DCNT,0)+
               COALESCE(t.T14_DCNT,0)+COALESCE(t.T15_DCNT,0)+COALESCE(t.T16_DCNT,0)+COALESCE(t.T17_DCNT,0)+
               COALESCE(t.T18_DCNT,0)+COALESCE(t.T19_DCNT,0)+COALESCE(t.T20_DCNT,0)+COALESCE(t.T21_DCNT,0)+
@@ -2958,7 +2961,7 @@ slides:
           GROUP BY t.SVC_INDUTY_SCLAS_CD
           ORDER BY
             ( SUM(
-                COALESCE(t.T0_T6_SALAMT,0)+COALESCE(t.T7_SALAMT,0)+COALESCE(t.T8_SALAMT,0)+COALESCE(t.T9_SALAMT,0)+
+                COALESCE(t.T6_SALAMT,0)+COALESCE(t.T7_SALAMT,0)+COALESCE(t.T8_SALAMT,0)+COALESCE(t.T9_SALAMT,0)+
                 COALESCE(t.T10_SALAMT,0)+COALESCE(t.T11_SALAMT,0)+COALESCE(t.T12_SALAMT,0)+COALESCE(t.T13_SALAMT,0)+
                 COALESCE(t.T14_SALAMT,0)+COALESCE(t.T15_SALAMT,0)+COALESCE(t.T16_SALAMT,0)+COALESCE(t.T17_SALAMT,0)+
                 COALESCE(t.T18_SALAMT,0)+COALESCE(t.T19_SALAMT,0)+COALESCE(t.T20_SALAMT,0)+COALESCE(t.T21_SALAMT,0)+
@@ -2966,7 +2969,7 @@ slides:
               )::numeric
               / NULLIF(
                 SUM(
-                  COALESCE(t.T0_T6_DCNT,0)+COALESCE(t.T7_DCNT,0)+COALESCE(t.T8_DCNT,0)+COALESCE(t.T9_DCNT,0)+
+                  COALESCE(t.T6_DCNT,0)+COALESCE(t.T7_DCNT,0)+COALESCE(t.T8_DCNT,0)+COALESCE(t.T9_DCNT,0)+
                   COALESCE(t.T10_DCNT,0)+COALESCE(t.T11_DCNT,0)+COALESCE(t.T12_DCNT,0)+COALESCE(t.T13_DCNT,0)+
                   COALESCE(t.T14_DCNT,0)+COALESCE(t.T15_DCNT,0)+COALESCE(t.T16_DCNT,0)+COALESCE(t.T17_DCNT,0)+
                   COALESCE(t.T18_DCNT,0)+COALESCE(t.T19_DCNT,0)+COALESCE(t.T20_DCNT,0)+COALESCE(t.T21_DCNT,0)+
@@ -3576,7 +3579,7 @@ slides:
         sql: | # 전체 피크타임(시)
           WITH s AS (
             SELECT
-              SUM(T0_T6_SALAMT) t0, SUM(T7_SALAMT) t7, SUM(T8_SALAMT) t8, SUM(T9_SALAMT) t9,
+              SUM(T6_SALAMT) t0, SUM(T7_SALAMT) t7, SUM(T8_SALAMT) t8, SUM(T9_SALAMT) t9,
               SUM(T10_SALAMT) t10, SUM(T11_SALAMT) t11, SUM(T12_SALAMT) t12, SUM(T13_SALAMT) t13,
               SUM(T14_SALAMT) t14, SUM(T15_SALAMT) t15, SUM(T16_SALAMT) t16, SUM(T17_SALAMT) t17,
               SUM(T18_SALAMT) t18, SUM(T19_SALAMT) t19, SUM(T20_SALAMT) t20, SUM(T21_SALAMT) t21,
@@ -3588,7 +3591,7 @@ slides:
           SELECT hr
           FROM (
             SELECT
-              unnest(ARRAY['0시-6시','7시','8시','9시','10시','11시','12시','13시','14시','15시','16시','17시','18시','19시','20시','21시','22시','23시']) AS hr,
+              unnest(ARRAY['6시','7시','8시','9시','10시','11시','12시','13시','14시','15시','16시','17시','18시','19시','20시','21시','22시','23시']) AS hr,
               unnest(ARRAY[t0,t7,t8,t9,t10,t11,t12,t13,t14,t15,t16,t17,t18,t19,t20,t21,t22,t23]) AS amt
             FROM s
           ) x
@@ -3599,7 +3602,7 @@ slides:
         sql: | # 전체 매출 중 피크타임 비중(%)
           WITH s AS (
             SELECT
-              SUM(T0_T6_SALAMT) t0, SUM(T7_SALAMT) t7, SUM(T8_SALAMT) t8, SUM(T9_SALAMT) t9,
+              SUM(T6_SALAMT) t0, SUM(T7_SALAMT) t7, SUM(T8_SALAMT) t8, SUM(T9_SALAMT) t9,
               SUM(T10_SALAMT) t10, SUM(T11_SALAMT) t11, SUM(T12_SALAMT) t12, SUM(T13_SALAMT) t13,
               SUM(T14_SALAMT) t14, SUM(T15_SALAMT) t15, SUM(T16_SALAMT) t16, SUM(T17_SALAMT) t17,
               SUM(T18_SALAMT) t18, SUM(T19_SALAMT) t19, SUM(T20_SALAMT) t20, SUM(T21_SALAMT) t21,
@@ -3619,7 +3622,7 @@ slides:
         sql: | # 1위 업종코드
           WITH s AS (
             SELECT SVC_INDUTY_SCLAS_CD,
-                  SUM(T0_T6_SALAMT) t0, SUM(T7_SALAMT) t7, SUM(T8_SALAMT) t8, SUM(T9_SALAMT) t9,
+                  SUM(T6_SALAMT) t0, SUM(T7_SALAMT) t7, SUM(T8_SALAMT) t8, SUM(T9_SALAMT) t9,
                   SUM(T10_SALAMT) t10, SUM(T11_SALAMT) t11, SUM(T12_SALAMT) t12, SUM(T13_SALAMT) t13,
                   SUM(T14_SALAMT) t14, SUM(T15_SALAMT) t15, SUM(T16_SALAMT) t16, SUM(T17_SALAMT) t17,
                   SUM(T18_SALAMT) t18, SUM(T19_SALAMT) t19, SUM(T20_SALAMT) t20, SUM(T21_SALAMT) t21,
@@ -3641,7 +3644,7 @@ slides:
         sql: | # 1위 업종 피크타임(시)
           WITH s AS (
             SELECT SVC_INDUTY_SCLAS_CD,
-                  SUM(T0_T6_SALAMT) t0, SUM(T7_SALAMT) t7, SUM(T8_SALAMT) t8, SUM(T9_SALAMT) t9,
+                  SUM(T6_SALAMT) t0, SUM(T7_SALAMT) t7, SUM(T8_SALAMT) t8, SUM(T9_SALAMT) t9,
                   SUM(T10_SALAMT) t10, SUM(T11_SALAMT) t11, SUM(T12_SALAMT) t12, SUM(T13_SALAMT) t13,
                   SUM(T14_SALAMT) t14, SUM(T15_SALAMT) t15, SUM(T16_SALAMT) t16, SUM(T17_SALAMT) t17,
                   SUM(T18_SALAMT) t18, SUM(T19_SALAMT) t19, SUM(T20_SALAMT) t20, SUM(T21_SALAMT) t21,
@@ -3659,7 +3662,7 @@ slides:
           SELECT hr
           FROM (
             SELECT
-              unnest(ARRAY['0시-6시','7시','8시','9시','10시','11시','12시','13시','14시','15시','16시','17시','18시','19시','20시','21시','22시','23시']) AS hr,
+              unnest(ARRAY['6시','7시','8시','9시','10시','11시','12시','13시','14시','15시','16시','17시','18시','19시','20시','21시','22시','23시']) AS hr,
               unnest(ARRAY[s.t0,s.t7,s.t8,s.t9,s.t10,s.t11,s.t12,s.t13,s.t14,s.t15,s.t16,s.t17,s.t18,s.t19,s.t20,s.t21,s.t22,s.t23]) AS amt
             FROM s JOIN top USING (SVC_INDUTY_SCLAS_CD)
           ) x
@@ -3670,7 +3673,7 @@ slides:
         sql: | # 2위 업종코드
           WITH s AS (
             SELECT SVC_INDUTY_SCLAS_CD,
-                  SUM(T0_T6_SALAMT) t0, SUM(T7_SALAMT) t7, SUM(T8_SALAMT) t8, SUM(T9_SALAMT) t9,
+                  SUM(T6_SALAMT) t0, SUM(T7_SALAMT) t7, SUM(T8_SALAMT) t8, SUM(T9_SALAMT) t9,
                   SUM(T10_SALAMT) t10, SUM(T11_SALAMT) t11, SUM(T12_SALAMT) t12, SUM(T13_SALAMT) t13,
                   SUM(T14_SALAMT) t14, SUM(T15_SALAMT) t15, SUM(T16_SALAMT) t16, SUM(T17_SALAMT) t17,
                   SUM(T18_SALAMT) t18, SUM(T19_SALAMT) t19, SUM(T20_SALAMT) t20, SUM(T21_SALAMT) t21,
@@ -3692,7 +3695,7 @@ slides:
         sql: | # 2위 업종 피크타임(시)
           WITH s AS (
             SELECT SVC_INDUTY_SCLAS_CD,
-                  SUM(T0_T6_SALAMT) t0, SUM(T7_SALAMT) t7, SUM(T8_SALAMT) t8, SUM(T9_SALAMT) t9,
+                  SUM(T6_SALAMT) t0, SUM(T7_SALAMT) t7, SUM(T8_SALAMT) t8, SUM(T9_SALAMT) t9,
                   SUM(T10_SALAMT) t10, SUM(T11_SALAMT) t11, SUM(T12_SALAMT) t12, SUM(T13_SALAMT) t13,
                   SUM(T14_SALAMT) t14, SUM(T15_SALAMT) t15, SUM(T16_SALAMT) t16, SUM(T17_SALAMT) t17,
                   SUM(T18_SALAMT) t18, SUM(T19_SALAMT) t19, SUM(T20_SALAMT) t20, SUM(T21_SALAMT) t21,
@@ -3710,7 +3713,7 @@ slides:
           SELECT hr
           FROM (
             SELECT
-              unnest(ARRAY['0시-6시','7시','8시','9시','10시','11시','12시','13시','14시','15시','16시','17시','18시','19시','20시','21시','22시','23시']) AS hr,
+              unnest(ARRAY['6시','7시','8시','9시','10시','11시','12시','13시','14시','15시','16시','17시','18시','19시','20시','21시','22시','23시']) AS hr,
               unnest(ARRAY[s.t0,s.t7,s.t8,s.t9,s.t10,s.t11,s.t12,s.t13,s.t14,s.t15,s.t16,s.t17,s.t18,s.t19,s.t20,s.t21,s.t22,s.t23]) AS amt
             FROM s JOIN top USING (SVC_INDUTY_SCLAS_CD)
           ) x
@@ -3721,7 +3724,7 @@ slides:
         sql: | # 3위 업종코드
           WITH s AS (
             SELECT SVC_INDUTY_SCLAS_CD,
-                  SUM(T0_T6_SALAMT) t0, SUM(T7_SALAMT) t7, SUM(T8_SALAMT) t8, SUM(T9_SALAMT) t9,
+                  SUM(T6_SALAMT) t0, SUM(T7_SALAMT) t7, SUM(T8_SALAMT) t8, SUM(T9_SALAMT) t9,
                   SUM(T10_SALAMT) t10, SUM(T11_SALAMT) t11, SUM(T12_SALAMT) t12, SUM(T13_SALAMT) t13,
                   SUM(T14_SALAMT) t14, SUM(T15_SALAMT) t15, SUM(T16_SALAMT) t16, SUM(T17_SALAMT) t17,
                   SUM(T18_SALAMT) t18, SUM(T19_SALAMT) t19, SUM(T20_SALAMT) t20, SUM(T21_SALAMT) t21,
@@ -3743,7 +3746,7 @@ slides:
         sql: | # 3위 업종 피크타임(시)
           WITH s AS (
             SELECT SVC_INDUTY_SCLAS_CD,
-                  SUM(T0_T6_SALAMT) t0, SUM(T7_SALAMT) t7, SUM(T8_SALAMT) t8, SUM(T9_SALAMT) t9,
+                  SUM(T6_SALAMT) t0, SUM(T7_SALAMT) t7, SUM(T8_SALAMT) t8, SUM(T9_SALAMT) t9,
                   SUM(T10_SALAMT) t10, SUM(T11_SALAMT) t11, SUM(T12_SALAMT) t12, SUM(T13_SALAMT) t13,
                   SUM(T14_SALAMT) t14, SUM(T15_SALAMT) t15, SUM(T16_SALAMT) t16, SUM(T17_SALAMT) t17,
                   SUM(T18_SALAMT) t18, SUM(T19_SALAMT) t19, SUM(T20_SALAMT) t20, SUM(T21_SALAMT) t21,
@@ -3761,7 +3764,7 @@ slides:
           SELECT hr
           FROM (
             SELECT
-              unnest(ARRAY['0시-6시','7시','8시','9시','10시','11시','12시','13시','14시','15시','16시','17시','18시','19시','20시','21시','22시','23시']) AS hr,
+              unnest(ARRAY['6시','7시','8시','9시','10시','11시','12시','13시','14시','15시','16시','17시','18시','19시','20시','21시','22시','23시']) AS hr,
               unnest(ARRAY[s.t0,s.t7,s.t8,s.t9,s.t10,s.t11,s.t12,s.t13,s.t14,s.t15,s.t16,s.t17,s.t18,s.t19,s.t20,s.t21,s.t22,s.t23]) AS amt
             FROM s JOIN top USING (SVC_INDUTY_SCLAS_CD)
           ) x
@@ -3772,7 +3775,7 @@ slides:
         sql: | # 4위 업종코드
           WITH s AS (
             SELECT SVC_INDUTY_SCLAS_CD,
-                  SUM(T0_T6_SALAMT) t0, SUM(T7_SALAMT) t7, SUM(T8_SALAMT) t8, SUM(T9_SALAMT) t9,
+                  SUM(T6_SALAMT) t0, SUM(T7_SALAMT) t7, SUM(T8_SALAMT) t8, SUM(T9_SALAMT) t9,
                   SUM(T10_SALAMT) t10, SUM(T11_SALAMT) t11, SUM(T12_SALAMT) t12, SUM(T13_SALAMT) t13,
                   SUM(T14_SALAMT) t14, SUM(T15_SALAMT) t15, SUM(T16_SALAMT) t16, SUM(T17_SALAMT) t17,
                   SUM(T18_SALAMT) t18, SUM(T19_SALAMT) t19, SUM(T20_SALAMT) t20, SUM(T21_SALAMT) t21,
@@ -3794,7 +3797,7 @@ slides:
         sql: | # 4위 업종 피크타임(시)
           WITH s AS (
             SELECT SVC_INDUTY_SCLAS_CD,
-                  SUM(T0_T6_SALAMT) t0, SUM(T7_SALAMT) t7, SUM(T8_SALAMT) t8, SUM(T9_SALAMT) t9,
+                  SUM(T6_SALAMT) t0, SUM(T7_SALAMT) t7, SUM(T8_SALAMT) t8, SUM(T9_SALAMT) t9,
                   SUM(T10_SALAMT) t10, SUM(T11_SALAMT) t11, SUM(T12_SALAMT) t12, SUM(T13_SALAMT) t13,
                   SUM(T14_SALAMT) t14, SUM(T15_SALAMT) t15, SUM(T16_SALAMT) t16, SUM(T17_SALAMT) t17,
                   SUM(T18_SALAMT) t18, SUM(T19_SALAMT) t19, SUM(T20_SALAMT) t20, SUM(T21_SALAMT) t21,
@@ -3812,7 +3815,7 @@ slides:
           SELECT hr
           FROM (
             SELECT
-              unnest(ARRAY['0시-6시','7시','8시','9시','10시','11시','12시','13시','14시','15시','16시','17시','18시','19시','20시','21시','22시','23시']) AS hr,
+              unnest(ARRAY['6시','7시','8시','9시','10시','11시','12시','13시','14시','15시','16시','17시','18시','19시','20시','21시','22시','23시']) AS hr,
               unnest(ARRAY[s.t0,s.t7,s.t8,s.t9,s.t10,s.t11,s.t12,s.t13,s.t14,s.t15,s.t16,s.t17,s.t18,s.t19,s.t20,s.t21,s.t22,s.t23]) AS amt
             FROM s JOIN top USING (SVC_INDUTY_SCLAS_CD)
           ) x
@@ -3823,7 +3826,7 @@ slides:
         sql: | # 5위 업종코드
           WITH s AS (
             SELECT SVC_INDUTY_SCLAS_CD,
-                  SUM(T0_T6_SALAMT) t0, SUM(T7_SALAMT) t7, SUM(T8_SALAMT) t8, SUM(T9_SALAMT) t9,
+                  SUM(T6_SALAMT) t0, SUM(T7_SALAMT) t7, SUM(T8_SALAMT) t8, SUM(T9_SALAMT) t9,
                   SUM(T10_SALAMT) t10, SUM(T11_SALAMT) t11, SUM(T12_SALAMT) t12, SUM(T13_SALAMT) t13,
                   SUM(T14_SALAMT) t14, SUM(T15_SALAMT) t15, SUM(T16_SALAMT) t16, SUM(T17_SALAMT) t17,
                   SUM(T18_SALAMT) t18, SUM(T19_SALAMT) t19, SUM(T20_SALAMT) t20, SUM(T21_SALAMT) t21,
@@ -3845,7 +3848,7 @@ slides:
         sql: | # 5위 업종 피크타임(시)
           WITH s AS (
             SELECT SVC_INDUTY_SCLAS_CD,
-                  SUM(T0_T6_SALAMT) t0, SUM(T7_SALAMT) t7, SUM(T8_SALAMT) t8, SUM(T9_SALAMT) t9,
+                  SUM(T6_SALAMT) t0, SUM(T7_SALAMT) t7, SUM(T8_SALAMT) t8, SUM(T9_SALAMT) t9,
                   SUM(T10_SALAMT) t10, SUM(T11_SALAMT) t11, SUM(T12_SALAMT) t12, SUM(T13_SALAMT) t13,
                   SUM(T14_SALAMT) t14, SUM(T15_SALAMT) t15, SUM(T16_SALAMT) t16, SUM(T17_SALAMT) t17,
                   SUM(T18_SALAMT) t18, SUM(T19_SALAMT) t19, SUM(T20_SALAMT) t20, SUM(T21_SALAMT) t21,
@@ -3863,7 +3866,7 @@ slides:
           SELECT hr
           FROM (
             SELECT
-              unnest(ARRAY['0시-6시','7시','8시','9시','10시','11시','12시','13시','14시','15시','16시','17시','18시','19시','20시','21시','22시','23시']) AS hr,
+              unnest(ARRAY['6시','7시','8시','9시','10시','11시','12시','13시','14시','15시','16시','17시','18시','19시','20시','21시','22시','23시']) AS hr,
               unnest(ARRAY[s.t0,s.t7,s.t8,s.t9,s.t10,s.t11,s.t12,s.t13,s.t14,s.t15,s.t16,s.t17,s.t18,s.t19,s.t20,s.t21,s.t22,s.t23]) AS amt
             FROM s JOIN top USING (SVC_INDUTY_SCLAS_CD)
           ) x
@@ -3960,7 +3963,7 @@ slides:
         category_sql: |-
           SELECT lbl
           FROM (VALUES
-            ('0-6시'), ('7시'), ('8시'), ('9시'), ('10시'), ('11시'),
+            ('6시'), ('7시'), ('8시'), ('9시'), ('10시'), ('11시'),
             ('12시'), ('13시'), ('14시'), ('15시'), ('16시'),
             ('17시'), ('18시'), ('19시'), ('20시'), ('21시'),
             ('22시'), ('23시')
@@ -3982,7 +3985,7 @@ slides:
               LIMIT 5
             )
             SELECT UNNEST(ARRAY[
-              COALESCE(SUM(t.T0_T6_SALAMT),0)/1000000,
+              COALESCE(SUM(t.T6_SALAMT),0)/1000000,
               COALESCE(SUM(t.T7_SALAMT),0)/1000000,
               COALESCE(SUM(t.T8_SALAMT),0)/1000000,
               COALESCE(SUM(t.T9_SALAMT),0)/1000000,
@@ -4021,7 +4024,7 @@ slides:
               LIMIT 5
             )
             SELECT UNNEST(ARRAY[
-              COALESCE(SUM(t.T0_T6_SALAMT),0)/1000000,
+              COALESCE(SUM(t.T6_SALAMT),0)/1000000,
               COALESCE(SUM(t.T7_SALAMT),0)/1000000,
               COALESCE(SUM(t.T8_SALAMT),0)/1000000,
               COALESCE(SUM(t.T9_SALAMT),0)/1000000,
@@ -4060,7 +4063,7 @@ slides:
               LIMIT 5
             )
             SELECT UNNEST(ARRAY[
-              COALESCE(SUM(t.T0_T6_SALAMT),0)/1000000,
+              COALESCE(SUM(t.T6_SALAMT),0)/1000000,
               COALESCE(SUM(t.T7_SALAMT),0)/1000000,
               COALESCE(SUM(t.T8_SALAMT),0)/1000000,
               COALESCE(SUM(t.T9_SALAMT),0)/1000000,
@@ -4099,7 +4102,7 @@ slides:
               LIMIT 5
             )
             SELECT UNNEST(ARRAY[
-              COALESCE(SUM(t.T0_T6_SALAMT),0)/1000000,
+              COALESCE(SUM(t.T6_SALAMT),0)/1000000,
               COALESCE(SUM(t.T7_SALAMT),0)/1000000,
               COALESCE(SUM(t.T8_SALAMT),0)/1000000,
               COALESCE(SUM(t.T9_SALAMT),0)/1000000,
@@ -4138,7 +4141,7 @@ slides:
               LIMIT 5
             )
             SELECT UNNEST(ARRAY[
-              COALESCE(SUM(t.T0_T6_SALAMT),0)/1000000,
+              COALESCE(SUM(t.T6_SALAMT),0)/1000000,
               COALESCE(SUM(t.T7_SALAMT),0)/1000000,
               COALESCE(SUM(t.T8_SALAMT),0)/1000000,
               COALESCE(SUM(t.T9_SALAMT),0)/1000000,
@@ -4169,7 +4172,7 @@ slides:
         sql: | # 전체 피크타임(시)
           WITH s AS (
             SELECT
-              SUM(T0_T6_DCNT) d0, SUM(T7_DCNT) d7, SUM(T8_DCNT) d8, SUM(T9_DCNT) d9,
+              SUM(T6_DCNT) d0, SUM(T7_DCNT) d7, SUM(T8_DCNT) d8, SUM(T9_DCNT) d9,
               SUM(T10_DCNT) d10, SUM(T11_DCNT) d11, SUM(T12_DCNT) d12, SUM(T13_DCNT) d13,
               SUM(T14_DCNT) d14, SUM(T15_DCNT) d15, SUM(T16_DCNT) d16, SUM(T17_DCNT) d17,
               SUM(T18_DCNT) d18, SUM(T19_DCNT) d19, SUM(T20_DCNT) d20, SUM(T21_DCNT) d21,
@@ -4181,7 +4184,7 @@ slides:
           SELECT hr
           FROM (
             SELECT
-              unnest(ARRAY['0시-6시','7시','8시','9시','10시','11시','12시','13시','14시','15시','16시','17시','18시','19시','20시','21시','22시','23시']) AS hr,
+              unnest(ARRAY['6시','7시','8시','9시','10시','11시','12시','13시','14시','15시','16시','17시','18시','19시','20시','21시','22시','23시']) AS hr,
               unnest(ARRAY[d0,d7,d8,d9,d10,d11,d12,d13,d14,d15,d16,d17,d18,d19,d20,d21,d22,d23]) AS cnt
             FROM s
           ) x
@@ -4192,7 +4195,7 @@ slides:
         sql: | # 전체 건수 중 피크타임 비중(%)
           WITH s AS (
             SELECT
-              SUM(T0_T6_DCNT) d0, SUM(T7_DCNT) d7, SUM(T8_DCNT) d8, SUM(T9_DCNT) d9,
+              SUM(T6_DCNT) d0, SUM(T7_DCNT) d7, SUM(T8_DCNT) d8, SUM(T9_DCNT) d9,
               SUM(T10_DCNT) d10, SUM(T11_DCNT) d11, SUM(T12_DCNT) d12, SUM(T13_DCNT) d13,
               SUM(T14_DCNT) d14, SUM(T15_DCNT) d15, SUM(T16_DCNT) d16, SUM(T17_DCNT) d17,
               SUM(T18_DCNT) d18, SUM(T19_DCNT) d19, SUM(T20_DCNT) d20, SUM(T21_DCNT) d21,
@@ -4212,7 +4215,7 @@ slides:
         sql: | # 1위 업종코드
           WITH s AS (
             SELECT SVC_INDUTY_SCLAS_CD,
-                  SUM(T0_T6_DCNT) d0, SUM(T7_DCNT) d7, SUM(T8_DCNT) d8, SUM(T9_DCNT) d9,
+                  SUM(T6_DCNT) d0, SUM(T7_DCNT) d7, SUM(T8_DCNT) d8, SUM(T9_DCNT) d9,
                   SUM(T10_DCNT) d10, SUM(T11_DCNT) d11, SUM(T12_DCNT) d12, SUM(T13_DCNT) d13,
                   SUM(T14_DCNT) d14, SUM(T15_DCNT) d15, SUM(T16_DCNT) d16, SUM(T17_DCNT) d17,
                   SUM(T18_DCNT) d18, SUM(T19_DCNT) d19, SUM(T20_DCNT) d20, SUM(T21_DCNT) d21,
@@ -4235,7 +4238,7 @@ slides:
         sql: | # 1위 업종 피크타임(시)
           WITH s AS (
             SELECT SVC_INDUTY_SCLAS_CD,
-                  SUM(T0_T6_DCNT) d0, SUM(T7_DCNT) d7, SUM(T8_DCNT) d8, SUM(T9_DCNT) d9,
+                  SUM(T6_DCNT) d0, SUM(T7_DCNT) d7, SUM(T8_DCNT) d8, SUM(T9_DCNT) d9,
                   SUM(T10_DCNT) d10, SUM(T11_DCNT) d11, SUM(T12_DCNT) d12, SUM(T13_DCNT) d13,
                   SUM(T14_DCNT) d14, SUM(T15_DCNT) d15, SUM(T16_DCNT) d16, SUM(T17_DCNT) d17,
                   SUM(T18_DCNT) d18, SUM(T19_DCNT) d19, SUM(T20_DCNT) d20, SUM(T21_DCNT) d21,
@@ -4253,7 +4256,7 @@ slides:
           SELECT hr
           FROM (
             SELECT
-              unnest(ARRAY['0시-6시','7시','8시','9시','10시','11시','12시','13시','14시','15시','16시','17시','18시','19시','20시','21시','22시','23시']) AS hr,
+              unnest(ARRAY['6시','7시','8시','9시','10시','11시','12시','13시','14시','15시','16시','17시','18시','19시','20시','21시','22시','23시']) AS hr,
               unnest(ARRAY[s.d0,s.d7,s.d8,s.d9,s.d10,s.d11,s.d12,s.d13,s.d14,s.d15,s.d16,s.d17,s.d18,s.d19,s.d20,s.d21,s.d22,s.d23]) AS cnt
             FROM s JOIN top USING (SVC_INDUTY_SCLAS_CD)
           ) x
@@ -4264,7 +4267,7 @@ slides:
         sql: | # 2위 업종코드
           WITH s AS (
             SELECT SVC_INDUTY_SCLAS_CD,
-                  SUM(T0_T6_DCNT) d0, SUM(T7_DCNT) d7, SUM(T8_DCNT) d8, SUM(T9_DCNT) d9,
+                  SUM(T6_DCNT) d0, SUM(T7_DCNT) d7, SUM(T8_DCNT) d8, SUM(T9_DCNT) d9,
                   SUM(T10_DCNT) d10, SUM(T11_DCNT) d11, SUM(T12_DCNT) d12, SUM(T13_DCNT) d13,
                   SUM(T14_DCNT) d14, SUM(T15_DCNT) d15, SUM(T16_DCNT) d16, SUM(T17_DCNT) d17,
                   SUM(T18_DCNT) d18, SUM(T19_DCNT) d19, SUM(T20_DCNT) d20, SUM(T21_DCNT) d21,
@@ -4287,7 +4290,7 @@ slides:
         sql: | # 2위 업종 피크타임(시)
           WITH s AS (
             SELECT SVC_INDUTY_SCLAS_CD,
-                  SUM(T0_T6_DCNT) d0, SUM(T7_DCNT) d7, SUM(T8_DCNT) d8, SUM(T9_DCNT) d9,
+                  SUM(T6_DCNT) d0, SUM(T7_DCNT) d7, SUM(T8_DCNT) d8, SUM(T9_DCNT) d9,
                   SUM(T10_DCNT) d10, SUM(T11_DCNT) d11, SUM(T12_DCNT) d12, SUM(T13_DCNT) d13,
                   SUM(T14_DCNT) d14, SUM(T15_DCNT) d15, SUM(T16_DCNT) d16, SUM(T17_DCNT) d17,
                   SUM(T18_DCNT) d18, SUM(T19_DCNT) d19, SUM(T20_DCNT) d20, SUM(T21_DCNT) d21,
@@ -4305,7 +4308,7 @@ slides:
           SELECT hr
           FROM (
             SELECT
-              unnest(ARRAY['0시-6시','7시','8시','9시','10시','11시','12시','13시','14시','15시','16시','17시','18시','19시','20시','21시','22시','23시']) AS hr,
+              unnest(ARRAY['6시','7시','8시','9시','10시','11시','12시','13시','14시','15시','16시','17시','18시','19시','20시','21시','22시','23시']) AS hr,
               unnest(ARRAY[s.d0,s.d7,s.d8,s.d9,s.d10,s.d11,s.d12,s.d13,s.d14,s.d15,s.d16,s.d17,s.d18,s.d19,s.d20,s.d21,s.d22,s.d23]) AS cnt
             FROM s JOIN top USING (SVC_INDUTY_SCLAS_CD)
           ) x
@@ -4316,7 +4319,7 @@ slides:
         sql: | # 3위 업종코드
           WITH s AS (
             SELECT SVC_INDUTY_SCLAS_CD,
-                  SUM(T0_T6_DCNT) d0, SUM(T7_DCNT) d7, SUM(T8_DCNT) d8, SUM(T9_DCNT) d9,
+                  SUM(T6_DCNT) d0, SUM(T7_DCNT) d7, SUM(T8_DCNT) d8, SUM(T9_DCNT) d9,
                   SUM(T10_DCNT) d10, SUM(T11_DCNT) d11, SUM(T12_DCNT) d12, SUM(T13_DCNT) d13,
                   SUM(T14_DCNT) d14, SUM(T15_DCNT) d15, SUM(T16_DCNT) d16, SUM(T17_DCNT) d17,
                   SUM(T18_DCNT) d18, SUM(T19_DCNT) d19, SUM(T20_DCNT) d20, SUM(T21_DCNT) d21,
@@ -4338,7 +4341,7 @@ slides:
       SL17_8:
         sql: | # 3위 업종 피크타임(시)
           WITH s AS (SELECT SVC_INDUTY_SCLAS_CD,
-            SUM(T0_T6_DCNT) d0, SUM(T7_DCNT) d7, SUM(T8_DCNT) d8, SUM(T9_DCNT) d9,
+            SUM(T6_DCNT) d0, SUM(T7_DCNT) d7, SUM(T8_DCNT) d8, SUM(T9_DCNT) d9,
             SUM(T10_DCNT) d10, SUM(T11_DCNT) d11, SUM(T12_DCNT) d12, SUM(T13_DCNT) d13,
             SUM(T14_DCNT) d14, SUM(T15_DCNT) d15, SUM(T16_DCNT) d16, SUM(T17_DCNT) d17,
             SUM(T18_DCNT) d18, SUM(T19_DCNT) d19, SUM(T20_DCNT) d20, SUM(T21_DCNT) d21,
@@ -4353,7 +4356,7 @@ slides:
             LIMIT 1 OFFSET 2 )
           SELECT hr
           FROM (
-            SELECT unnest(ARRAY['0시-6시','7시','8시','9시','10시','11시','12시','13시','14시','15시','16시','17시','18시','19시','20시','21시','22시','23시']) AS hr,
+            SELECT unnest(ARRAY['6시','7시','8시','9시','10시','11시','12시','13시','14시','15시','16시','17시','18시','19시','20시','21시','22시','23시']) AS hr,
                   unnest(ARRAY[s.d0,s.d7,s.d8,s.d9,s.d10,s.d11,s.d12,s.d13,s.d14,s.d15,s.d16,s.d17,s.d18,s.d19,s.d20,s.d21,s.d22,s.d23]) AS cnt
             FROM s JOIN top USING (SVC_INDUTY_SCLAS_CD)
           ) x ORDER BY cnt DESC, hr LIMIT 1;
@@ -4362,7 +4365,7 @@ slides:
         sql: | # 4위 업종코드
           WITH s AS (
             SELECT SVC_INDUTY_SCLAS_CD,
-                  SUM(T0_T6_DCNT) d0, SUM(T7_DCNT) d7, SUM(T8_DCNT) d8, SUM(T9_DCNT) d9,
+                  SUM(T6_DCNT) d0, SUM(T7_DCNT) d7, SUM(T8_DCNT) d8, SUM(T9_DCNT) d9,
                   SUM(T10_DCNT) d10, SUM(T11_DCNT) d11, SUM(T12_DCNT) d12, SUM(T13_DCNT) d13,
                   SUM(T14_DCNT) d14, SUM(T15_DCNT) d15, SUM(T16_DCNT) d16, SUM(T17_DCNT) d17,
                   SUM(T18_DCNT) d18, SUM(T19_DCNT) d19, SUM(T20_DCNT) d20, SUM(T21_DCNT) d21,
@@ -4384,7 +4387,7 @@ slides:
       SL17_10:
         sql: | # 4위 업종 피크타임(시)
           WITH s AS (SELECT SVC_INDUTY_SCLAS_CD,
-            SUM(T0_T6_DCNT) d0, SUM(T7_DCNT) d7, SUM(T8_DCNT) d8, SUM(T9_DCNT) d9,
+            SUM(T6_DCNT) d0, SUM(T7_DCNT) d7, SUM(T8_DCNT) d8, SUM(T9_DCNT) d9,
             SUM(T10_DCNT) d10, SUM(T11_DCNT) d11, SUM(T12_DCNT) d12, SUM(T13_DCNT) d13,
             SUM(T14_DCNT) d14, SUM(T15_DCNT) d15, SUM(T16_DCNT) d16, SUM(T17_DCNT) d17,
             SUM(T18_DCNT) d18, SUM(T19_DCNT) d19, SUM(T20_DCNT) d20, SUM(T21_DCNT) d21,
@@ -4399,7 +4402,7 @@ slides:
             LIMIT 1 OFFSET 3 )
           SELECT hr
           FROM (
-            SELECT unnest(ARRAY['0시-6시','7시','8시','9시','10시','11시','12시','13시','14시','15시','16시','17시','18시','19시','20시','21시','22시','23시']) AS hr,
+            SELECT unnest(ARRAY['6시','7시','8시','9시','10시','11시','12시','13시','14시','15시','16시','17시','18시','19시','20시','21시','22시','23시']) AS hr,
                   unnest(ARRAY[s.d0,s.d7,s.d8,s.d9,s.d10,s.d11,s.d12,s.d13,s.d14,s.d15,s.d16,s.d17,s.d18,s.d19,s.d20,s.d21,s.d22,s.d23]) AS cnt
             FROM s JOIN top USING (SVC_INDUTY_SCLAS_CD)
           ) x ORDER BY cnt DESC, hr LIMIT 1;
@@ -4408,7 +4411,7 @@ slides:
         sql: | # 5위 업종코드
           WITH s AS (
             SELECT SVC_INDUTY_SCLAS_CD,
-                  SUM(T0_T6_DCNT) d0, SUM(T7_DCNT) d7, SUM(T8_DCNT) d8, SUM(T9_DCNT) d9,
+                  SUM(T6_DCNT) d0, SUM(T7_DCNT) d7, SUM(T8_DCNT) d8, SUM(T9_DCNT) d9,
                   SUM(T10_DCNT) d10, SUM(T11_DCNT) d11, SUM(T12_DCNT) d12, SUM(T13_DCNT) d13,
                   SUM(T14_DCNT) d14, SUM(T15_DCNT) d15, SUM(T16_DCNT) d16, SUM(T17_DCNT) d17,
                   SUM(T18_DCNT) d18, SUM(T19_DCNT) d19, SUM(T20_DCNT) d20, SUM(T21_DCNT) d21,
@@ -4430,7 +4433,7 @@ slides:
       SL17_12:
         sql: | # 5위 업종 피크타임(시)
           WITH s AS (SELECT SVC_INDUTY_SCLAS_CD,
-            SUM(T0_T6_DCNT) d0, SUM(T7_DCNT) d7, SUM(T8_DCNT) d8, SUM(T9_DCNT) d9,
+            SUM(T6_DCNT) d0, SUM(T7_DCNT) d7, SUM(T8_DCNT) d8, SUM(T9_DCNT) d9,
             SUM(T10_DCNT) d10, SUM(T11_DCNT) d11, SUM(T12_DCNT) d12, SUM(T13_DCNT) d13,
             SUM(T14_DCNT) d14, SUM(T15_DCNT) d15, SUM(T16_DCNT) d16, SUM(T17_DCNT) d17,
             SUM(T18_DCNT) d18, SUM(T19_DCNT) d19, SUM(T20_DCNT) d20, SUM(T21_DCNT) d21,
@@ -4445,7 +4448,7 @@ slides:
             LIMIT 1 OFFSET 4 )
           SELECT hr
           FROM (
-            SELECT unnest(ARRAY['0시-6시','7시','8시','9시','10시','11시','12시','13시','14시','15시','16시','17시','18시','19시','20시','21시','22시','23시']) AS hr,
+            SELECT unnest(ARRAY['6시','7시','8시','9시','10시','11시','12시','13시','14시','15시','16시','17시','18시','19시','20시','21시','22시','23시']) AS hr,
                   unnest(ARRAY[s.d0,s.d7,s.d8,s.d9,s.d10,s.d11,s.d12,s.d13,s.d14,s.d15,s.d16,s.d17,s.d18,s.d19,s.d20,s.d21,s.d22,s.d23]) AS cnt
             FROM s JOIN top USING (SVC_INDUTY_SCLAS_CD)
           ) x ORDER BY cnt DESC, hr LIMIT 1;
@@ -4540,7 +4543,7 @@ slides:
         category_sql: |-
           SELECT lbl
           FROM (VALUES
-            ('0~6시'), ('7시'), ('8시'), ('9시'), ('10시'), ('11시'),
+            ('6시'), ('7시'), ('8시'), ('9시'), ('10시'), ('11시'),
             ('12시'), ('13시'), ('14시'), ('15시'), ('16시'),
             ('17시'), ('18시'), ('19시'), ('20시'), ('21시'),
             ('22시'), ('23시')
@@ -4562,7 +4565,7 @@ slides:
               LIMIT 5
             )
             SELECT UNNEST(ARRAY[
-              COALESCE(SUM(t.T0_T6_SALAMT),0),
+              COALESCE(SUM(t.T6_SALAMT),0),
               COALESCE(SUM(t.T7_SALAMT),0),
               COALESCE(SUM(t.T8_SALAMT),0),
               COALESCE(SUM(t.T9_SALAMT),0),
@@ -4601,7 +4604,7 @@ slides:
               LIMIT 5
             )
             SELECT UNNEST(ARRAY[
-              COALESCE(SUM(t.T0_T6_SALAMT),0),
+              COALESCE(SUM(t.T6_SALAMT),0),
               COALESCE(SUM(t.T7_SALAMT),0),
               COALESCE(SUM(t.T8_SALAMT),0),
               COALESCE(SUM(t.T9_SALAMT),0),
@@ -4640,7 +4643,7 @@ slides:
               LIMIT 5
             )
             SELECT UNNEST(ARRAY[
-              COALESCE(SUM(t.T0_T6_SALAMT),0),
+              COALESCE(SUM(t.T6_SALAMT),0),
               COALESCE(SUM(t.T7_SALAMT),0),
               COALESCE(SUM(t.T8_SALAMT),0),
               COALESCE(SUM(t.T9_SALAMT),0),
@@ -4679,7 +4682,7 @@ slides:
               LIMIT 5
             )
             SELECT UNNEST(ARRAY[
-              COALESCE(SUM(t.T0_T6_SALAMT),0),
+              COALESCE(SUM(t.T6_SALAMT),0),
               COALESCE(SUM(t.T7_SALAMT),0),
               COALESCE(SUM(t.T8_SALAMT),0),
               COALESCE(SUM(t.T9_SALAMT),0),
@@ -4718,7 +4721,7 @@ slides:
               LIMIT 5
             )
             SELECT UNNEST(ARRAY[
-              COALESCE(SUM(t.T0_T6_SALAMT),0),
+              COALESCE(SUM(t.T6_SALAMT),0),
               COALESCE(SUM(t.T7_SALAMT),0),
               COALESCE(SUM(t.T8_SALAMT),0),
               COALESCE(SUM(t.T9_SALAMT),0),
@@ -6670,40 +6673,77 @@ slides:
       SL27_3:
         sql: |
           WITH
+          -- 관심영역 500m 버퍼
           reg AS (
             SELECT ST_Transform(ST_Buffer(ST_Transform(r.popltn_relm,5179), :BUFFER_M), 4326) AS geom
             FROM regionmonitor.tb_intrst_region_relm r
             WHERE r.region_cd = :REGION_CD
           ),
-          fac AS (
-            SELECT SUBSTRING(TRIM(f.fclty_sclas_cd) FROM 1 FOR 1) AS code
+          -- 버퍼 내 화장실 개수(코드 O*)
+          wc AS (
+            SELECT COUNT(*)::numeric AS wc_cnt
             FROM regionmonitor.TB_MAIN_FCLTY_INFO f, reg
             WHERE ST_Within(ST_SetSRID(ST_MakePoint(f.Y_CRDNT,f.X_CRDNT),4326), reg.geom)
               AND SUBSTRING(TRIM(f.fclty_sclas_cd) FROM 1 FOR 1) = 'O'
           ),
-          vip AS (
-            SELECT
-              COALESCE(SUM(TOT_VIPOP),0)::numeric /
-              NULLIF(
-                (to_date(:DATE_TO,'YYYYMMDD') - to_date(:DATE_FROM,'YYYYMMDD')) + 1,
-                0
-              ) AS v_daily
-            FROM regionmonitor.TB_SEXDSTN_VISIT_POPLTN
-            WHERE REGION_CD = CAST(:REGION_CD AS VARCHAR)
-              AND STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
-          ),
-          ratio AS (
-            SELECT
-              COUNT(*)::numeric / NULLIF((SELECT v_daily FROM vip), 0) AS val
-            FROM fac
+          -- 기간 내 '가장 피크인 시간대' 방문인구
+          peak AS (
+            SELECT MAX(GREATEST(
+                    COALESCE(t6_vipop,0), COALESCE(t7_vipop,0),  COALESCE(t8_vipop,0),
+                    COALESCE(t9_vipop,0),   COALESCE(t10_vipop,0), COALESCE(t11_vipop,0),
+                    COALESCE(t12_vipop,0),  COALESCE(t13_vipop,0), COALESCE(t14_vipop,0),
+                    COALESCE(t15_vipop,0),  COALESCE(t16_vipop,0), COALESCE(t17_vipop,0),
+                    COALESCE(t18_vipop,0),  COALESCE(t19_vipop,0), COALESCE(t20_vipop,0),
+                    COALESCE(t21_vipop,0),  COALESCE(t22_vipop,0), COALESCE(t23_vipop,0)
+                  ))::numeric AS peak_vipop
+            FROM regionmonitor.tb_tmzon_visit_popltn
+            WHERE region_cd = CAST(:REGION_CD AS VARCHAR)
+              AND stdr_ymd BETWEEN :DATE_FROM AND :DATE_TO
           )
           SELECT
-            CASE
-              WHEN val = 0 THEN '데이터없음'
-              WHEN val > (1.0/606.0) THEN '부족'
-              ELSE '충분'
-            END
-          FROM ratio;
+            -- 1개 화장실당 피크시간 방문자 수 (사람/개)
+            TO_CHAR(
+              COALESCE(ROUND((SELECT peak_vipop FROM peak) / NULLIF((SELECT wc_cnt FROM wc),0), 0), 0),
+              'FM999,999,999'
+            )
+            || '개';
+
+      SL27_4:
+        sql: |
+          WITH
+          reg AS (
+            SELECT ST_Transform(ST_Buffer(ST_Transform(r.popltn_relm,5179), :BUFFER_M), 4326) AS geom
+            FROM regionmonitor.tb_intrst_region_relm r
+            WHERE r.region_cd = :REGION_CD
+          ),
+          wc AS (
+            SELECT COUNT(*)::numeric AS wc_cnt
+            FROM regionmonitor.TB_MAIN_FCLTY_INFO f, reg
+            WHERE ST_Within(ST_SetSRID(ST_MakePoint(f.Y_CRDNT,f.X_CRDNT),4326), reg.geom)
+              AND SUBSTRING(TRIM(f.fclty_sclas_cd) FROM 1 FOR 1) = 'O'
+          ),
+          peak AS (
+            SELECT MAX(GREATEST(
+                    COALESCE(t6_vipop,0), COALESCE(t7_vipop,0),  COALESCE(t8_vipop,0),
+                    COALESCE(t9_vipop,0),   COALESCE(t10_vipop,0), COALESCE(t11_vipop,0),
+                    COALESCE(t12_vipop,0),  COALESCE(t13_vipop,0), COALESCE(t14_vipop,0),
+                    COALESCE(t15_vipop,0),  COALESCE(t16_vipop,0), COALESCE(t17_vipop,0),
+                    COALESCE(t18_vipop,0),  COALESCE(t19_vipop,0), COALESCE(t20_vipop,0),
+                    COALESCE(t21_vipop,0),  COALESCE(t22_vipop,0), COALESCE(t23_vipop,0)
+                  ))::numeric AS peak_vipop
+            FROM regionmonitor.tb_tmzon_visit_popltn
+            WHERE region_cd = CAST(:REGION_CD AS VARCHAR)
+              AND stdr_ymd BETWEEN :DATE_FROM AND :DATE_TO
+          ),
+          ratio AS (
+            SELECT (SELECT peak_vipop FROM peak) / NULLIF((SELECT wc_cnt FROM wc), 0) AS ppl_per_wc
+          )
+          SELECT CASE
+                  WHEN (SELECT ppl_per_wc FROM ratio) IS NULL THEN '부족'         -- 화장실 0개면 부족 처리
+                  WHEN (SELECT ppl_per_wc FROM ratio) > 606   THEN '부족'         -- 1개당 606명 초과 → 부족
+                  ELSE '충분'
+                END;
+
 
 
   - name: "28"
@@ -6773,11 +6813,47 @@ slides:
       SL28_3:
         sql: |
           WITH
+          -- 1) 관심영역 500m 버퍼
           reg AS (
-            SELECT ST_Transform(
-                    ST_Buffer(ST_Transform(r.popltn_relm, 5179), :BUFFER_M),
-                    4326
-                  ) AS geom
+            SELECT ST_Transform(ST_Buffer(ST_Transform(r.popltn_relm,5179), :BUFFER_M), 4326) AS geom
+            FROM regionmonitor.tb_intrst_region_relm r
+            WHERE r.region_cd = :REGION_CD
+          ),
+          -- 2) 버퍼 내 총 주차 구획수 합계 (코드 'P')
+          park AS (
+            SELECT COALESCE(SUM(p.prkcmprt_co), 0)::numeric AS slots
+            FROM regionmonitor.TB_PRKPLCE_INFO p
+            JOIN reg
+              ON ST_Within(ST_SetSRID(ST_MakePoint(p.y_crdnt, p.x_crdnt), 4326), reg.geom)
+            WHERE p.x_crdnt IS NOT NULL AND p.y_crdnt IS NOT NULL
+          ),
+          -- 3) 기간 중 가장 피크 시간대 방문인구 (시간대 테이블)
+          peak AS (
+            SELECT MAX(GREATEST(
+                    COALESCE(t6_vipop,0), COALESCE(t7_vipop,0),  COALESCE(t8_vipop,0),
+                    COALESCE(t9_vipop,0),   COALESCE(t10_vipop,0), COALESCE(t11_vipop,0),
+                    COALESCE(t12_vipop,0),  COALESCE(t13_vipop,0), COALESCE(t14_vipop,0),
+                    COALESCE(t15_vipop,0),  COALESCE(t16_vipop,0), COALESCE(t17_vipop,0),
+                    COALESCE(t18_vipop,0),  COALESCE(t19_vipop,0), COALESCE(t20_vipop,0),
+                    COALESCE(t21_vipop,0),  COALESCE(t22_vipop,0), COALESCE(t23_vipop,0)
+                  ))::numeric AS peak_vipop
+            FROM regionmonitor.tb_tmzon_visit_popltn
+            WHERE region_cd = CAST(:REGION_CD AS VARCHAR)
+              AND stdr_ymd BETWEEN :DATE_FROM AND :DATE_TO
+          )
+          -- 4) 피크시간 기준 1인당 주차 구획수
+          SELECT
+            TO_CHAR(
+              COALESCE(ROUND((SELECT slots FROM park) / NULLIF((SELECT peak_vipop FROM peak), 0), 5), 0),
+              'FM0.00000'
+            ) || '대';
+
+
+      SL28_4:
+        sql: |
+          WITH
+          reg AS (
+            SELECT ST_Transform(ST_Buffer(ST_Transform(r.popltn_relm,5179), :BUFFER_M), 4326) AS geom
             FROM regionmonitor.tb_intrst_region_relm r
             WHERE r.region_cd = :REGION_CD
           ),
@@ -6785,30 +6861,33 @@ slides:
             SELECT COALESCE(SUM(p.prkcmprt_co), 0)::numeric AS slots
             FROM regionmonitor.TB_PRKPLCE_INFO p
             JOIN reg
-              ON ST_Within(
-                  ST_SetSRID(ST_MakePoint(p.y_crdnt, p.x_crdnt), 4326), -- (lon, lat)
-                  reg.geom
-                )
+              ON ST_Within(ST_SetSRID(ST_MakePoint(p.y_crdnt, p.x_crdnt), 4326), reg.geom)
             WHERE p.x_crdnt IS NOT NULL AND p.y_crdnt IS NOT NULL
           ),
-          vip AS (
-            SELECT COALESCE(SUM(TOT_VIPOP), 0)::numeric AS v
-            FROM regionmonitor.TB_SEXDSTN_VISIT_POPLTN
-            WHERE REGION_CD = CAST(:REGION_CD AS VARCHAR)
-              AND STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
+          peak AS (
+            SELECT MAX(GREATEST(
+                    COALESCE(t6_vipop,0), COALESCE(t7_vipop,0),  COALESCE(t8_vipop,0),
+                    COALESCE(t9_vipop,0),   COALESCE(t10_vipop,0), COALESCE(t11_vipop,0),
+                    COALESCE(t12_vipop,0),  COALESCE(t13_vipop,0), COALESCE(t14_vipop,0),
+                    COALESCE(t15_vipop,0),  COALESCE(t16_vipop,0), COALESCE(t17_vipop,0),
+                    COALESCE(t18_vipop,0),  COALESCE(t19_vipop,0), COALESCE(t20_vipop,0),
+                    COALESCE(t21_vipop,0),  COALESCE(t22_vipop,0), COALESCE(t23_vipop,0)
+                  ))::numeric AS peak_vipop
+            FROM regionmonitor.tb_tmzon_visit_popltn
+            WHERE region_cd = CAST(:REGION_CD AS VARCHAR)
+              AND stdr_ymd BETWEEN :DATE_FROM AND :DATE_TO
           ),
           ratio AS (
-            SELECT (SELECT slots FROM park) / NULLIF((SELECT v FROM vip), 0) AS r
+            SELECT (SELECT peak_vipop FROM peak) / NULLIF((SELECT slots FROM park), 0) AS ppl_per_slot
           )
-          SELECT
-            CASE
-              WHEN (SELECT v FROM vip) = 0 THEN '데이터없음'
-              WHEN (SELECT r FROM ratio) > 1.0/5000 THEN '부족'
-              ELSE '충분'
-            END;
+          SELECT CASE
+                  WHEN (SELECT ppl_per_slot FROM ratio) IS NULL THEN '부족'
+                  WHEN (SELECT ppl_per_slot FROM ratio) > 5000 THEN '부족'
+                  ELSE '충분'
+                END;
 
 
-  - name: "29"
+  - name: "29" # 숙박시설 (27페이지로 땡겨짐)
     tokens:
       SL29_1:
         sql: |

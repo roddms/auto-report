@@ -21,69 +21,8 @@ from pptx import Presentation
 from ppt_fillers import find_table, fill_table_with_padding
 
 # ---------------------------------
-# (옵션) 트리맵/히트맵 이미지 유틸
-#   * PPT 내부 트리맵만 쓰려면 treemap 이미지 분기는 스킵해도 됨
+# 히트맵 이미지 유틸
 # ---------------------------------
-def generate_treemap_image(data, out_path, color_hex, title=None, font_family="Malgun Gothic"):
-    import os, math
-    import matplotlib.pyplot as plt
-    import squarify
-
-    try:
-        plt.rcParams["font.family"] = font_family
-    except Exception:
-        pass
-
-    cleaned = []
-    for k, v in (data or []):
-        try:
-            x = float(v)
-        except Exception:
-            x = float("nan")
-        if x is not None and not math.isnan(x) and x > 0:
-            cleaned.append((k, x))
-
-    if not cleaned:
-        fig = plt.figure(figsize=(7, 4.5))
-        fig.set_facecolor('none')
-        ax = fig.add_subplot(111)
-        ax.axis("off")
-        if title:
-            ax.set_title(title, pad=10, fontsize=12, fontweight='bold')
-        ax.text(0.5, 0.5, "데이터 없음", ha="center", va="center", fontsize=13, color="#777")
-        os.makedirs(os.path.dirname(out_path), exist_ok=True)
-        fig.savefig(out_path, dpi=300, bbox_inches='tight', pad_inches=0)
-        plt.close(fig)
-        return
-
-    cleaned.sort(key=lambda item: item[1], reverse=True)
-    labels = [f"{k}\n{v:.1f}억" for k, v in cleaned]
-    sizes  = [v for _, v in cleaned]
-    colors = [color_hex] * len(sizes)
-
-    fig = plt.figure(figsize=(7, 4.5))
-    fig.set_facecolor('none')
-    import matplotlib.pyplot as plt
-    plt.clf()
-
-    squarify.plot(
-        sizes=sizes,
-        label=labels,
-        color=colors,
-        bar_kwargs={"linewidth": 2, "edgecolor": "white"},
-        text_kwargs={"fontsize": 11, "color": "white", "fontweight": "bold"},
-        pad=True
-    )
-    plt.axis("off")
-    if title:
-        plt.title(title, pad=10, fontsize=12, fontweight='bold')
-    plt.tight_layout(pad=0.0)
-
-    os.makedirs(os.path.dirname(out_path), exist_ok=True)
-    plt.savefig(out_path, dpi=300, bbox_inches='tight', pad_inches=0)
-    plt.close()
-
-
 def generate_heatmap_image(data_df, out_path, title=None, font_family="Malgun Gothic"):
     import matplotlib.pyplot as plt
     import seaborn as sns
@@ -224,7 +163,7 @@ def plot_facility_group_map(engine, region_cd, group_name, out_png,
     }
 
     # ── 5) 그리기
-    fig, ax = plt.subplots(figsize=(8, 7))
+    fig, ax = plt.subplots(figsize=(8,7))
 
     # (A) 먼저 영역 기준으로 축 고정 → 타일이 흐릿해지는 리샘플 최소화
     xmin, ymin, xmax, ymax = reg3857.total_bounds
@@ -236,7 +175,7 @@ def plot_facility_group_map(engine, region_cd, group_name, out_png,
     # 15~17 사이에서 테스트해보고 선호 줌으로 고정
     add_basemap(ax, source=providers.CartoDB.Positron, crs=3857, zoom=16, reset_extent=False)
 
-    # (C) 그 다음 포인트(항상 베이스맵 위에 또렷하게)
+    # (C) 그 다음 포인트
     for lc, gsub in fac3857.groupby("lclas"):
         gsub.plot(
             ax=ax,
@@ -261,7 +200,7 @@ def plot_facility_group_map(engine, region_cd, group_name, out_png,
     #         h.set_alpha(1.0)
 
     os.makedirs(os.path.dirname(out_png), exist_ok=True)
-    plt.savefig(out_png, dpi=300, bbox_inches="tight", pad_inches=0.1, transparent=True)
+    plt.savefig(out_png, dpi=200, bbox_inches="tight", pad_inches=0.1, transparent=True)
     plt.close(fig)
 
     print(f"✅ 시설 지도 생성 완료 → {out_png}  (시설:{len(fac3857)})")
@@ -282,7 +221,7 @@ engine = create_engine(
 with open("config/slides_tokens.yml", encoding="utf-8") as f:
     cfg = yaml.safe_load(f)
 
-OUTPUT_PPT = "out/test_시설부족여부0923.pptx"
+OUTPUT_PPT = "out/test_tmzon수정1423.pptx"
 TEMPLATE_PPT = "template/master_pretendard.pptx"
 
 token_values = {}
@@ -301,23 +240,8 @@ for s in cfg["slides"]:
 
     # 차트
     for chart_name, chart_conf in s.get("charts", {}).items():
-        # (옵션) 이미지 트리맵 생성 분기 — PPT 내부 트리맵만 쓸 거면 이 분기 자체를 제거해도 됩니다.
-        if "treemap_sql" in chart_conf:
-            with engine.connect() as conn:
-                rows = conn.execute(text(chart_conf["treemap_sql"]), cfg["params"]).fetchall()
-                data = [(r[0], float(r[1]) if r[1] is not None else 0.0) for r in rows]
 
-            outfile = chart_conf["outfile"]
-            title = chart_conf.get("title", None)
-            color_hex = chart_conf.get("color_hex", "#4682B4")
-            generate_treemap_image(data, outfile, color_hex=color_hex, title=title)
-            time.sleep(0.5)
-
-            shape_name = chart_conf["shape"]
-            image_map[shape_name] = outfile
-            continue
-
-        # (옵션) 히트맵 이미지
+        # 히트맵 이미지
         if "heatmap_sql" in chart_conf:
             with engine.connect() as conn:
                 df = pd.read_sql(text(chart_conf["heatmap_sql"]), conn, params=cfg["params"])

@@ -101,7 +101,7 @@ def fill_table(table, dataframe):
             table.cell(r, c).text = val
 
 
-def _set_cell(cell, text, align=PP_ALIGN.LEFT, bold=False, font_name="Pretendard", font_size_pt=10):
+def _set_cell(cell, text, align=PP_ALIGN.LEFT, bold=False, font_name="Pretendard", font_size_pt=10.5):
     tf = cell.text_frame
     tf.clear()                         # 기존 문단/런 비우기
     p = tf.paragraphs[0]               # clear() 후 항상 1개 생김
@@ -214,7 +214,7 @@ def colorize_arrows(prs):
 
 def colorize_condition(prs):
     """
-    문단 내 텍스트에서 '충분'/'부족' 단어만 색상 적용
+    텍스트 런이 '충분' 또는 '부족' 단독일 때만 해당 런에 색상 적용
     """
     for slide in prs.slides:
         for shp in iter_shapes(slide):
@@ -222,17 +222,12 @@ def colorize_condition(prs):
                 continue
 
             for p in shp.text_frame.paragraphs:
-                full_text = "".join(r.text for r in p.runs)
-
-                # 정규식으로 단어 단위 검색
-                if re.search(r"\b충분\b", full_text):
-                    for r in p.runs:
-                        if "충분" in r.text:
-                            r.font.color.rgb = RGBColor(71, 187, 120)  # 초록
-                elif re.search(r"\b부족\b", full_text):
-                    for r in p.runs:
-                        if "부족" in r.text:
-                            r.font.color.rgb = RGBColor(192, 57, 43)   # 빨강
+                for r in p.runs:
+                    txt = r.text.strip()
+                    if txt == "충분":
+                        r.font.color.rgb = RGBColor(71, 187, 120)   # 초록
+                    elif txt == "부족":
+                        r.font.color.rgb = RGBColor(192, 57, 43)    # 빨강
 
 
 # 막대 그래프 
