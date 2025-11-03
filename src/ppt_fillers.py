@@ -331,63 +331,118 @@ import os
 import win32com.client as win32
 
 
-def update_treemap_chart(ppt_path, out_path, shape_name, rows, value_header="계열1"):
-    ppt_path = os.path.abspath(ppt_path)
-    out_path = os.path.abspath(out_path)
-    ppt_path = ppt_path.replace("/", "\\")
-    out_path = out_path.replace("/", "\\")
+# def update_treemap_chart(ppt_path, out_path, shape_name, rows, value_header="계열1"):
+#     ppt_path = os.path.abspath(ppt_path)
+#     out_path = os.path.abspath(out_path)
+#     ppt_path = ppt_path.replace("/", "\\")
+#     out_path = out_path.replace("/", "\\")
 
+#     if not os.path.exists(ppt_path):
+#         raise FileNotFoundError(f"PPT path not found: {ppt_path}")
+
+#     pp = win32.gencache.EnsureDispatch("PowerPoint.Application")
+#     pp.Visible = True
+
+#     # 위치 인자(파일, ReadOnly, Untitled, WithWindow)
+#     pres = pp.Presentations.Open(ppt_path, False, False, False)
+#     try:
+#         target = None
+#         for s in pres.Slides:
+#             for shp in s.Shapes:
+#                 if shp.Name == shape_name and getattr(shp, "HasChart", False):
+#                     target = shp
+#                     break
+#             if target:
+#                 break
+
+#         if not target:
+#             raise RuntimeError(f"도형 '{shape_name}' 차트를 찾을 수 없습니다.")
+
+#         ch = target.Chart
+#         ch.ChartData.Activate()
+#         wb = ch.ChartData.Workbook
+#         ws = wb.Worksheets(1)
+
+#         # 시트 초기화 + 헤더
+#         ws.UsedRange.ClearContents()
+#         ws.Cells(1, 1).Value = "계열"
+#         ws.Cells(1, 2).Value = "상위"
+#         ws.Cells(1, 3).Value = "하위"
+#         ws.Cells(1, 4).Value = value_header
+
+#         r = 2
+#         for series, parent, child, val in rows:
+#             ws.Cells(r, 1).Value = str(series)
+#             ws.Cells(r, 2).Value = str(parent)
+#             ws.Cells(r, 3).Value = str(child)
+#             ws.Cells(r, 4).Value = float(val) if val is not None else 0.0
+#             r += 1
+
+#         wb.Close(SaveChanges=True)
+#         ch.Refresh()
+
+#         # 동일 파일로 저장
+#         pres.SaveAs(out_path)
+#         time.sleep(0.4)  # 파일 쓰기 안정화
+#     finally:
+#         pres.Close()
+#         pp.Quit()
+
+def update_treemaps_batch(ppt_path, out_path, updates):
+    """
+    updates: [(shape_name, rows, value_header), ...]
+    rows: [(series, parent, child, value), ...]
+    """
+    ppt_path = os.path.abspath(ppt_path).replace("/", "\\")
+    out_path = os.path.abspath(out_path).replace("/", "\\")
     if not os.path.exists(ppt_path):
-        raise FileNotFoundError(f"PPT path not found: {ppt_path}")
+        raise FileNotFoundError(f"PPT not found: {ppt_path}")
 
     pp = win32.gencache.EnsureDispatch("PowerPoint.Application")
     pp.Visible = True
-
-    # 위치 인자(파일, ReadOnly, Untitled, WithWindow)
     pres = pp.Presentations.Open(ppt_path, False, False, False)
     try:
-        target = None
-        for s in pres.Slides:
-            for shp in s.Shapes:
-                if shp.Name == shape_name and getattr(shp, "HasChart", False):
-                    target = shp
+        for shape_name, rows, value_header in updates:
+            target = None
+            for s in pres.Slides:
+                for shp in s.Shapes:
+                    if shp.Name == shape_name and getattr(shp, "HasChart", False):
+                        target = shp
+                        break
+                if target:
                     break
-            if target:
-                break
+            if not target:
+                print(f"⚠️ 도형 '{shape_name}' 차트를 찾을 수 없습니다.")
+                continue
 
-        if not target:
-            raise RuntimeError(f"도형 '{shape_name}' 차트를 찾을 수 없습니다.")
+            ch = target.Chart
+            ch.ChartData.Activate()
+            wb = ch.ChartData.Workbook
+            ws = wb.Worksheets(1)
 
-        ch = target.Chart
-        ch.ChartData.Activate()
-        wb = ch.ChartData.Workbook
-        ws = wb.Worksheets(1)
+            ws.UsedRange.ClearContents()
+            ws.Cells(1, 1).Value = "계열"
+            ws.Cells(1, 2).Value = "상위"
+            ws.Cells(1, 3).Value = "하위"
+            ws.Cells(1, 4).Value = value_header
 
-        # 시트 초기화 + 헤더
-        ws.UsedRange.ClearContents()
-        ws.Cells(1, 1).Value = "계열"
-        ws.Cells(1, 2).Value = "상위"
-        ws.Cells(1, 3).Value = "하위"
-        ws.Cells(1, 4).Value = value_header
+            r = 2
+            for series, parent, child, val in rows:
+                ws.Cells(r, 1).Value = str(series)
+                ws.Cells(r, 2).Value = str(parent)
+                ws.Cells(r, 3).Value = str(child)
+                ws.Cells(r, 4).Value = float(val) if val is not None else 0.0
+                r += 1
 
-        r = 2
-        for series, parent, child, val in rows:
-            ws.Cells(r, 1).Value = str(series)
-            ws.Cells(r, 2).Value = str(parent)
-            ws.Cells(r, 3).Value = str(child)
-            ws.Cells(r, 4).Value = float(val) if val is not None else 0.0
-            r += 1
+            wb.Close(SaveChanges=True)
+            ch.Refresh()
+            time.sleep(0.1)
 
-        wb.Close(SaveChanges=True)
-        ch.Refresh()
-
-        # 동일 파일로 저장
         pres.SaveAs(out_path)
-        time.sleep(0.4)  # 파일 쓰기 안정화
+        time.sleep(0.2)
     finally:
         pres.Close()
         pp.Quit()
-
 
 # ---------------------------
 # 🔹 Helper (한 번에 실행용)

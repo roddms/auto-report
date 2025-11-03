@@ -2,13 +2,13 @@
 import os
 import time
 import yaml
+import math
 import warnings
 warnings.filterwarnings("ignore", category=UserWarning)
 
 import pandas as pd
 import geopandas as gpd
 import matplotlib.pyplot as plt
-import argparse
 
 from collections import OrderedDict
 from shapely.geometry import shape
@@ -174,8 +174,8 @@ def plot_facility_group_map(engine, region_cd, group_name, out_png,
             zorder=10
         )
 
-    # 경계선(버퍼선)
-    reg3857.boundary.plot(ax=ax, color="#767171", linewidth=2, zorder=11)
+    # 경계선(버퍼선): 필요하면 주석 해제/조정
+    # reg3857.boundary.plot(ax=ax, color="#767171", linewidth=2, zorder=11)
     ax.set_axis_off()
     if title:
         ax.set_title(title, fontsize=12, fontweight="500", pad=6)
@@ -198,24 +198,12 @@ engine = create_engine(
 with open("config/slides_tokens.yml", encoding="utf-8") as f:
     cfg = yaml.safe_load(f)
 
+OUTPUT_PPT = "out/test2_1545.pptx"
+TEMPLATE_PPT = "template/master_pretendard.pptx"
+
 token_values = {}
 chart_data = {}
 image_map = {}
-
-
-parser = argparse.ArgumentParser()
-parser.add_argument("--REGION_CD", required=True)
-parser.add_argument("--DATE_FROM", required=True)
-parser.add_argument("--DATE_TO", required=True)
-args = parser.parse_args()
-
-# config에서 값 덮어쓰기
-cfg["params"]["REGION_CD"] = args.REGION_CD
-cfg["params"]["DATE_FROM"] = args.DATE_FROM
-cfg["params"]["DATE_TO"] = args.DATE_TO
-
-OUTPUT_PPT = f"out/report_{args.REGION_CD}_16.pptx"
-TEMPLATE_PPT = "template/master_pretendard.pptx"
 
 # ------------------------------
 # 토큰 / 차트 (커넥션 재사용)

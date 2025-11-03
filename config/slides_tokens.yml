@@ -6701,12 +6701,14 @@ slides:
               AND stdr_ymd BETWEEN :DATE_FROM AND :DATE_TO
           )
           SELECT
-            -- 1개 화장실당 피크시간 방문자 수 (사람/개)
+            -- 피크시간 기준 1인당 화장실 수
             TO_CHAR(
-              COALESCE(ROUND((SELECT peak_vipop FROM peak) / NULLIF((SELECT wc_cnt FROM wc),0), 0), 0),
-              'FM999,999,999'
+              COALESCE(ROUND((SELECT wc_cnt FROM wc) / NULLIF((SELECT peak_vipop FROM peak), 0), 4), 0),
+              'FM0.0000'
             )
             || '개';
+
+
 
       SL27_4:
         sql: |
@@ -6744,6 +6746,34 @@ slides:
                   ELSE '충분'
                 END;
 
+      SL27_5:
+        sql: |
+          WITH
+          reg AS (
+            SELECT ST_Transform(ST_Buffer(ST_Transform(r.popltn_relm, 5179), :BUFFER_M), 4326) AS geom
+            FROM regionmonitor.tb_intrst_region_relm r
+            WHERE r.region_cd = :REGION_CD
+          ),
+          fac AS (
+            SELECT COUNT(*)::numeric AS cnt
+            FROM regionmonitor.TB_MAIN_FCLTY_INFO f, reg
+            WHERE ST_Within(ST_SetSRID(ST_MakePoint(f.Y_CRDNT, f.X_CRDNT), 4326), reg.geom)
+              AND SUBSTRING(TRIM(f.fclty_sclas_cd) FROM 1 FOR 1) = 'O'
+          ),
+          peak AS (
+            SELECT MAX(TOT_VIPOP)::numeric AS v_peak
+            FROM regionmonitor.TB_TMZON_VISIT_POPLTN
+            WHERE REGION_CD = CAST(:REGION_CD AS VARCHAR)
+              AND STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
+          )
+          SELECT
+            CASE
+              WHEN v_peak = 0 THEN '데이터 없음'
+              WHEN (cnt / v_peak) < (1.0 / 606.0)
+                THEN TO_CHAR(ROUND((1 - ((cnt / v_peak) / (1.0 / 606.0))) * 100, 1), 'FM999.9') || '% 부족'
+              ELSE TO_CHAR(ABS(ROUND((1 - ((cnt / v_peak) / (1.0 / 606.0))) * 100, 1)), 'FM999.9') || '% 여유'
+            END
+          FROM fac, peak;
 
 
   - name: "28"
@@ -6841,12 +6871,13 @@ slides:
             WHERE region_cd = CAST(:REGION_CD AS VARCHAR)
               AND stdr_ymd BETWEEN :DATE_FROM AND :DATE_TO
           )
-          -- 4) 피크시간 기준 1인당 주차 구획수
+          -- 4) 피크시간*3 기준 1인당 주차 구획수
           SELECT
             TO_CHAR(
-              COALESCE(ROUND((SELECT slots FROM park) / NULLIF((SELECT peak_vipop FROM peak), 0), 5), 0),
-              'FM0.00000'
+              COALESCE(ROUND((SELECT slots FROM park) / NULLIF(((SELECT peak_vipop FROM peak) * 3), 0), 4), 0),
+              'FM0.0000'
             ) || '대';
+
 
 
       SL28_4:
@@ -6885,6 +6916,35 @@ slides:
                   WHEN (SELECT ppl_per_slot FROM ratio) > 5000 THEN '부족'
                   ELSE '충분'
                 END;
+
+      SL28_5:
+        sql: |
+          WITH
+          reg AS (
+            SELECT ST_Transform(ST_Buffer(ST_Transform(r.popltn_relm, 5179), :BUFFER_M), 4326) AS geom
+            FROM regionmonitor.tb_intrst_region_relm r
+            WHERE r.region_cd = :REGION_CD
+          ),
+          park AS (
+            SELECT COALESCE(SUM(p.prkcmprt_co), 0)::numeric AS slots
+            FROM regionmonitor.TB_PRKPLCE_INFO p
+            JOIN reg ON ST_Within(ST_SetSRID(ST_MakePoint(p.Y_CRDNT, p.X_CRDNT), 4326), reg.geom)
+            WHERE p.X_CRDNT IS NOT NULL AND p.Y_CRDNT IS NOT NULL
+          ),
+          peak AS (
+            SELECT MAX(TOT_VIPOP)::numeric AS v_peak
+            FROM regionmonitor.TB_TMZON_VISIT_POPLTN
+            WHERE REGION_CD = CAST(:REGION_CD AS VARCHAR)
+              AND STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
+          )
+          SELECT
+            CASE
+              WHEN v_peak = 0 THEN '데이터 없음'
+              WHEN (slots / v_peak) < 0.0002
+                THEN TO_CHAR(ROUND((1 - ((slots / v_peak) / 0.0002)) * 100, 1), 'FM999.9') || '% 부족'
+              ELSE TO_CHAR(ABS(ROUND((1 - ((slots / v_peak) / 0.0002)) * 100, 1)), 'FM999.9') || '% 여유'
+            END
+          FROM park, peak;
 
 
   - name: "29" # 숙박시설 (27페이지로 땡겨짐)
