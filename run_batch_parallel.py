@@ -1,13 +1,36 @@
 # run_batch_parallel.py
 from multiprocessing import Pool
-import subprocess
+import subprocess, sys
 import os
 
 # 병렬 실행할 지역 목록
 region_list = [
+    "00000001",
+    "00000002",
+    "00000003",
+    "00000004",
+    "00000005",
+    "00000006",
+    "00000007",
+    "00000008",
+    "00000009",
+    "00000010",
     "00000011",
     "00000012",
-    "00000010"
+    "00000013",
+    "00000014",
+    "00000015",
+    "00000016",
+    "00000017",
+    "00000018",
+    "00000019",
+    "00000020",
+    "00000021",
+    "00000022",
+    "00000023",
+    "00000024",
+    "00000025",
+    "00000027"
 ]
 
 # 공통 기간
@@ -21,7 +44,7 @@ def run_report(region_cd):
     out_name = f"out/report_{region_cd}.pptx"
 
     cmd = [
-        "python", "src/run_build_report_refac.py",
+        sys.executable, "src/run_build_report_refac.py",
         f"--REGION_CD={region_cd}",
         f"--DATE_FROM={DATE_FROM}",
         f"--DATE_TO={DATE_TO}"

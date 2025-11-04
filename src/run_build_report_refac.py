@@ -6,7 +6,6 @@ import warnings
 warnings.filterwarnings("ignore", category=UserWarning)
 
 import pandas as pd
-import geopandas as gpd
 import matplotlib.pyplot as plt
 import argparse
 
@@ -80,16 +79,12 @@ def get_basemap_img(bounds_3857, zoom=16):
     return img, ext
 
 # ------------------------------
-# 그룹별 시설 지도
+# 그룹별 시설 지도 (REGION_WKT 사용)
 # ------------------------------
 def plot_facility_group_map(engine, region_cd, group_name, out_png,
-                            buffer_m=500, title=None):
-    """
-    group_name: '그룹1','그룹2(개별)','그룹3(개별)','그룹4(개별)',
-                '그룹5(개별)','그룹6','그룹7(개별)','그룹8'
-    """
+                            region_wkt, buffer_m=500, title=None):
+    import geopandas as gpd
     import json
-    from contextily import providers
 
     GROUP_MAP = {
         "그룹1":       ['G','H','J','M','N'],
@@ -103,19 +98,14 @@ def plot_facility_group_map(engine, region_cd, group_name, out_png,
     }
     letters = GROUP_MAP[group_name]
 
+    # REGION_WKT를 그대로 사용하여 영역 가져오기
     sql_region = """
-    WITH reg AS (
-      SELECT ST_Transform(ST_Buffer(ST_Transform(r.popltn_relm,5179), :BUFFER_M), 4326) AS geom
-      FROM regionmonitor.tb_intrst_region_relm r
-      WHERE r.region_cd = :REGION_CD
-    )
-    SELECT ST_AsGeoJSON(geom) AS gj FROM reg;
+    SELECT ST_AsGeoJSON(ST_GeomFromText(:REGION_WKT, 4326)) AS gj;
     """
+    # 시설도 REGON_WKT로 공간조인
     sql_fac = """
     WITH reg AS (
-      SELECT ST_Transform(ST_Buffer(ST_Transform(r.popltn_relm,5179), :BUFFER_M), 4326) AS geom
-      FROM regionmonitor.tb_intrst_region_relm r
-      WHERE r.region_cd = :REGION_CD
+      SELECT ST_GeomFromText(:REGION_WKT, 4326) AS geom
     )
     SELECT
       f.fclty_nm AS name,
@@ -127,7 +117,7 @@ def plot_facility_group_map(engine, region_cd, group_name, out_png,
       AND SUBSTRING(TRIM(f.fclty_sclas_cd) FROM 1 FOR 1) = ANY(:LETTERS);
     """
 
-    params = {"REGION_CD": region_cd, "BUFFER_M": buffer_m, "LETTERS": letters}
+    params = {"REGION_WKT": region_wkt, "LETTERS": letters}
     with engine.begin() as conn:
         row = conn.execute(text(sql_region), params).fetchone()
         region = shape(json.loads(row[0]))
@@ -183,7 +173,7 @@ def plot_facility_group_map(engine, region_cd, group_name, out_png,
     os.makedirs(os.path.dirname(out_png), exist_ok=True)
     plt.savefig(out_png, dpi=200, bbox_inches="tight", pad_inches=0.1, transparent=True)
     plt.close(fig)
-    print(f"✅ 시설 지도 생성 완료 → {out_png}  (시설:{len(fac3857)})")
+    print(f"✅ {region_cd} 시설 지도 생성 완료 → {out_png}  (시설:{len(fac3857)})")
 
 # ------------------------------
 # 환경/DB 설정
@@ -195,6 +185,18 @@ engine = create_engine(
     connect_args={"options": "-csearch_path=regionmonitor,public"}
 )
 
+# ✅ REGION_WKT 미리 계산 (한 번만)
+SQL_REGION_WKT = """
+SELECT ST_AsText(
+         ST_Transform(
+           ST_Buffer(ST_Transform(r.popltn_relm, 5179), :BUFFER_M),
+           4326
+         )
+       ) AS wkt
+FROM regionmonitor.tb_intrst_region_relm r
+WHERE r.region_cd = :REGION_CD;
+"""
+
 with open("config/slides_tokens.yml", encoding="utf-8") as f:
     cfg = yaml.safe_load(f)
 
@@ -202,19 +204,35 @@ token_values = {}
 chart_data = {}
 image_map = {}
 
-
+# ------------------------------
+# 인자 파싱 & 파라미터 반영
+# ------------------------------
 parser = argparse.ArgumentParser()
 parser.add_argument("--REGION_CD", required=True)
 parser.add_argument("--DATE_FROM", required=True)
 parser.add_argument("--DATE_TO", required=True)
 args = parser.parse_args()
 
-# config에서 값 덮어쓰기
 cfg["params"]["REGION_CD"] = args.REGION_CD
 cfg["params"]["DATE_FROM"] = args.DATE_FROM
-cfg["params"]["DATE_TO"] = args.DATE_TO
+cfg["params"]["DATE_TO"]   = args.DATE_TO
+BUFFER_M = int(cfg["params"].get("BUFFER_M", 500))
 
-OUTPUT_PPT = f"out/report_{args.REGION_CD}_16.pptx"
+# REGION_WKT 계산
+with engine.begin() as conn:
+    region_wkt = conn.execute(
+        text(SQL_REGION_WKT),
+        {"REGION_CD": cfg["params"]["REGION_CD"], "BUFFER_M": BUFFER_M}
+    ).scalar()
+
+if not region_wkt:
+    raise RuntimeError("⚠️ REGION_WKT 생성 실패 — REGION_CD 확인 필요")
+print("✅ REGION_WKT 계산 완료")
+
+# 이후 모든 쿼리에 공통 파라미터로 사용
+PARAMS = {**cfg["params"], "REGION_WKT": region_wkt}
+
+OUTPUT_PPT = f"out/report_{args.REGION_CD}.pptx"
 TEMPLATE_PPT = "template/master_pretendard.pptx"
 
 # ------------------------------
@@ -224,15 +242,14 @@ with engine.begin() as conn:
     for s in cfg["slides"]:
         # 텍스트 토큰
         for token, meta in s.get("tokens", {}).items():
-            val = conn.execute(text(meta["sql"]), cfg["params"]).scalar()
+            val = conn.execute(text(meta["sql"]), PARAMS).scalar()
             token_values[token] = val
 
         # 차트
         for chart_name, chart_conf in s.get("charts", {}).items():
-
             # 히트맵 이미지
             if "heatmap_sql" in chart_conf:
-                df = pd.read_sql(text(chart_conf["heatmap_sql"]), conn, params=cfg["params"])
+                df = pd.read_sql(text(chart_conf["heatmap_sql"]), conn, params=PARAMS)
                 data_df = df.set_index(df.columns[0])
                 outfile = chart_conf["outfile"]
                 title = chart_conf.get("title", None)
@@ -244,12 +261,17 @@ with engine.begin() as conn:
 
             # 일반 카테고리/시리즈 차트
             if "category_sql" in chart_conf:
-                categories = [r[0] for r in conn.execute(text(chart_conf["category_sql"]), cfg["params"]).fetchall()]
+                categories = [r[0] for r in conn.execute(text(chart_conf["category_sql"]), PARAMS).fetchall()]
+
+                if not categories:
+                    print(f"⚠️ chart '{chart_name}' 카테고리 결과가 비어 건너뜀 (REGION_CD={cfg['params']['REGION_CD']})")
+                    continue
+
                 series = OrderedDict()
                 flags_from_cats = [1 if str(lbl).startswith("DAY") else 0 for lbl in categories]
 
                 for sname, ssql in chart_conf["series"].items():
-                    rows = conn.execute(text(ssql), cfg["params"]).fetchall()
+                    rows = conn.execute(text(ssql), PARAMS).fetchall()
 
                     if chart_name == "SL20_chart":
                         vals = [r[0] for r in rows]
@@ -274,33 +296,35 @@ with engine.begin() as conn:
                 chart_data[chart_name] = (categories, series)
 
 # ------------------------------
-# 지도 생성 (그룹 1~8 페이지)
+# 지도 생성 (그룹 1~8 페이지) - REGION_WKT 사용
 # ------------------------------
 region_cd = cfg["params"]["REGION_CD"]
 
-plot_facility_group_map(engine, region_cd, "그룹1", out_png="out/img/group1_map.png", buffer_m=500)
-image_map["SL_G1_MAP"] = "out/img/group1_map.png"
+os.makedirs(f"out/img/{region_cd}", exist_ok=True)
 
-plot_facility_group_map(engine, region_cd, "그룹2(개별)", out_png="out/img/group2_map.png", buffer_m=500)
-image_map["SL_G2_MAP"] = "out/img/group2_map.png"
+plot_facility_group_map(engine, region_cd, "그룹1", out_png=f"out/img/{region_cd}/group1_map.png", region_wkt=region_wkt, buffer_m=BUFFER_M)
+image_map["SL_G1_MAP"] = f"out/img/{region_cd}/group1_map.png"
 
-plot_facility_group_map(engine, region_cd, "그룹3(개별)", out_png="out/img/group3_map.png", buffer_m=500)
-image_map["SL_G3_MAP"] = "out/img/group3_map.png"
+plot_facility_group_map(engine, region_cd, "그룹2(개별)", out_png=f"out/img/{region_cd}/group2_map.png", region_wkt=region_wkt, buffer_m=BUFFER_M)
+image_map["SL_G2_MAP"] = f"out/img/{region_cd}/group2_map.png"
 
-plot_facility_group_map(engine, region_cd, "그룹4(개별)", out_png="out/img/group4_map.png", buffer_m=500)
-image_map["SL_G4_MAP"] = "out/img/group4_map.png"
+plot_facility_group_map(engine, region_cd, "그룹3(개별)", out_png=f"out/img/{region_cd}/group3_map.png", region_wkt=region_wkt, buffer_m=BUFFER_M)
+image_map["SL_G3_MAP"] = f"out/img/{region_cd}/group3_map.png"
 
-plot_facility_group_map(engine, region_cd, "그룹5(개별)", out_png="out/img/group5_map.png", buffer_m=500)
-image_map["SL_G5_MAP"] = "out/img/group5_map.png"
+plot_facility_group_map(engine, region_cd, "그룹4(개별)", out_png=f"out/img/{region_cd}/group4_map.png", region_wkt=region_wkt, buffer_m=BUFFER_M)
+image_map["SL_G4_MAP"] = f"out/img/{region_cd}/group4_map.png"
 
-plot_facility_group_map(engine, region_cd, "그룹6", out_png="out/img/group6_map.png", buffer_m=500)
-image_map["SL_G6_MAP"] = "out/img/group6_map.png"
+plot_facility_group_map(engine, region_cd, "그룹5(개별)", out_png=f"out/img/{region_cd}/group5_map.png", region_wkt=region_wkt, buffer_m=BUFFER_M)
+image_map["SL_G5_MAP"] = f"out/img/{region_cd}/group5_map.png"
 
-plot_facility_group_map(engine, region_cd, "그룹7(개별)", out_png="out/img/group7_map.png", buffer_m=500)
-image_map["SL_G7_MAP"] = "out/img/group7_map.png"
+plot_facility_group_map(engine, region_cd, "그룹6", out_png=f"out/img/{region_cd}/group6_map.png", region_wkt=region_wkt, buffer_m=BUFFER_M)
+image_map["SL_G6_MAP"] = f"out/img/{region_cd}/group6_map.png"
 
-plot_facility_group_map(engine, region_cd, "그룹8", out_png="out/img/group8_map.png", buffer_m=500)
-image_map["SL_G8_MAP"] = "out/img/group8_map.png"
+plot_facility_group_map(engine, region_cd, "그룹7(개별)", out_png=f"out/img/{region_cd}/group7_map.png", region_wkt=region_wkt, buffer_m=BUFFER_M)
+image_map["SL_G7_MAP"] = f"out/img/{region_cd}/group7_map.png"
+
+plot_facility_group_map(engine, region_cd, "그룹8", out_png=f"out/img/{region_cd}/group8_map.png", region_wkt=region_wkt, buffer_m=BUFFER_M)
+image_map["SL_G8_MAP"] = f"out/img/{region_cd}/group8_map.png"
 
 print(f"DEBUG: 최종 Image Map: {image_map}")
 
@@ -375,16 +399,11 @@ update_treemaps_batch(
 )
 
 # ------------------------------
-# (예) 주차장 표 채우기
+# 주차장 표 채우기 (REGION_WKT 사용)
 # ------------------------------
 parking_list_sql = """
 WITH reg AS (
-  SELECT ST_Transform(
-           ST_Buffer(ST_Transform(r.popltn_relm, 5179), :BUFFER_M),
-           4326
-         ) AS geom
-  FROM regionmonitor.tb_intrst_region_relm r
-  WHERE r.region_cd = :REGION_CD
+  SELECT ST_GeomFromText(:REGION_WKT, 4326) AS geom
 )
 SELECT
   p.prkplce_nm AS name,
@@ -396,7 +415,7 @@ WHERE p.X_CRDNT IS NOT NULL AND p.Y_CRDNT IS NOT NULL
 ORDER BY slots DESC, name;
 """
 with engine.begin() as conn:
-    dfp = pd.read_sql(text(parking_list_sql), conn, params={"REGION_CD": region_cd, "BUFFER_M": 500})
+    dfp = pd.read_sql(text(parking_list_sql), conn, params=PARAMS)
 
 rows_for_table = [(row["name"], f"{int(row['slots']):,}대") for _, row in dfp.iterrows()]
 prs = Presentation(OUTPUT_PPT)

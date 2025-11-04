@@ -221,7 +221,7 @@ engine = create_engine(
 with open("config/slides_tokens.yml", encoding="utf-8") as f:
     cfg = yaml.safe_load(f)
 
-OUTPUT_PPT = "out/test_tmzon수정1423.pptx"
+OUTPUT_PPT = "out/test_쿼리수정1725.pptx"
 TEMPLATE_PPT = "template/master_pretendard.pptx"
 
 token_values = {}

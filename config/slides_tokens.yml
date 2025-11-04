@@ -2286,38 +2286,40 @@ slides:
 
         series:
           외국인: |-
-            WITH p AS (SELECT CAST(SUBSTRING(:DATE_FROM,1,4) AS INT) y, :DATE_FROM df, :DATE_TO dt),
+            WITH p AS (
+              SELECT :DATE_FROM AS df, :DATE_TO AS dt
+            ),
             yrs_data AS (
-              SELECT 1 ord, y-2 yy, df, dt FROM p
-              UNION ALL SELECT 2, y-1, df, dt FROM p
-              UNION ALL SELECT 3, y, df, dt FROM p
+              SELECT 1 AS ord, 2 AS shift  -- Y-2
+              UNION ALL SELECT 2, 1        -- Y-1
+              UNION ALL SELECT 3, 0        -- Y
             )
             SELECT (
               SELECT COALESCE(SUM(t.FRGNR_VIPOP),0)::NUMERIC/100000
-              FROM regionmonitor.TB_NATION_VISIT_POPLTN t
+              FROM regionmonitor.TB_NATION_VISIT_POPLTN t, p
               WHERE t.REGION_CD = :REGION_CD
-                AND t.STDR_YMD BETWEEN
-                    CASE WHEN yrs_data.yy = CAST(SUBSTRING(yrs_data.df,1,4) AS INT) THEN yrs_data.df ELSE (yrs_data.yy::TEXT||'0101') END
-                AND CASE WHEN yrs_data.yy = CAST(SUBSTRING(yrs_data.dt,1,4) AS INT) THEN yrs_data.dt ELSE (yrs_data.yy::TEXT||'1231') END
+                AND t.STDR_YMD BETWEEN find_date(p.df, yrs_data.shift) AND find_date(p.dt, yrs_data.shift)
             )
-            FROM yrs_data ORDER BY ord;
+            FROM yrs_data
+            ORDER BY ord;
 
           내국인: |-
-            WITH p AS (SELECT CAST(SUBSTRING(:DATE_FROM,1,4) AS INT) y, :DATE_FROM df, :DATE_TO dt),
+            WITH p AS (
+              SELECT :DATE_FROM AS df, :DATE_TO AS dt
+            ),
             yrs_data AS (
-              SELECT 1 ord, y-2 yy, df, dt FROM p
-              UNION ALL SELECT 2, y-1, df, dt FROM p
-              UNION ALL SELECT 3, y, df, dt FROM p
+              SELECT 1 AS ord, 2 AS shift  -- Y-2
+              UNION ALL SELECT 2, 1        -- Y-1
+              UNION ALL SELECT 3, 0        -- Y
             )
             SELECT (
               SELECT COALESCE(SUM(t.NATIVE_VIPOP),0)::NUMERIC/100000
-              FROM regionmonitor.TB_NATION_VISIT_POPLTN t
+              FROM regionmonitor.TB_NATION_VISIT_POPLTN t, p
               WHERE t.REGION_CD = :REGION_CD
-                AND t.STDR_YMD BETWEEN
-                    CASE WHEN yrs_data.yy = CAST(SUBSTRING(yrs_data.df,1,4) AS INT) THEN yrs_data.df ELSE (yrs_data.yy::TEXT||'0101') END
-                AND CASE WHEN yrs_data.yy = CAST(SUBSTRING(yrs_data.dt,1,4) AS INT) THEN yrs_data.dt ELSE (yrs_data.yy::TEXT||'1231') END
+                AND t.STDR_YMD BETWEEN find_date(p.df, yrs_data.shift) AND find_date(p.dt, yrs_data.shift)
             )
-            FROM yrs_data ORDER BY ord;
+            FROM yrs_data
+            ORDER BY ord;
 
 
   - name: "12 : 소비 분석 요약"
@@ -5942,11 +5944,8 @@ slides:
     tokens:
       SL22_1:  # 철도역 개수
         sql: |
-          WITH
-          reg AS (
-            SELECT ST_Transform(ST_Buffer(ST_Transform(r.popltn_relm, 5179), :BUFFER_M), 4326) AS geom
-            FROM regionmonitor.tb_intrst_region_relm r
-            WHERE r.region_cd = :REGION_CD
+          WITH reg AS (
+            SELECT ST_GeomFromText(:REGION_WKT, 4326) AS geom
           ),
           fac AS (
             SELECT SUBSTRING(TRIM(f.fclty_sclas_cd) FROM 1 FOR 1) AS code
@@ -5959,11 +5958,8 @@ slides:
 
       SL22_2:  # 철도역 인당 개수
         sql: |
-          WITH
-          reg AS (
-            SELECT ST_Transform(ST_Buffer(ST_Transform(r.popltn_relm,5179), :BUFFER_M), 4326) AS geom
-            FROM regionmonitor.tb_intrst_region_relm r
-            WHERE r.region_cd = :REGION_CD
+          WITH reg AS (
+            SELECT ST_GeomFromText(:REGION_WKT, 4326) AS geom
           ),
           fac AS (
             SELECT SUBSTRING(TRIM(f.fclty_sclas_cd) FROM 1 FOR 1) AS code
@@ -5994,11 +5990,8 @@ slides:
 
       SL22_3:
         sql: | # 버스정류장 개수
-          WITH
-          reg AS (
-            SELECT ST_Transform(ST_Buffer(ST_Transform(r.popltn_relm, 5179), :BUFFER_M), 4326) AS geom
-            FROM regionmonitor.tb_intrst_region_relm r
-            WHERE r.region_cd = :REGION_CD
+          WITH reg AS (
+            SELECT ST_GeomFromText(:REGION_WKT, 4326) AS geom
           ),
           fac AS (
             SELECT SUBSTRING(TRIM(f.fclty_sclas_cd) FROM 1 FOR 1) AS code
@@ -6010,11 +6003,8 @@ slides:
 
       SL22_4:  # 버정 인당 시설수
         sql: |
-          WITH
-          reg AS (
-            SELECT ST_Transform(ST_Buffer(ST_Transform(r.popltn_relm,5179), :BUFFER_M), 4326) AS geom
-            FROM regionmonitor.tb_intrst_region_relm r
-            WHERE r.region_cd = :REGION_CD
+          WITH reg AS (
+            SELECT ST_GeomFromText(:REGION_WKT, 4326) AS geom
           ),
           fac AS (
             SELECT SUBSTRING(TRIM(f.fclty_sclas_cd) FROM 1 FOR 1) AS code
@@ -6045,11 +6035,8 @@ slides:
 
       SL22_5:
         sql: |
-          WITH
-          reg AS (
-            SELECT ST_Transform(ST_Buffer(ST_Transform(r.popltn_relm, 5179), :BUFFER_M), 4326) AS geom
-            FROM regionmonitor.tb_intrst_region_relm r
-            WHERE r.region_cd = :REGION_CD
+          WITH reg AS (
+            SELECT ST_GeomFromText(:REGION_WKT, 4326) AS geom
           ),
           fac AS (
             SELECT SUBSTRING(TRIM(f.fclty_sclas_cd) FROM 1 FOR 1) AS code
@@ -6061,11 +6048,8 @@ slides:
 
       SL22_6: 
         sql: |
-          WITH
-          reg AS (
-            SELECT ST_Transform(ST_Buffer(ST_Transform(r.popltn_relm,5179), :BUFFER_M), 4326) AS geom
-            FROM regionmonitor.tb_intrst_region_relm r
-            WHERE r.region_cd = :REGION_CD
+          WITH reg AS (
+            SELECT ST_GeomFromText(:REGION_WKT, 4326) AS geom
           ),
           fac AS (
             SELECT SUBSTRING(TRIM(f.fclty_sclas_cd) FROM 1 FOR 1) AS code
@@ -6096,11 +6080,8 @@ slides:
 
       SL22_7:
         sql: |
-          WITH
-          reg AS (
-            SELECT ST_Transform(ST_Buffer(ST_Transform(r.popltn_relm, 5179), :BUFFER_M), 4326) AS geom
-            FROM regionmonitor.tb_intrst_region_relm r
-            WHERE r.region_cd = :REGION_CD
+          WITH reg AS (
+            SELECT ST_GeomFromText(:REGION_WKT, 4326) AS geom
           ),
           fac AS (
             SELECT SUBSTRING(TRIM(f.fclty_sclas_cd) FROM 1 FOR 1) AS code
@@ -6112,11 +6093,8 @@ slides:
 
       SL22_8:
         sql: |
-          WITH
-          reg AS (
-            SELECT ST_Transform(ST_Buffer(ST_Transform(r.popltn_relm,5179), :BUFFER_M), 4326) AS geom
-            FROM regionmonitor.tb_intrst_region_relm r
-            WHERE r.region_cd = :REGION_CD
+          WITH reg AS (
+            SELECT ST_GeomFromText(:REGION_WKT, 4326) AS geom
           ),
           fac AS (
             SELECT SUBSTRING(TRIM(f.fclty_sclas_cd) FROM 1 FOR 1) AS code
@@ -6147,11 +6125,8 @@ slides:
 
       SL22_9:
         sql: |
-          WITH
-          reg AS (
-            SELECT ST_Transform(ST_Buffer(ST_Transform(r.popltn_relm, 5179), :BUFFER_M), 4326) AS geom
-            FROM regionmonitor.tb_intrst_region_relm r
-            WHERE r.region_cd = :REGION_CD
+          WITH reg AS (
+            SELECT ST_GeomFromText(:REGION_WKT, 4326) AS geom
           ),
           fac AS (
             SELECT SUBSTRING(TRIM(f.fclty_sclas_cd) FROM 1 FOR 1) AS code
@@ -6163,11 +6138,8 @@ slides:
 
       SL22_10: 
         sql: |
-          WITH
-          reg AS (
-            SELECT ST_Transform(ST_Buffer(ST_Transform(r.popltn_relm,5179), :BUFFER_M), 4326) AS geom
-            FROM regionmonitor.tb_intrst_region_relm r
-            WHERE r.region_cd = :REGION_CD
+          WITH reg AS (
+            SELECT ST_GeomFromText(:REGION_WKT, 4326) AS geom
           ),
           fac AS (
             SELECT SUBSTRING(TRIM(f.fclty_sclas_cd) FROM 1 FOR 1) AS code
@@ -6200,11 +6172,8 @@ slides:
     tokens:
       SL23_1:
         sql: |
-          WITH
-          reg AS (
-            SELECT ST_Transform(ST_Buffer(ST_Transform(r.popltn_relm, 5179), :BUFFER_M), 4326) AS geom
-            FROM regionmonitor.tb_intrst_region_relm r
-            WHERE r.region_cd = :REGION_CD
+          WITH reg AS (
+            SELECT ST_GeomFromText(:REGION_WKT, 4326) AS geom
           ),
           fac AS (
             SELECT SUBSTRING(TRIM(f.fclty_sclas_cd) FROM 1 FOR 1) AS code
@@ -6217,11 +6186,8 @@ slides:
 
       SL23_2: 
         sql: |
-          WITH
-          reg AS (
-            SELECT ST_Transform(ST_Buffer(ST_Transform(r.popltn_relm,5179), :BUFFER_M), 4326) AS geom
-            FROM regionmonitor.tb_intrst_region_relm r
-            WHERE r.region_cd = :REGION_CD
+          WITH reg AS (
+            SELECT ST_GeomFromText(:REGION_WKT, 4326) AS geom
           ),
           fac AS (
             SELECT SUBSTRING(TRIM(f.fclty_sclas_cd) FROM 1 FOR 1) AS code
@@ -6253,11 +6219,8 @@ slides:
 
       SL23_3:
         sql: |
-          WITH
-          reg AS (
-            SELECT ST_Transform(ST_Buffer(ST_Transform(r.popltn_relm, 5179), :BUFFER_M), 4326) AS geom
-            FROM regionmonitor.tb_intrst_region_relm r
-            WHERE r.region_cd = :REGION_CD
+          WITH reg AS (
+            SELECT ST_GeomFromText(:REGION_WKT, 4326) AS geom
           ),
           fac AS (
             SELECT SUBSTRING(TRIM(f.fclty_sclas_cd) FROM 1 FOR 1) AS code
@@ -6269,11 +6232,8 @@ slides:
 
       SL23_4: 
         sql: |
-          WITH
-          reg AS (
-            SELECT ST_Transform(ST_Buffer(ST_Transform(r.popltn_relm,5179), :BUFFER_M), 4326) AS geom
-            FROM regionmonitor.tb_intrst_region_relm r
-            WHERE r.region_cd = :REGION_CD
+          WITH reg AS (
+            SELECT ST_GeomFromText(:REGION_WKT, 4326) AS geom
           ),
           fac AS (
             SELECT SUBSTRING(TRIM(f.fclty_sclas_cd) FROM 1 FOR 1) AS code
@@ -6304,11 +6264,8 @@ slides:
 
       SL23_5:
         sql: |
-          WITH
-          reg AS (
-            SELECT ST_Transform(ST_Buffer(ST_Transform(r.popltn_relm, 5179), :BUFFER_M), 4326) AS geom
-            FROM regionmonitor.tb_intrst_region_relm r
-            WHERE r.region_cd = :REGION_CD
+          WITH reg AS (
+            SELECT ST_GeomFromText(:REGION_WKT, 4326) AS geom
           ),
           fac AS (
             SELECT SUBSTRING(TRIM(f.fclty_sclas_cd) FROM 1 FOR 1) AS code
@@ -6320,11 +6277,8 @@ slides:
 
       SL23_6: 
         sql: |
-          WITH
-          reg AS (
-            SELECT ST_Transform(ST_Buffer(ST_Transform(r.popltn_relm,5179), :BUFFER_M), 4326) AS geom
-            FROM regionmonitor.tb_intrst_region_relm r
-            WHERE r.region_cd = :REGION_CD
+          WITH reg AS (
+            SELECT ST_GeomFromText(:REGION_WKT, 4326) AS geom
           ),
           fac AS (
             SELECT SUBSTRING(TRIM(f.fclty_sclas_cd) FROM 1 FOR 1) AS code
@@ -6355,11 +6309,8 @@ slides:
 
       SL23_7:
         sql: |
-          WITH
-          reg AS (
-            SELECT ST_Transform(ST_Buffer(ST_Transform(r.popltn_relm, 5179), :BUFFER_M), 4326) AS geom
-            FROM regionmonitor.tb_intrst_region_relm r
-            WHERE r.region_cd = :REGION_CD
+          WITH reg AS (
+            SELECT ST_GeomFromText(:REGION_WKT, 4326) AS geom
           ),
           fac AS (
             SELECT SUBSTRING(TRIM(f.fclty_sclas_cd) FROM 1 FOR 1) AS code
@@ -6371,11 +6322,8 @@ slides:
 
       SL23_8: 
         sql: |
-          WITH
-          reg AS (
-            SELECT ST_Transform(ST_Buffer(ST_Transform(r.popltn_relm,5179), :BUFFER_M), 4326) AS geom
-            FROM regionmonitor.tb_intrst_region_relm r
-            WHERE r.region_cd = :REGION_CD
+          WITH reg AS (
+            SELECT ST_GeomFromText(:REGION_WKT, 4326) AS geom
           ),
           fac AS (
             SELECT SUBSTRING(TRIM(f.fclty_sclas_cd) FROM 1 FOR 1) AS code
@@ -6409,11 +6357,8 @@ slides:
     tokens:
       SL24_1:
         sql: |
-          WITH
-          reg AS (
-            SELECT ST_Transform(ST_Buffer(ST_Transform(r.popltn_relm, 5179), :BUFFER_M), 4326) AS geom
-            FROM regionmonitor.tb_intrst_region_relm r
-            WHERE r.region_cd = :REGION_CD
+          WITH reg AS (
+            SELECT ST_GeomFromText(:REGION_WKT, 4326) AS geom
           ),
           fac AS (
             SELECT SUBSTRING(TRIM(f.fclty_sclas_cd) FROM 1 FOR 1) AS code
@@ -6425,11 +6370,8 @@ slides:
 
       SL24_2: 
         sql: |
-          WITH
-          reg AS (
-            SELECT ST_Transform(ST_Buffer(ST_Transform(r.popltn_relm,5179), :BUFFER_M), 4326) AS geom
-            FROM regionmonitor.tb_intrst_region_relm r
-            WHERE r.region_cd = :REGION_CD
+          WITH reg AS (
+            SELECT ST_GeomFromText(:REGION_WKT, 4326) AS geom
           ),
           fac AS (
             SELECT SUBSTRING(TRIM(f.fclty_sclas_cd) FROM 1 FOR 1) AS code
@@ -6460,11 +6402,8 @@ slides:
 
       SL24_3:
         sql: |
-          WITH
-          reg AS (
-            SELECT ST_Transform(ST_Buffer(ST_Transform(r.popltn_relm, 5179), :BUFFER_M), 4326) AS geom
-            FROM regionmonitor.tb_intrst_region_relm r
-            WHERE r.region_cd = :REGION_CD
+          WITH reg AS (
+            SELECT ST_GeomFromText(:REGION_WKT, 4326) AS geom
           ),
           fac AS (
             SELECT SUBSTRING(TRIM(f.fclty_sclas_cd) FROM 1 FOR 1) AS code
@@ -6476,11 +6415,8 @@ slides:
           
       SL24_4: 
         sql: |
-          WITH
-          reg AS (
-            SELECT ST_Transform(ST_Buffer(ST_Transform(r.popltn_relm,5179), :BUFFER_M), 4326) AS geom
-            FROM regionmonitor.tb_intrst_region_relm r
-            WHERE r.region_cd = :REGION_CD
+          WITH reg AS (
+            SELECT ST_GeomFromText(:REGION_WKT, 4326) AS geom
           ),
           fac AS (
             SELECT SUBSTRING(TRIM(f.fclty_sclas_cd) FROM 1 FOR 1) AS code
@@ -6514,11 +6450,8 @@ slides:
     tokens:
       SL25_1:
         sql: |
-          WITH
-          reg AS (
-            SELECT ST_Transform(ST_Buffer(ST_Transform(r.popltn_relm, 5179), :BUFFER_M), 4326) AS geom
-            FROM regionmonitor.tb_intrst_region_relm r
-            WHERE r.region_cd = :REGION_CD
+          WITH reg AS (
+            SELECT ST_GeomFromText(:REGION_WKT, 4326) AS geom
           ),
           fac AS (
             SELECT SUBSTRING(TRIM(f.fclty_sclas_cd) FROM 1 FOR 1) AS code
@@ -6530,11 +6463,8 @@ slides:
 
       SL25_2: 
         sql: |
-          WITH
-          reg AS (
-            SELECT ST_Transform(ST_Buffer(ST_Transform(r.popltn_relm,5179), :BUFFER_M), 4326) AS geom
-            FROM regionmonitor.tb_intrst_region_relm r
-            WHERE r.region_cd = :REGION_CD
+          WITH reg AS (
+            SELECT ST_GeomFromText(:REGION_WKT, 4326) AS geom
           ),
           fac AS (
             SELECT SUBSTRING(TRIM(f.fclty_sclas_cd) FROM 1 FOR 1) AS code
@@ -6568,11 +6498,8 @@ slides:
     tokens:
       SL26_1:
         sql: |
-          WITH
-          reg AS (
-            SELECT ST_Transform(ST_Buffer(ST_Transform(r.popltn_relm, 5179), :BUFFER_M), 4326) AS geom
-            FROM regionmonitor.tb_intrst_region_relm r
-            WHERE r.region_cd = :REGION_CD
+          WITH reg AS (
+            SELECT ST_GeomFromText(:REGION_WKT, 4326) AS geom
           ),
           fac AS (
             SELECT SUBSTRING(TRIM(f.fclty_sclas_cd) FROM 1 FOR 1) AS code
@@ -6584,11 +6511,8 @@ slides:
 
       SL26_2: 
         sql: |
-          WITH
-          reg AS (
-            SELECT ST_Transform(ST_Buffer(ST_Transform(r.popltn_relm,5179), :BUFFER_M), 4326) AS geom
-            FROM regionmonitor.tb_intrst_region_relm r
-            WHERE r.region_cd = :REGION_CD
+          WITH reg AS (
+            SELECT ST_GeomFromText(:REGION_WKT, 4326) AS geom
           ),
           fac AS (
             SELECT SUBSTRING(TRIM(f.fclty_sclas_cd) FROM 1 FOR 1) AS code
@@ -6621,11 +6545,8 @@ slides:
     tokens:
       SL27_1:
         sql: |
-          WITH
-          reg AS (
-            SELECT ST_Transform(ST_Buffer(ST_Transform(r.popltn_relm, 5179), :BUFFER_M), 4326) AS geom
-            FROM regionmonitor.tb_intrst_region_relm r
-            WHERE r.region_cd = :REGION_CD
+          WITH reg AS (
+            SELECT ST_GeomFromText(:REGION_WKT, 4326) AS geom
           ),
           fac AS (
             SELECT SUBSTRING(TRIM(f.fclty_sclas_cd) FROM 1 FOR 1) AS code
@@ -6637,11 +6558,8 @@ slides:
 
       SL27_2: 
         sql: |
-          WITH
-          reg AS (
-            SELECT ST_Transform(ST_Buffer(ST_Transform(r.popltn_relm,5179), :BUFFER_M), 4326) AS geom
-            FROM regionmonitor.tb_intrst_region_relm r
-            WHERE r.region_cd = :REGION_CD
+          WITH reg AS (
+            SELECT ST_GeomFromText(:REGION_WKT, 4326) AS geom
           ),
           fac AS (
             SELECT SUBSTRING(TRIM(f.fclty_sclas_cd) FROM 1 FOR 1) AS code
@@ -6672,12 +6590,8 @@ slides:
 
       SL27_3:
         sql: |
-          WITH
-          -- 관심영역 500m 버퍼
-          reg AS (
-            SELECT ST_Transform(ST_Buffer(ST_Transform(r.popltn_relm,5179), :BUFFER_M), 4326) AS geom
-            FROM regionmonitor.tb_intrst_region_relm r
-            WHERE r.region_cd = :REGION_CD
+          WITH reg AS (
+            SELECT ST_GeomFromText(:REGION_WKT, 4326) AS geom
           ),
           -- 버퍼 내 화장실 개수(코드 O*)
           wc AS (
@@ -6712,11 +6626,8 @@ slides:
 
       SL27_4:
         sql: |
-          WITH
-          reg AS (
-            SELECT ST_Transform(ST_Buffer(ST_Transform(r.popltn_relm,5179), :BUFFER_M), 4326) AS geom
-            FROM regionmonitor.tb_intrst_region_relm r
-            WHERE r.region_cd = :REGION_CD
+          WITH reg AS (
+            SELECT ST_GeomFromText(:REGION_WKT, 4326) AS geom
           ),
           wc AS (
             SELECT COUNT(*)::numeric AS wc_cnt
@@ -6748,46 +6659,57 @@ slides:
 
       SL27_5:
         sql: |
-          WITH
-          reg AS (
-            SELECT ST_Transform(ST_Buffer(ST_Transform(r.popltn_relm, 5179), :BUFFER_M), 4326) AS geom
-            FROM regionmonitor.tb_intrst_region_relm r
-            WHERE r.region_cd = :REGION_CD
+          WITH reg AS (
+            SELECT ST_GeomFromText(:REGION_WKT, 4326) AS geom
           ),
-          fac AS (
-            SELECT COUNT(*)::numeric AS cnt
+          wc AS (
+            SELECT COUNT(*)::numeric AS wc_cnt
             FROM regionmonitor.TB_MAIN_FCLTY_INFO f, reg
             WHERE ST_Within(ST_SetSRID(ST_MakePoint(f.Y_CRDNT, f.X_CRDNT), 4326), reg.geom)
               AND SUBSTRING(TRIM(f.fclty_sclas_cd) FROM 1 FOR 1) = 'O'
           ),
           peak AS (
-            SELECT MAX(TOT_VIPOP)::numeric AS v_peak
-            FROM regionmonitor.TB_TMZON_VISIT_POPLTN
-            WHERE REGION_CD = CAST(:REGION_CD AS VARCHAR)
-              AND STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
+            SELECT MAX(GREATEST(
+                    COALESCE(t6_vipop,0),  COALESCE(t7_vipop,0),  COALESCE(t8_vipop,0),
+                    COALESCE(t9_vipop,0),  COALESCE(t10_vipop,0), COALESCE(t11_vipop,0),
+                    COALESCE(t12_vipop,0), COALESCE(t13_vipop,0), COALESCE(t14_vipop,0),
+                    COALESCE(t15_vipop,0), COALESCE(t16_vipop,0), COALESCE(t17_vipop,0),
+                    COALESCE(t18_vipop,0), COALESCE(t19_vipop,0), COALESCE(t20_vipop,0),
+                    COALESCE(t21_vipop,0), COALESCE(t22_vipop,0), COALESCE(t23_vipop,0)
+                  ))::numeric AS peak_vipop
+            FROM regionmonitor.tb_tmzon_visit_popltn
+            WHERE region_cd = CAST(:REGION_CD AS VARCHAR)
+              AND stdr_ymd BETWEEN :DATE_FROM AND :DATE_TO
+          ),
+          need AS (  -- 필요 화장실 개수 = 피크 방문인구 / 606
+            SELECT (peak_vipop / 606.0)::numeric AS req_cnt
+            FROM peak
+          ),
+          calc AS (
+            SELECT
+              CASE
+                WHEN (SELECT req_cnt FROM need) = 0 THEN NULL
+                ELSE ROUND(
+                      ((SELECT wc_cnt FROM wc) - (SELECT req_cnt FROM need))
+                      / NULLIF((SELECT req_cnt FROM need), 0) * 100.0
+                    , 1)
+              END AS pct
           )
           SELECT
             CASE
-              WHEN v_peak = 0 THEN '데이터 없음'
-              WHEN (cnt / v_peak) < (1.0 / 606.0)
-                THEN TO_CHAR(ROUND((1 - ((cnt / v_peak) / (1.0 / 606.0))) * 100, 1), 'FM999.9') || '% 부족'
-              ELSE TO_CHAR(ABS(ROUND((1 - ((cnt / v_peak) / (1.0 / 606.0))) * 100, 1)), 'FM999.9') || '% 여유'
+              WHEN pct IS NULL THEN '데이터 없음'
+              WHEN pct >= 0 THEN TO_CHAR(pct, 'FM999,990.0') || '% 여유'
+              ELSE TO_CHAR(ABS(pct), 'FM999,990.0') || '% 부족'
             END
-          FROM fac, peak;
+          FROM calc;
 
 
   - name: "28"
     tokens:
       SL28_1:
         sql: |
-          WITH
-          reg AS (
-            SELECT ST_Transform(
-                    ST_Buffer(ST_Transform(r.popltn_relm, 5179), :BUFFER_M),
-                    4326
-                  ) AS geom
-            FROM regionmonitor.tb_intrst_region_relm r
-            WHERE r.region_cd = :REGION_CD
+          WITH reg AS (
+            SELECT ST_GeomFromText(:REGION_WKT, 4326) AS geom
           ),
           park AS (
             SELECT
@@ -6808,14 +6730,8 @@ slides:
 
       SL28_2: 
         sql: |
-          WITH
-          reg AS (
-            SELECT ST_Transform(
-                    ST_Buffer(ST_Transform(r.popltn_relm, 5179), :BUFFER_M),
-                    4326
-                  ) AS geom
-            FROM regionmonitor.tb_intrst_region_relm r
-            WHERE r.region_cd = :REGION_CD
+          WITH reg AS (
+            SELECT ST_GeomFromText(:REGION_WKT, 4326) AS geom
           ),
           park AS (
             SELECT COALESCE(SUM(p.prkcmprt_co), 0)::numeric AS slots    -- 총 구획수
@@ -6842,12 +6758,8 @@ slides:
 
       SL28_3:
         sql: |
-          WITH
-          -- 1) 관심영역 500m 버퍼
-          reg AS (
-            SELECT ST_Transform(ST_Buffer(ST_Transform(r.popltn_relm,5179), :BUFFER_M), 4326) AS geom
-            FROM regionmonitor.tb_intrst_region_relm r
-            WHERE r.region_cd = :REGION_CD
+          WITH reg AS (
+            SELECT ST_GeomFromText(:REGION_WKT, 4326) AS geom
           ),
           -- 2) 버퍼 내 총 주차 구획수 합계 (코드 'P')
           park AS (
@@ -6882,11 +6794,8 @@ slides:
 
       SL28_4:
         sql: |
-          WITH
-          reg AS (
-            SELECT ST_Transform(ST_Buffer(ST_Transform(r.popltn_relm,5179), :BUFFER_M), 4326) AS geom
-            FROM regionmonitor.tb_intrst_region_relm r
-            WHERE r.region_cd = :REGION_CD
+          WITH reg AS (
+            SELECT ST_GeomFromText(:REGION_WKT, 4326) AS geom
           ),
           park AS (
             SELECT COALESCE(SUM(p.prkcmprt_co), 0)::numeric AS slots
@@ -6897,65 +6806,84 @@ slides:
           ),
           peak AS (
             SELECT MAX(GREATEST(
-                    COALESCE(t6_vipop,0), COALESCE(t7_vipop,0),  COALESCE(t8_vipop,0),
-                    COALESCE(t9_vipop,0),   COALESCE(t10_vipop,0), COALESCE(t11_vipop,0),
-                    COALESCE(t12_vipop,0),  COALESCE(t13_vipop,0), COALESCE(t14_vipop,0),
-                    COALESCE(t15_vipop,0),  COALESCE(t16_vipop,0), COALESCE(t17_vipop,0),
-                    COALESCE(t18_vipop,0),  COALESCE(t19_vipop,0), COALESCE(t20_vipop,0),
-                    COALESCE(t21_vipop,0),  COALESCE(t22_vipop,0), COALESCE(t23_vipop,0)
+                    COALESCE(t6_vipop,0),  COALESCE(t7_vipop,0),  COALESCE(t8_vipop,0),
+                    COALESCE(t9_vipop,0),  COALESCE(t10_vipop,0), COALESCE(t11_vipop,0),
+                    COALESCE(t12_vipop,0), COALESCE(t13_vipop,0), COALESCE(t14_vipop,0),
+                    COALESCE(t15_vipop,0), COALESCE(t16_vipop,0), COALESCE(t17_vipop,0),
+                    COALESCE(t18_vipop,0), COALESCE(t19_vipop,0), COALESCE(t20_vipop,0),
+                    COALESCE(t21_vipop,0), COALESCE(t22_vipop,0), COALESCE(t23_vipop,0)
                   ))::numeric AS peak_vipop
             FROM regionmonitor.tb_tmzon_visit_popltn
             WHERE region_cd = CAST(:REGION_CD AS VARCHAR)
               AND stdr_ymd BETWEEN :DATE_FROM AND :DATE_TO
           ),
-          ratio AS (
-            SELECT (SELECT peak_vipop FROM peak) / NULLIF((SELECT slots FROM park), 0) AS ppl_per_slot
+          need AS (  -- 필요 주차구획수 = 피크인구*3 / 100
+            SELECT (peak_vipop * 3.0 / 100.0)::numeric AS req_slots
+            FROM peak
           )
           SELECT CASE
-                  WHEN (SELECT ppl_per_slot FROM ratio) IS NULL THEN '부족'
-                  WHEN (SELECT ppl_per_slot FROM ratio) > 5000 THEN '부족'
-                  ELSE '충분'
+                  WHEN (SELECT peak_vipop FROM peak) IS NULL OR (SELECT peak_vipop FROM peak) = 0
+                    THEN '데이터 없음'
+                  WHEN (SELECT slots FROM park) >= (SELECT req_slots FROM need)
+                    THEN '충분'
+                  ELSE '부족'
                 END;
+
 
       SL28_5:
         sql: |
-          WITH
-          reg AS (
-            SELECT ST_Transform(ST_Buffer(ST_Transform(r.popltn_relm, 5179), :BUFFER_M), 4326) AS geom
-            FROM regionmonitor.tb_intrst_region_relm r
-            WHERE r.region_cd = :REGION_CD
+          WITH reg AS (
+            SELECT ST_GeomFromText(:REGION_WKT, 4326) AS geom
           ),
           park AS (
-            SELECT COALESCE(SUM(p.prkcmprt_co), 0)::numeric AS slots
+            SELECT COALESCE(SUM(p.prkcmprt_co), 0)::numeric AS slots   -- 보유 주차 구획수 합
             FROM regionmonitor.TB_PRKPLCE_INFO p
-            JOIN reg ON ST_Within(ST_SetSRID(ST_MakePoint(p.Y_CRDNT, p.X_CRDNT), 4326), reg.geom)
+            JOIN reg
+              ON ST_Within(ST_SetSRID(ST_MakePoint(p.Y_CRDNT, p.X_CRDNT), 4326), reg.geom)
             WHERE p.X_CRDNT IS NOT NULL AND p.Y_CRDNT IS NOT NULL
           ),
-          peak AS (
-            SELECT MAX(TOT_VIPOP)::numeric AS v_peak
-            FROM regionmonitor.TB_TMZON_VISIT_POPLTN
-            WHERE REGION_CD = CAST(:REGION_CD AS VARCHAR)
-              AND STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
+          peak AS (  -- 기간 중 '최대 시간대' 방문인구
+            SELECT MAX(GREATEST(
+                    COALESCE(t6_vipop,0),  COALESCE(t7_vipop,0),  COALESCE(t8_vipop,0),
+                    COALESCE(t9_vipop,0),  COALESCE(t10_vipop,0), COALESCE(t11_vipop,0),
+                    COALESCE(t12_vipop,0), COALESCE(t13_vipop,0), COALESCE(t14_vipop,0),
+                    COALESCE(t15_vipop,0), COALESCE(t16_vipop,0), COALESCE(t17_vipop,0),
+                    COALESCE(t18_vipop,0), COALESCE(t19_vipop,0), COALESCE(t20_vipop,0),
+                    COALESCE(t21_vipop,0), COALESCE(t22_vipop,0), COALESCE(t23_vipop,0)
+                  ))::numeric AS peak_vipop
+            FROM regionmonitor.tb_tmzon_visit_popltn
+            WHERE region_cd = CAST(:REGION_CD AS VARCHAR)
+              AND stdr_ymd BETWEEN :DATE_FROM AND :DATE_TO
+          ),
+          need AS (  -- 필요 주차구획수 = 피크인구*3 / 100  (100명당 1면)
+            SELECT ((peak_vipop)*3 / 100.0)::numeric AS req_slots
+            FROM peak
+          ),
+          calc AS (
+            SELECT
+              CASE
+                WHEN (SELECT req_slots FROM need) = 0 THEN NULL
+                ELSE ROUND(
+                      ((SELECT slots FROM park) - (SELECT req_slots FROM need))
+                      / NULLIF((SELECT req_slots FROM need), 0) * 100.0
+                    , 1)
+              END AS pct
           )
           SELECT
             CASE
-              WHEN v_peak = 0 THEN '데이터 없음'
-              WHEN (slots / v_peak) < 0.0002
-                THEN TO_CHAR(ROUND((1 - ((slots / v_peak) / 0.0002)) * 100, 1), 'FM999.9') || '% 부족'
-              ELSE TO_CHAR(ABS(ROUND((1 - ((slots / v_peak) / 0.0002)) * 100, 1)), 'FM999.9') || '% 여유'
+              WHEN pct IS NULL THEN '데이터 없음'
+              WHEN pct >= 0 THEN TO_CHAR(pct, 'FM999,990.0') || '% 여유'
+              ELSE TO_CHAR(ABS(pct), 'FM999,990.0') || '% 부족'
             END
-          FROM park, peak;
+          FROM calc;
 
 
   - name: "29" # 숙박시설 (27페이지로 땡겨짐)
     tokens:
       SL29_1:
         sql: |
-          WITH
-          reg AS (
-            SELECT ST_Transform(ST_Buffer(ST_Transform(r.popltn_relm, 5179), :BUFFER_M), 4326) AS geom
-            FROM regionmonitor.tb_intrst_region_relm r
-            WHERE r.region_cd = :REGION_CD
+          WITH reg AS (
+            SELECT ST_GeomFromText(:REGION_WKT, 4326) AS geom
           ),
           fac AS (
             SELECT SUBSTRING(TRIM(f.fclty_sclas_cd) FROM 1 FOR 1) AS code
@@ -6967,11 +6895,8 @@ slides:
 
       SL29_2: 
         sql: |
-          WITH
-          reg AS (
-            SELECT ST_Transform(ST_Buffer(ST_Transform(r.popltn_relm,5179), :BUFFER_M), 4326) AS geom
-            FROM regionmonitor.tb_intrst_region_relm r
-            WHERE r.region_cd = :REGION_CD
+          WITH reg AS (
+            SELECT ST_GeomFromText(:REGION_WKT, 4326) AS geom
           ),
           fac AS (
             SELECT SUBSTRING(TRIM(f.fclty_sclas_cd) FROM 1 FOR 1) AS code
