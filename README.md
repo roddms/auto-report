@@ -1,6 +1,6 @@
 # 📊 지역 모니터링 보고서 자동 생성 시스템
 
-PostgreSQL 데이터베이스에서 데이터를 조회하여 PowerPoint 보고서를 자동으로 생성하는 시스템입니다. 여러 지역 코드에 대해 배치로 보고서를 생성할 수 있습니다.
+PostgreSQL 데이터베이스에서 데이터를 조회하여 PowerPoint 보고서를 자동으로 생성하는 시스템입니다.
 
 ---
 
@@ -8,12 +8,12 @@ PostgreSQL 데이터베이스에서 데이터를 조회하여 PowerPoint 보고�
 
 ```
 auto_report/
-├── run_batch_serial.py          # 🎯 메인 실행 파일 (배치 처리)
+├── run_batch_serial.py           # 🎯 메인 실행 파일 (배치 처리)
 ├── src/
 │   ├── run_build_report_refac.py # 보고서 생성 엔진
 │   └── ppt_fillers.py            # PPT 템플릿 채우기 유틸리티
 ├── template/
-│   └── master_pretendard.pptx   # PowerPoint 템플릿 파일
+│   └── master_pretendard.pptx    # PowerPoint 템플릿 파일
 ├── config/
 │   └── slides_tokens.yml         # 슬라이드별 SQL 쿼리 설정
 ├── out/                          # 생성된 보고서 출력 디렉토리
@@ -145,9 +145,9 @@ slides:
 
 지도, 히트맵 등 이미지를 삽입할 도형도 이름을 설정해야 합니다:
 - `SL_G1_MAP` ~ `SL_G8_MAP`: 그룹별 시설 지도
-- 기타 히트맵 이미지 도형 -->
+- 기타 히트맵 이미지 도형 
 
----
+--- -->
 
 ## 🔧 주요 기능
 
