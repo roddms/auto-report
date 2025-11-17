@@ -398,8 +398,14 @@ def update_treemaps_batch(ppt_path, out_path, updates):
     if not os.path.exists(ppt_path):
         raise FileNotFoundError(f"PPT not found: {ppt_path}")
 
-    pp = win32.gencache.EnsureDispatch("PowerPoint.Application")
+    pythoncom.CoInitialize()
+    try:
+        # 캐시(gen_py) 우회: 동적 바인딩
+        pp = win32.DispatchEx("PowerPoint.Application")
+    except Exception:
+        pp = win32.Dispatch("PowerPoint.Application")
     pp.Visible = True
+
     pres = pp.Presentations.Open(ppt_path, False, False, False)
     try:
         for shape_name, rows, value_header in updates:
@@ -441,8 +447,16 @@ def update_treemaps_batch(ppt_path, out_path, updates):
         pres.SaveAs(out_path)
         time.sleep(0.2)
     finally:
-        pres.Close()
-        pp.Quit()
+        try:
+            for pres in list(pp.Presentations):
+                try:
+                    pres.Close()
+                except:
+                    pass
+            pp.Quit()
+        except:
+            pass
+        pythoncom.CoUninitialize()
 
 # ---------------------------
 # 🔹 Helper (한 번에 실행용)

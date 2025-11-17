@@ -28,6 +28,25 @@ from ppt_fillers import (
 def generate_heatmap_image(data_df, out_path, title=None, font_family="Malgun Gothic"):
     import seaborn as sns
     import os
+    import numpy as np
+
+    if (
+        data_df is None
+        or data_df.size == 0
+        or data_df.dropna(how="all").empty
+        or np.all(pd.isna(data_df.values))
+    ):
+        fig, ax = plt.subplots(figsize=(8, 6))
+        fig.set_facecolor('none')
+        ax.axis('off')
+        msg = (title + "\n") if title else ""
+        ax.text(0.5, 0.5, f"{msg}(데이터 없음)", ha='center', va='center',
+                fontsize=12, fontweight='bold')
+        plt.tight_layout()
+        plt.savefig(out_path, dpi=300, bbox_inches='tight', pad_inches=0.2, transparent=True)
+        plt.close(fig)
+        return
+
     try:
         plt.rcParams["font.family"] = font_family
         plt.rcParams["axes.unicode_minus"] = False
@@ -185,7 +204,7 @@ engine = create_engine(
     connect_args={"options": "-csearch_path=regionmonitor,public"}
 )
 
-# ✅ REGION_WKT 미리 계산 (한 번만)
+# REGION_WKT 미리 계산 (한 번만)
 SQL_REGION_WKT = """
 SELECT ST_AsText(
          ST_Transform(
@@ -232,7 +251,26 @@ print("✅ REGION_WKT 계산 완료")
 # 이후 모든 쿼리에 공통 파라미터로 사용
 PARAMS = {**cfg["params"], "REGION_WKT": region_wkt}
 
-OUTPUT_PPT = f"out/report_{args.REGION_CD}.pptx"
+# 🔹 DB에서 지역 이름(event_nm) 조회
+with engine.begin() as conn:
+    region_name = conn.execute(
+        text("""
+        SELECT event_nm
+        FROM regionmonitor.tb_analysis_report
+        WHERE region_cd = CAST(:REGION_CD AS VARCHAR)
+        """),
+        {"REGION_CD": args.REGION_CD}
+    ).scalar()
+
+# 🔹 조회 실패 시 fallback
+if not region_name:
+    region_name = args.REGION_CD
+
+# 🔹 파일명 안전하게 (특수문자 제거)
+safe_name = "".join(c for c in region_name if c.isalnum() or c in (' ', '_', '-')).strip()
+
+# 🔹 PPT 저장 경로
+OUTPUT_PPT = f"out/report_{safe_name}.pptx"
 TEMPLATE_PPT = "template/master_pretendard.pptx"
 
 # ------------------------------
@@ -250,6 +288,11 @@ with engine.begin() as conn:
             # 히트맵 이미지
             if "heatmap_sql" in chart_conf:
                 df = pd.read_sql(text(chart_conf["heatmap_sql"]), conn, params=PARAMS)
+
+                if df is None or df.empty or df.shape[1] < 2:
+                    print(f"⚠️ heatmap '{chart_name}' 데이터 없음 → 스킵 (REGION_CD={cfg['params']['REGION_CD']})")
+                    continue
+
                 data_df = df.set_index(df.columns[0])
                 outfile = chart_conf["outfile"]
                 title = chart_conf.get("title", None)

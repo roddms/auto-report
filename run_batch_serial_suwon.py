@@ -35,7 +35,7 @@ region_info = [
 ]
 
 # =============================
-# ⚙️ 실행 루프 (직렬)
+# ⚙️ 실행 루프
 # =============================
 for name, region_cd, date_from, date_to in region_info:
     print(f"\n🚀 [{region_cd}] {name} 보고서 생성 시작 ({date_from} ~ {date_to})")

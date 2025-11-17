@@ -10,7 +10,7 @@ slides:
       SL1_p_1:
         sql: |-
           SELECT event_nm
-          FROM regionmonitor.tb_analysis_report_tmp
+          FROM regionmonitor.tb_analysis_report
           WHERE region_cd = CAST(:REGION_CD AS VARCHAR);
 
   - name: "3 : 행사 전체요약"
@@ -2360,7 +2360,7 @@ slides:
               AND REGION_CD = :REGION_CD
           ) cur;
 
-      # 2) 1인당 평균 매출 (= 총매출 / 방문인구)
+      # 2) 1인당 평균 매출 (= 총매출 / 총건수)
       SL12_p_4:
         sql: | # 1인당 평균 매출(원, 콤마)
           WITH sal AS (
@@ -2369,45 +2369,52 @@ slides:
             WHERE REGION_CD = CAST(:REGION_CD AS VARCHAR)
               AND STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
           ),
-          vis AS (
-            SELECT COALESCE(SUM(TOT_VIPOP),0) AS v
-            FROM regionmonitor.TB_SEXDSTN_VISIT_POPLTN
+          dcnt AS (
+            SELECT COALESCE(SUM(TOT_DCNT),0) AS v
+            FROM regionmonitor.TB_SEXDSTN_SELNG
             WHERE REGION_CD = CAST(:REGION_CD AS VARCHAR)
               AND STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
           )
           SELECT to_char(COALESCE(ROUND(s / NULLIF(v,0)),0), 'FM999,999,999,999') || '원'
-          FROM sal, vis;
+          FROM sal, dcnt;
 
       SL12_p_5:
-        sql: | # 1인당 평균 매출 전년대비 증감률(%)
-          WITH totals AS (
-            -- **수정: 단일 쿼리로 현재와 전년의 매출액 및 방문인구를 모두 합산**
+        sql: |  # 1인당 평균 매출 전년대비 증감률(%)
+          WITH
+          cur AS (
             SELECT
-              COALESCE(SUM(TOT_SALAMT), 0)::NUMERIC AS cur_s,           -- 현재 매출액
-              COALESCE(SUM(TOT_VIPOP), 0)::NUMERIC AS cur_v,            -- 현재 방문인구
-              COALESCE(SUM(TOT_SALAMT_PERV1Y), 0)::NUMERIC AS prev_s,   -- 전년 매출액
-              COALESCE(SUM(TOT_VIPOP_PERV1Y), 0)::NUMERIC AS prev_v     -- 전년 방문인구
-            FROM regionmonitor.TB_INTRST_REGION
-            WHERE REGION_CD = CAST(:REGION_CD AS VARCHAR)
-              AND STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
+              COALESCE(SUM(tot_salamt), 0)::numeric AS s,   -- 현재 총 매출액
+              COALESCE(SUM(tot_dcnt)  , 0)::numeric AS c    -- 현재 총 건수
+            FROM regionmonitor.tb_sexdstn_selng
+            WHERE region_cd = CAST(:REGION_CD AS varchar)
+              AND stdr_ymd BETWEEN :DATE_FROM AND :DATE_TO
+          ),
+          prev AS (
+            SELECT
+              COALESCE(SUM(tot_salamt), 0)::numeric AS s,   -- 전년 동기간 총 매출액
+              COALESCE(SUM(tot_dcnt)  , 0)::numeric AS c    -- 전년 동기간 총 건수
+            FROM regionmonitor.tb_sexdstn_selng
+            WHERE region_cd = CAST(:REGION_CD AS varchar)
+              AND stdr_ymd BETWEEN find_date(:DATE_FROM, 1) AND find_date(:DATE_TO, 1)
+          ),
+          avgv AS (
+            SELECT
+              (cur.s  / NULLIF(cur.c,  0)) AS cur_avg,      -- 현재 1건당 평균매출
+              (prev.s / NULLIF(prev.c, 0)) AS prev_avg      -- 전년 1건당 평균매출
+            FROM cur, prev
           )
-          SELECT 
+          SELECT
             CASE
-              -- 현재 1인당 평균: (t.cur_s / NULLIF(t.cur_v, 0))
-              -- 전년 1인당 평균: (t.prev_s / NULLIF(t.prev_v, 0))
-              WHEN COALESCE(ROUND(100.0 * (
-                  (t.cur_s / NULLIF(t.cur_v, 0)) - (t.prev_s / NULLIF(t.prev_v, 0))
-                ) / NULLIF((t.prev_s / NULLIF(t.prev_v, 0)), 0), 1), 0.0) > 0
-                THEN COALESCE(ROUND(100.0 * ((t.cur_s / NULLIF(t.cur_v, 0)) - (t.prev_s / NULLIF(t.prev_v, 0))) / NULLIF((t.prev_s / NULLIF(t.prev_v, 0)), 0), 1), 0.0)::TEXT || '% ▲'
-              WHEN COALESCE(ROUND(100.0 * (
-                  (t.cur_s / NULLIF(t.cur_v, 0)) - (t.prev_s / NULLIF(t.prev_v, 0))
-                ) / NULLIF((t.prev_s / NULLIF(t.prev_v, 0)), 0), 1), 0.0) < 0
-                THEN ABS(COALESCE(ROUND(100.0 * ((t.cur_s / NULLIF(t.cur_v, 0)) - (t.prev_s / NULLIF(t.prev_v, 0))) / NULLIF((t.prev_s / NULLIF(t.prev_v, 0)), 0), 1), 0.0))::TEXT || '% ▼'
-              ELSE COALESCE(ROUND(100.0 * (
-                  (t.cur_s / NULLIF(t.cur_v, 0)) - (t.prev_s / NULLIF(t.prev_v, 0))
-                ) / NULLIF((t.prev_s / NULLIF(t.prev_v, 0)), 0), 1), 0.0)::TEXT || '% -'
+              WHEN COALESCE(prev_avg, 0) = 0 THEN '데이터 없음'
+              WHEN ROUND(100.0 * ((cur_avg - prev_avg) / NULLIF(prev_avg, 0)), 1) > 0
+                THEN ROUND(100.0 * ((cur_avg - prev_avg) / NULLIF(prev_avg, 0)), 1)::text || '% ▲'
+              WHEN ROUND(100.0 * ((cur_avg - prev_avg) / NULLIF(prev_avg, 0)), 1) < 0
+                THEN ABS(ROUND(100.0 * ((cur_avg - prev_avg) / NULLIF(prev_avg, 0)), 1))::text || '% ▼'
+              ELSE ROUND(100.0 * ((cur_avg - prev_avg) / NULLIF(prev_avg, 0)), 1)::text || '% -'
             END
-          FROM totals t;
+          FROM avgv;
+
+
 
       # 3) 최다 매출 집단(연령) + 그 집단의 비중
       SL12_p_6:
@@ -2730,256 +2737,165 @@ slides:
   - name: "13 : 업종별 소비 TOP"
     tokens:
       SL13_1:
-        sql: | # 소비금액 1위 업종명
-          SELECT i.svc_induty_sclas_cd_nm
-          FROM regionmonitor.TB_TMZON_SELNG t
-          JOIN regionmonitor.tb_svc_induty_sclas i
-            ON t.SVC_INDUTY_SCLAS_CD = i.svc_induty_sclas_cd
-          WHERE t.REGION_CD = CAST(:REGION_CD AS VARCHAR)
-            AND t.STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
-          GROUP BY i.svc_induty_sclas_cd_nm, t.SVC_INDUTY_SCLAS_CD
-          ORDER BY
-            SUM(
-              COALESCE(t.T6_SALAMT,0)+COALESCE(t.T7_SALAMT,0)+COALESCE(t.T8_SALAMT,0)+COALESCE(t.T9_SALAMT,0)+
-              COALESCE(t.T10_SALAMT,0)+COALESCE(t.T11_SALAMT,0)+COALESCE(t.T12_SALAMT,0)+COALESCE(t.T13_SALAMT,0)+
-              COALESCE(t.T14_SALAMT,0)+COALESCE(t.T15_SALAMT,0)+COALESCE(t.T16_SALAMT,0)+COALESCE(t.T17_SALAMT,0)+
-              COALESCE(t.T18_SALAMT,0)+COALESCE(t.T19_SALAMT,0)+COALESCE(t.T20_SALAMT,0)+COALESCE(t.T21_SALAMT,0)+
-              COALESCE(t.T22_SALAMT,0)+COALESCE(t.T23_SALAMT,0)
-            ) DESC,
-            t.SVC_INDUTY_SCLAS_CD
-          LIMIT 1;
+        sql: | # 소비금액 1위 업종명 (TB_SEXDSTN_SELNG 기준)
+          WITH by_amt AS (
+            SELECT i.svc_induty_sclas_cd_nm AS nm,
+                  SUM(s.TOT_SALAMT) AS amt
+            FROM regionmonitor.TB_SEXDSTN_SELNG s
+            JOIN regionmonitor.tb_svc_induty_sclas i
+              ON s.SVC_INDUTY_SCLAS_CD = i.svc_induty_sclas_cd
+            WHERE s.REGION_CD = CAST(:REGION_CD AS VARCHAR)
+              AND s.STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
+            GROUP BY i.svc_induty_sclas_cd_nm
+            ORDER BY amt DESC
+            LIMIT 1
+          )
+          SELECT nm FROM by_amt;
 
       SL13_2:
         sql: | # 소비금액 1위 업종의 총금액(원)
-          SELECT to_char(
-                  SUM(
-                    COALESCE(t.T6_SALAMT,0)+COALESCE(t.T7_SALAMT,0)+COALESCE(t.T8_SALAMT,0)+COALESCE(t.T9_SALAMT,0)+
-                    COALESCE(t.T10_SALAMT,0)+COALESCE(t.T11_SALAMT,0)+COALESCE(t.T12_SALAMT,0)+COALESCE(t.T13_SALAMT,0)+
-                    COALESCE(t.T14_SALAMT,0)+COALESCE(t.T15_SALAMT,0)+COALESCE(t.T16_SALAMT,0)+COALESCE(t.T17_SALAMT,0)+
-                    COALESCE(t.T18_SALAMT,0)+COALESCE(t.T19_SALAMT,0)+COALESCE(t.T20_SALAMT,0)+COALESCE(t.T21_SALAMT,0)+
-                    COALESCE(t.T22_SALAMT,0)+COALESCE(t.T23_SALAMT,0)
-                  ),
-                  'FM999,999,999,999,999'
-                )
-          FROM regionmonitor.TB_TMZON_SELNG t
-          WHERE t.REGION_CD = CAST(:REGION_CD AS VARCHAR)
-            AND t.STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
-          GROUP BY t.SVC_INDUTY_SCLAS_CD
-          ORDER BY SUM(
-            COALESCE(t.T6_SALAMT,0)+COALESCE(t.T7_SALAMT,0)+COALESCE(t.T8_SALAMT,0)+COALESCE(t.T9_SALAMT,0)+
-            COALESCE(t.T10_SALAMT,0)+COALESCE(t.T11_SALAMT,0)+COALESCE(t.T12_SALAMT,0)+COALESCE(t.T13_SALAMT,0)+
-            COALESCE(t.T14_SALAMT,0)+COALESCE(t.T15_SALAMT,0)+COALESCE(t.T16_SALAMT,0)+COALESCE(t.T17_SALAMT,0)+
-            COALESCE(t.T18_SALAMT,0)+COALESCE(t.T19_SALAMT,0)+COALESCE(t.T20_SALAMT,0)+COALESCE(t.T21_SALAMT,0)+
-            COALESCE(t.T22_SALAMT,0)+COALESCE(t.T23_SALAMT,0)
-          ) DESC,
-          t.SVC_INDUTY_SCLAS_CD
-          LIMIT 1;
+          WITH by_amt AS (
+            SELECT i.svc_induty_sclas_cd_nm AS nm,
+                  SUM(s.TOT_SALAMT) AS amt
+            FROM regionmonitor.TB_SEXDSTN_SELNG s
+            JOIN regionmonitor.tb_svc_induty_sclas i
+              ON s.SVC_INDUTY_SCLAS_CD = i.svc_induty_sclas_cd
+            WHERE s.REGION_CD = CAST(:REGION_CD AS VARCHAR)
+              AND s.STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
+            GROUP BY i.svc_induty_sclas_cd_nm
+            ORDER BY amt DESC
+            LIMIT 1
+          )
+          SELECT to_char(amt, 'FM999,999,999,999,999') FROM by_amt;
 
       SL13_3:
         sql: | # 소비금액 1위 업종의 총건수(건)
-          SELECT to_char(
-                  SUM(
-                    COALESCE(t.T6_DCNT,0)+COALESCE(t.T7_DCNT,0)+COALESCE(t.T8_DCNT,0)+COALESCE(t.T9_DCNT,0)+
-                    COALESCE(t.T10_DCNT,0)+COALESCE(t.T11_DCNT,0)+COALESCE(t.T12_DCNT,0)+COALESCE(t.T13_DCNT,0)+
-                    COALESCE(t.T14_DCNT,0)+COALESCE(t.T15_DCNT,0)+COALESCE(t.T16_DCNT,0)+COALESCE(t.T17_DCNT,0)+
-                    COALESCE(t.T18_DCNT,0)+COALESCE(t.T19_DCNT,0)+COALESCE(t.T20_DCNT,0)+COALESCE(t.T21_DCNT,0)+
-                    COALESCE(t.T22_DCNT,0)+COALESCE(t.T23_DCNT,0)
-                  ),
-                  'FM999,999,999,999'
-                )
-          FROM regionmonitor.TB_TMZON_SELNG t
-          WHERE t.REGION_CD = CAST(:REGION_CD AS VARCHAR)
-            AND t.STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
-          GROUP BY t.SVC_INDUTY_SCLAS_CD
-          ORDER BY SUM(
-            COALESCE(t.T6_SALAMT,0)+COALESCE(t.T7_SALAMT,0)+COALESCE(t.T8_SALAMT,0)+COALESCE(t.T9_SALAMT,0)+
-            COALESCE(t.T10_SALAMT,0)+COALESCE(t.T11_SALAMT,0)+COALESCE(t.T12_SALAMT,0)+COALESCE(t.T13_SALAMT,0)+
-            COALESCE(t.T14_SALAMT,0)+COALESCE(t.T15_SALAMT,0)+COALESCE(t.T16_SALAMT,0)+COALESCE(t.T17_SALAMT,0)+
-            COALESCE(t.T18_SALAMT,0)+COALESCE(t.T19_SALAMT,0)+COALESCE(t.T20_SALAMT,0)+COALESCE(t.T21_SALAMT,0)+
-            COALESCE(t.T22_SALAMT,0)+COALESCE(t.T23_SALAMT,0)
-          ) DESC,
-          t.SVC_INDUTY_SCLAS_CD
+          WITH sums AS (
+            SELECT i.svc_induty_sclas_cd_nm AS nm,
+                  SUM(s.TOT_SALAMT) AS amt,
+                  SUM(s.TOT_DCNT)   AS cnt
+            FROM regionmonitor.TB_SEXDSTN_SELNG s
+            JOIN regionmonitor.tb_svc_induty_sclas i
+              ON s.SVC_INDUTY_SCLAS_CD = i.svc_induty_sclas_cd
+            WHERE s.REGION_CD = CAST(:REGION_CD AS VARCHAR)
+              AND s.STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
+            GROUP BY i.svc_induty_sclas_cd_nm
+          )
+          SELECT to_char(cnt, 'FM999,999,999,999')
+          FROM sums
+          ORDER BY amt DESC
           LIMIT 1;
 
       SL13_4:
         sql: | # 소비건수 1위 업종명
-          SELECT i.svc_induty_sclas_cd_nm
-          FROM regionmonitor.TB_TMZON_SELNG t
-          JOIN regionmonitor.tb_svc_induty_sclas i
-            ON t.SVC_INDUTY_SCLAS_CD = i.svc_induty_sclas_cd
-          WHERE t.REGION_CD = CAST(:REGION_CD AS VARCHAR)
-            AND t.STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
-          GROUP BY i.svc_induty_sclas_cd_nm, t.SVC_INDUTY_SCLAS_CD
-          ORDER BY
-            SUM(
-              COALESCE(t.T6_DCNT,0)+COALESCE(t.T7_DCNT,0)+COALESCE(t.T8_DCNT,0)+COALESCE(t.T9_DCNT,0)+
-              COALESCE(t.T10_DCNT,0)+COALESCE(t.T11_DCNT,0)+COALESCE(t.T12_DCNT,0)+COALESCE(t.T13_DCNT,0)+
-              COALESCE(t.T14_DCNT,0)+COALESCE(t.T15_DCNT,0)+COALESCE(t.T16_DCNT,0)+COALESCE(t.T17_DCNT,0)+
-              COALESCE(t.T18_DCNT,0)+COALESCE(t.T19_DCNT,0)+COALESCE(t.T20_DCNT,0)+COALESCE(t.T21_DCNT,0)+
-              COALESCE(t.T22_DCNT,0)+COALESCE(t.T23_DCNT,0)
-            ) DESC,
-            t.SVC_INDUTY_SCLAS_CD
-          LIMIT 1;
+          WITH by_cnt AS (
+            SELECT i.svc_induty_sclas_cd_nm AS nm,
+                  SUM(s.TOT_DCNT) AS cnt
+            FROM regionmonitor.TB_SEXDSTN_SELNG s
+            JOIN regionmonitor.tb_svc_induty_sclas i
+              ON s.SVC_INDUTY_SCLAS_CD = i.svc_induty_sclas_cd
+            WHERE s.REGION_CD = CAST(:REGION_CD AS VARCHAR)
+              AND s.STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
+            GROUP BY i.svc_induty_sclas_cd_nm
+            ORDER BY cnt DESC
+            LIMIT 1
+          )
+          SELECT nm FROM by_cnt;
 
       SL13_5:
         sql: | # 소비건수 1위 업종의 총금액(원)
-          SELECT to_char(
-                  SUM(
-                    COALESCE(t.T6_SALAMT,0)+COALESCE(t.T7_SALAMT,0)+COALESCE(t.T8_SALAMT,0)+COALESCE(t.T9_SALAMT,0)+
-                    COALESCE(t.T10_SALAMT,0)+COALESCE(t.T11_SALAMT,0)+COALESCE(t.T12_SALAMT,0)+COALESCE(t.T13_SALAMT,0)+
-                    COALESCE(t.T14_SALAMT,0)+COALESCE(t.T15_SALAMT,0)+COALESCE(t.T16_SALAMT,0)+COALESCE(t.T17_SALAMT,0)+
-                    COALESCE(t.T18_SALAMT,0)+COALESCE(t.T19_SALAMT,0)+COALESCE(t.T20_SALAMT,0)+COALESCE(t.T21_SALAMT,0)+
-                    COALESCE(t.T22_SALAMT,0)+COALESCE(t.T23_SALAMT,0)
-                  ),
-                  'FM999,999,999,999,999'
-                )
-          FROM regionmonitor.TB_TMZON_SELNG t
-          WHERE t.REGION_CD = CAST(:REGION_CD AS VARCHAR)
-            AND t.STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
-          GROUP BY t.SVC_INDUTY_SCLAS_CD
-          ORDER BY SUM(
-            COALESCE(t.T6_DCNT,0)+COALESCE(t.T7_DCNT,0)+COALESCE(t.T8_DCNT,0)+COALESCE(t.T9_DCNT,0)+
-            COALESCE(t.T10_DCNT,0)+COALESCE(t.T11_DCNT,0)+COALESCE(t.T12_DCNT,0)+COALESCE(t.T13_DCNT,0)+
-            COALESCE(t.T14_DCNT,0)+COALESCE(t.T15_DCNT,0)+COALESCE(t.T16_DCNT,0)+COALESCE(t.T17_DCNT,0)+
-            COALESCE(t.T18_DCNT,0)+COALESCE(t.T19_DCNT,0)+COALESCE(t.T20_DCNT,0)+COALESCE(t.T21_DCNT,0)+
-            COALESCE(t.T22_DCNT,0)+COALESCE(t.T23_DCNT,0)
-          ) DESC,
-          t.SVC_INDUTY_SCLAS_CD
+          WITH sums AS (
+            SELECT i.svc_induty_sclas_cd_nm AS nm,
+                  SUM(s.TOT_SALAMT) AS amt,
+                  SUM(s.TOT_DCNT)   AS cnt
+            FROM regionmonitor.TB_SEXDSTN_SELNG s
+            JOIN regionmonitor.tb_svc_induty_sclas i
+              ON s.SVC_INDUTY_SCLAS_CD = i.svc_induty_sclas_cd
+            WHERE s.REGION_CD = CAST(:REGION_CD AS VARCHAR)
+              AND s.STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
+            GROUP BY i.svc_induty_sclas_cd_nm
+          )
+          SELECT to_char(amt, 'FM999,999,999,999,999')
+          FROM sums
+          ORDER BY cnt DESC
           LIMIT 1;
 
       SL13_6:
         sql: | # 소비건수 1위 업종의 총건수(건)
-          SELECT to_char(
-                  SUM(
-                    COALESCE(t.T6_DCNT,0)+COALESCE(t.T7_DCNT,0)+COALESCE(t.T8_DCNT,0)+COALESCE(t.T9_DCNT,0)+
-                    COALESCE(t.T10_DCNT,0)+COALESCE(t.T11_DCNT,0)+COALESCE(t.T12_DCNT,0)+COALESCE(t.T13_DCNT,0)+
-                    COALESCE(t.T14_DCNT,0)+COALESCE(t.T15_DCNT,0)+COALESCE(t.T16_DCNT,0)+COALESCE(t.T17_DCNT,0)+
-                    COALESCE(t.T18_DCNT,0)+COALESCE(t.T19_DCNT,0)+COALESCE(t.T20_DCNT,0)+COALESCE(t.T21_DCNT,0)+
-                    COALESCE(t.T22_DCNT,0)+COALESCE(t.T23_DCNT,0)
-                  ),
-                  'FM999,999,999,999'
-                )
-          FROM regionmonitor.TB_TMZON_SELNG t
-          WHERE t.REGION_CD = CAST(:REGION_CD AS VARCHAR)
-            AND t.STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
-          GROUP BY t.SVC_INDUTY_SCLAS_CD
-          ORDER BY SUM(
-            COALESCE(t.T6_DCNT,0)+COALESCE(t.T7_DCNT,0)+COALESCE(t.T8_DCNT,0)+COALESCE(t.T9_DCNT,0)+
-            COALESCE(t.T10_DCNT,0)+COALESCE(t.T11_DCNT,0)+COALESCE(t.T12_DCNT,0)+COALESCE(t.T13_DCNT,0)+
-            COALESCE(t.T14_DCNT,0)+COALESCE(t.T15_DCNT,0)+COALESCE(t.T16_DCNT,0)+COALESCE(t.T17_DCNT,0)+
-            COALESCE(t.T18_DCNT,0)+COALESCE(t.T19_DCNT,0)+COALESCE(t.T20_DCNT,0)+COALESCE(t.T21_DCNT,0)+
-            COALESCE(t.T22_DCNT,0)+COALESCE(t.T23_DCNT,0)
-          ) DESC,
-          t.SVC_INDUTY_SCLAS_CD
-          LIMIT 1;
+          WITH by_cnt AS (
+            SELECT i.svc_induty_sclas_cd_nm AS nm,
+                  SUM(s.TOT_DCNT) AS cnt
+            FROM regionmonitor.TB_SEXDSTN_SELNG s
+            JOIN regionmonitor.tb_svc_induty_sclas i
+              ON s.SVC_INDUTY_SCLAS_CD = i.svc_induty_sclas_cd
+            WHERE s.REGION_CD = CAST(:REGION_CD AS VARCHAR)
+              AND s.STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
+            GROUP BY i.svc_induty_sclas_cd_nm
+            ORDER BY cnt DESC
+            LIMIT 1
+          )
+          SELECT to_char(cnt, 'FM999,999,999,999') FROM by_cnt;
 
       SL13_7:
         sql: | # 인당 평균매출액 1위 업종명 (amt/cnt)
-          SELECT i.svc_induty_sclas_cd_nm
-          FROM regionmonitor.TB_TMZON_SELNG t
-          JOIN regionmonitor.tb_svc_induty_sclas i
-            ON t.SVC_INDUTY_SCLAS_CD = i.svc_induty_sclas_cd
-          WHERE t.REGION_CD = CAST(:REGION_CD AS VARCHAR)
-            AND t.STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
-          GROUP BY i.svc_induty_sclas_cd_nm, t.SVC_INDUTY_SCLAS_CD
-          ORDER BY
-            ( SUM(
-                COALESCE(t.T6_SALAMT,0)+COALESCE(t.T7_SALAMT,0)+COALESCE(t.T8_SALAMT,0)+COALESCE(t.T9_SALAMT,0)+
-                COALESCE(t.T10_SALAMT,0)+COALESCE(t.T11_SALAMT,0)+COALESCE(t.T12_SALAMT,0)+COALESCE(t.T13_SALAMT,0)+
-                COALESCE(t.T14_SALAMT,0)+COALESCE(t.T15_SALAMT,0)+COALESCE(t.T16_SALAMT,0)+COALESCE(t.T17_SALAMT,0)+
-                COALESCE(t.T18_SALAMT,0)+COALESCE(t.T19_SALAMT,0)+COALESCE(t.T20_SALAMT,0)+COALESCE(t.T21_SALAMT,0)+
-                COALESCE(t.T22_SALAMT,0)+COALESCE(t.T23_SALAMT,0)
-              )::numeric
-              / NULLIF(
-                SUM(
-                  COALESCE(t.T6_DCNT,0)+COALESCE(t.T7_DCNT,0)+COALESCE(t.T8_DCNT,0)+COALESCE(t.T9_DCNT,0)+
-                  COALESCE(t.T10_DCNT,0)+COALESCE(t.T11_DCNT,0)+COALESCE(t.T12_DCNT,0)+COALESCE(t.T13_DCNT,0)+
-                  COALESCE(t.T14_DCNT,0)+COALESCE(t.T15_DCNT,0)+COALESCE(t.T16_DCNT,0)+COALESCE(t.T17_DCNT,0)+
-                  COALESCE(t.T18_DCNT,0)+COALESCE(t.T19_DCNT,0)+COALESCE(t.T20_DCNT,0)+COALESCE(t.T21_DCNT,0)+
-                  COALESCE(t.T22_DCNT,0)+COALESCE(t.T23_DCNT,0)
-                ), 0)
-            ) DESC,
-            t.SVC_INDUTY_SCLAS_CD
+          WITH avg_by_cat AS (
+            SELECT i.svc_induty_sclas_cd_nm AS nm,
+                  SUM(s.TOT_SALAMT) AS amt,
+                  SUM(s.TOT_DCNT)   AS cnt,
+                  (SUM(s.TOT_SALAMT) / NULLIF(SUM(s.TOT_DCNT),0)) AS avg_amt
+            FROM regionmonitor.TB_SEXDSTN_SELNG s
+            JOIN regionmonitor.tb_svc_induty_sclas i
+              ON s.SVC_INDUTY_SCLAS_CD = i.svc_induty_sclas_cd
+            WHERE s.REGION_CD = CAST(:REGION_CD AS VARCHAR)
+              AND s.STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
+            GROUP BY i.svc_induty_sclas_cd_nm
+          )
+          SELECT nm
+          FROM avg_by_cat
+          WHERE cnt > 0
+          ORDER BY avg_amt DESC
           LIMIT 1;
 
       SL13_8:
         sql: | # 인당 평균매출액 1위 업종의 평균금액(원)
-          SELECT to_char(
-            ( SUM(
-                COALESCE(t.T6_SALAMT,0)+COALESCE(t.T7_SALAMT,0)+COALESCE(t.T8_SALAMT,0)+COALESCE(t.T9_SALAMT,0)+
-                COALESCE(t.T10_SALAMT,0)+COALESCE(t.T11_SALAMT,0)+COALESCE(t.T12_SALAMT,0)+COALESCE(t.T13_SALAMT,0)+
-                COALESCE(t.T14_SALAMT,0)+COALESCE(t.T15_SALAMT,0)+COALESCE(t.T16_SALAMT,0)+COALESCE(t.T17_SALAMT,0)+
-                COALESCE(t.T18_SALAMT,0)+COALESCE(t.T19_SALAMT,0)+COALESCE(t.T20_SALAMT,0)+COALESCE(t.T21_SALAMT,0)+
-                COALESCE(t.T22_SALAMT,0)+COALESCE(t.T23_SALAMT,0)
-              )::numeric
-              / NULLIF(
-                SUM(
-                  COALESCE(t.T6_DCNT,0)+COALESCE(t.T7_DCNT,0)+COALESCE(t.T8_DCNT,0)+COALESCE(t.T9_DCNT,0)+
-                  COALESCE(t.T10_DCNT,0)+COALESCE(t.T11_DCNT,0)+COALESCE(t.T12_DCNT,0)+COALESCE(t.T13_DCNT,0)+
-                  COALESCE(t.T14_DCNT,0)+COALESCE(t.T15_DCNT,0)+COALESCE(t.T16_DCNT,0)+COALESCE(t.T17_DCNT,0)+
-                  COALESCE(t.T18_DCNT,0)+COALESCE(t.T19_DCNT,0)+COALESCE(t.T20_DCNT,0)+COALESCE(t.T21_DCNT,0)+
-                  COALESCE(t.T22_DCNT,0)+COALESCE(t.T23_DCNT,0)
-                ), 0)
-            ),
-            'FM999,999,999,999')
-          FROM regionmonitor.TB_TMZON_SELNG t
-          WHERE t.REGION_CD = CAST(:REGION_CD AS VARCHAR)
-            AND t.STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
-          GROUP BY t.SVC_INDUTY_SCLAS_CD
-          ORDER BY
-            ( SUM(
-                COALESCE(t.T6_SALAMT,0)+COALESCE(t.T7_SALAMT,0)+COALESCE(t.T8_SALAMT,0)+COALESCE(t.T9_SALAMT,0)+
-                COALESCE(t.T10_SALAMT,0)+COALESCE(t.T11_SALAMT,0)+COALESCE(t.T12_SALAMT,0)+COALESCE(t.T13_SALAMT,0)+
-                COALESCE(t.T14_SALAMT,0)+COALESCE(t.T15_SALAMT,0)+COALESCE(t.T16_SALAMT,0)+COALESCE(t.T17_SALAMT,0)+
-                COALESCE(t.T18_SALAMT,0)+COALESCE(t.T19_SALAMT,0)+COALESCE(t.T20_SALAMT,0)+COALESCE(t.T21_SALAMT,0)+
-                COALESCE(t.T22_SALAMT,0)+COALESCE(t.T23_SALAMT,0)
-              )::numeric
-              / NULLIF(
-                SUM(
-                  COALESCE(t.T6_DCNT,0)+COALESCE(t.T7_DCNT,0)+COALESCE(t.T8_DCNT,0)+COALESCE(t.T9_DCNT,0)+
-                  COALESCE(t.T10_DCNT,0)+COALESCE(t.T11_DCNT,0)+COALESCE(t.T12_DCNT,0)+COALESCE(t.T13_DCNT,0)+
-                  COALESCE(t.T14_DCNT,0)+COALESCE(t.T15_DCNT,0)+COALESCE(t.T16_DCNT,0)+COALESCE(t.T17_DCNT,0)+
-                  COALESCE(t.T18_DCNT,0)+COALESCE(t.T19_DCNT,0)+COALESCE(t.T20_DCNT,0)+COALESCE(t.T21_DCNT,0)+
-                  COALESCE(t.T22_DCNT,0)+COALESCE(t.T23_DCNT,0)
-                ), 0)
-            ) DESC,
-            t.SVC_INDUTY_SCLAS_CD
+          WITH avg_by_cat AS (
+            SELECT i.svc_induty_sclas_cd_nm AS nm,
+                  SUM(s.TOT_SALAMT) AS amt,
+                  SUM(s.TOT_DCNT)   AS cnt,
+                  (SUM(s.TOT_SALAMT) / NULLIF(SUM(s.TOT_DCNT),0)) AS avg_amt
+            FROM regionmonitor.TB_SEXDSTN_SELNG s
+            JOIN regionmonitor.tb_svc_induty_sclas i
+              ON s.SVC_INDUTY_SCLAS_CD = i.svc_induty_sclas_cd
+            WHERE s.REGION_CD = CAST(:REGION_CD AS VARCHAR)
+              AND s.STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
+            GROUP BY i.svc_induty_sclas_cd_nm
+          )
+          SELECT to_char(avg_amt, 'FM999,999,999,999')
+          FROM avg_by_cat
+          WHERE cnt > 0
+          ORDER BY avg_amt DESC
           LIMIT 1;
 
       SL13_9:
         sql: | # 인당 평균매출액 1위 업종의 총건수(건)
-          SELECT to_char(
-            SUM(
-              COALESCE(t.T6_DCNT,0)+COALESCE(t.T7_DCNT,0)+COALESCE(t.T8_DCNT,0)+COALESCE(t.T9_DCNT,0)+
-              COALESCE(t.T10_DCNT,0)+COALESCE(t.T11_DCNT,0)+COALESCE(t.T12_DCNT,0)+COALESCE(t.T13_DCNT,0)+
-              COALESCE(t.T14_DCNT,0)+COALESCE(t.T15_DCNT,0)+COALESCE(t.T16_DCNT,0)+COALESCE(t.T17_DCNT,0)+
-              COALESCE(t.T18_DCNT,0)+COALESCE(t.T19_DCNT,0)+COALESCE(t.T20_DCNT,0)+COALESCE(t.T21_DCNT,0)+
-              COALESCE(t.T22_DCNT,0)+COALESCE(t.T23_DCNT,0)
-            ),
-            'FM999,999,999,999')
-          FROM regionmonitor.TB_TMZON_SELNG t
-          WHERE t.REGION_CD = CAST(:REGION_CD AS VARCHAR)
-            AND t.STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
-          GROUP BY t.SVC_INDUTY_SCLAS_CD
-          ORDER BY
-            ( SUM(
-                COALESCE(t.T6_SALAMT,0)+COALESCE(t.T7_SALAMT,0)+COALESCE(t.T8_SALAMT,0)+COALESCE(t.T9_SALAMT,0)+
-                COALESCE(t.T10_SALAMT,0)+COALESCE(t.T11_SALAMT,0)+COALESCE(t.T12_SALAMT,0)+COALESCE(t.T13_SALAMT,0)+
-                COALESCE(t.T14_SALAMT,0)+COALESCE(t.T15_SALAMT,0)+COALESCE(t.T16_SALAMT,0)+COALESCE(t.T17_SALAMT,0)+
-                COALESCE(t.T18_SALAMT,0)+COALESCE(t.T19_SALAMT,0)+COALESCE(t.T20_SALAMT,0)+COALESCE(t.T21_SALAMT,0)+
-                COALESCE(t.T22_SALAMT,0)+COALESCE(t.T23_SALAMT,0)
-              )::numeric
-              / NULLIF(
-                SUM(
-                  COALESCE(t.T6_DCNT,0)+COALESCE(t.T7_DCNT,0)+COALESCE(t.T8_DCNT,0)+COALESCE(t.T9_DCNT,0)+
-                  COALESCE(t.T10_DCNT,0)+COALESCE(t.T11_DCNT,0)+COALESCE(t.T12_DCNT,0)+COALESCE(t.T13_DCNT,0)+
-                  COALESCE(t.T14_DCNT,0)+COALESCE(t.T15_DCNT,0)+COALESCE(t.T16_DCNT,0)+COALESCE(t.T17_DCNT,0)+
-                  COALESCE(t.T18_DCNT,0)+COALESCE(t.T19_DCNT,0)+COALESCE(t.T20_DCNT,0)+COALESCE(t.T21_DCNT,0)+
-                  COALESCE(t.T22_DCNT,0)+COALESCE(t.T23_DCNT,0)
-                ), 0)
-            ) DESC,
-            t.SVC_INDUTY_SCLAS_CD
+          WITH avg_by_cat AS (
+            SELECT i.svc_induty_sclas_cd_nm AS nm,
+                  SUM(s.TOT_SALAMT) AS amt,
+                  SUM(s.TOT_DCNT)   AS cnt,
+                  (SUM(s.TOT_SALAMT) / NULLIF(SUM(s.TOT_DCNT),0)) AS avg_amt
+            FROM regionmonitor.TB_SEXDSTN_SELNG s
+            JOIN regionmonitor.tb_svc_induty_sclas i
+              ON s.SVC_INDUTY_SCLAS_CD = i.svc_induty_sclas_cd
+            WHERE s.REGION_CD = CAST(:REGION_CD AS VARCHAR)
+              AND s.STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
+            GROUP BY i.svc_induty_sclas_cd_nm
+          )
+          SELECT to_char(cnt, 'FM999,999,999,999')
+          FROM avg_by_cat
+          WHERE cnt > 0
+          ORDER BY avg_amt DESC
           LIMIT 1;
+
 
     charts:
       SL13_chart_1:
@@ -3358,41 +3274,52 @@ slides:
     tokens:
       # 전체에서 가장 많이 소비한 연령대(라벨) & 그 비중(%)
       SL15_1:
-        sql: | # 최다 연령 라벨('20대'..'70대 이상')
+        sql: | # 최다 소비 연령 라벨 ('20대'~'70대 이상')
           WITH a AS (
-            SELECT '20대' AS g, SUM(GNR20_SALAMT) AS amt FROM regionmonitor.TB_AGRDE_SELNG
-            WHERE REGION_CD = CAST(:REGION_CD AS VARCHAR) AND STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
-            UNION ALL SELECT '30대', SUM(GNR30_SALAMT) FROM regionmonitor.TB_AGRDE_SELNG
-            WHERE REGION_CD = CAST(:REGION_CD AS VARCHAR) AND STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
-            UNION ALL SELECT '40대', SUM(GNR40_SALAMT) FROM regionmonitor.TB_AGRDE_SELNG
-            WHERE REGION_CD = CAST(:REGION_CD AS VARCHAR) AND STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
-            UNION ALL SELECT '50대', SUM(GNR50_SALAMT) FROM regionmonitor.TB_AGRDE_SELNG
-            WHERE REGION_CD = CAST(:REGION_CD AS VARCHAR) AND STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
-            UNION ALL SELECT '60대', SUM(GNR60_SALAMT) FROM regionmonitor.TB_AGRDE_SELNG
-            WHERE REGION_CD = CAST(:REGION_CD AS VARCHAR) AND STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
-            UNION ALL SELECT '70대 이상', SUM(GNR70_SALAMT) FROM regionmonitor.TB_AGRDE_SELNG
-            WHERE REGION_CD = CAST(:REGION_CD AS VARCHAR) AND STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
+            SELECT
+              COALESCE(SUM(GNR20_SALAMT),0)::numeric AS a20,
+              COALESCE(SUM(GNR30_SALAMT),0)::numeric AS a30,
+              COALESCE(SUM(GNR40_SALAMT),0)::numeric AS a40,
+              COALESCE(SUM(GNR50_SALAMT),0)::numeric AS a50,
+              COALESCE(SUM(GNR60_SALAMT),0)::numeric AS a60,
+              COALESCE(SUM(GNR70_SALAMT),0)::numeric AS a70
+            FROM regionmonitor.TB_AGRDE_SELNG
+            WHERE REGION_CD = CAST(:REGION_CD AS VARCHAR)
+              AND STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
           )
-          SELECT g FROM a ORDER BY amt DESC, g LIMIT 1;
+          SELECT CASE
+                  WHEN a20 = GREATEST(a20,a30,a40,a50,a60,a70) THEN '20대'
+                  WHEN a30 = GREATEST(a20,a30,a40,a50,a60,a70) THEN '30대'
+                  WHEN a40 = GREATEST(a20,a30,a40,a50,a60,a70) THEN '40대'
+                  WHEN a50 = GREATEST(a20,a30,a40,a50,a60,a70) THEN '50대'
+                  WHEN a60 = GREATEST(a20,a30,a40,a50,a60,a70) THEN '60대'
+                  ELSE '70대 이상'
+                END AS top_age
+          FROM a;
+
 
       SL15_2:
-        sql: | # 해당 연령 비중(%)
+        sql: | # 최다 소비 연령 비중(%)
           WITH a AS (
-            SELECT '20대' AS g, SUM(GNR20_SALAMT) AS amt FROM regionmonitor.TB_AGRDE_SELNG
-            WHERE REGION_CD = CAST(:REGION_CD AS VARCHAR) AND STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
-            UNION ALL SELECT '30대', SUM(GNR30_SALAMT) FROM regionmonitor.TB_AGRDE_SELNG
-            WHERE REGION_CD = CAST(:REGION_CD AS VARCHAR) AND STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
-            UNION ALL SELECT '40대', SUM(GNR40_SALAMT) FROM regionmonitor.TB_AGRDE_SELNG
-            WHERE REGION_CD = CAST(:REGION_CD AS VARCHAR) AND STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
-            UNION ALL SELECT '50대', SUM(GNR50_SALAMT) FROM regionmonitor.TB_AGRDE_SELNG
-            WHERE REGION_CD = CAST(:REGION_CD AS VARCHAR) AND STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
-            UNION ALL SELECT '60대', SUM(GNR60_SALAMT) FROM regionmonitor.TB_AGRDE_SELNG
-            WHERE REGION_CD = CAST(:REGION_CD AS VARCHAR) AND STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
-            UNION ALL SELECT '70대 이상', SUM(GNR70_SALAMT) FROM regionmonitor.TB_AGRDE_SELNG
-            WHERE REGION_CD = CAST(:REGION_CD AS VARCHAR) AND STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
+            SELECT
+              COALESCE(SUM(GNR20_SALAMT),0)::numeric AS a20,
+              COALESCE(SUM(GNR30_SALAMT),0)::numeric AS a30,
+              COALESCE(SUM(GNR40_SALAMT),0)::numeric AS a40,
+              COALESCE(SUM(GNR50_SALAMT),0)::numeric AS a50,
+              COALESCE(SUM(GNR60_SALAMT),0)::numeric AS a60,
+              COALESCE(SUM(GNR70_SALAMT),0)::numeric AS a70
+            FROM regionmonitor.TB_AGRDE_SELNG
+            WHERE REGION_CD = CAST(:REGION_CD AS VARCHAR)
+              AND STDR_YMD BETWEEN :DATE_FROM AND :DATE_TO
+          ),
+          total AS (
+            SELECT (a20 + a30 + a40 + a50 + a60 + a70) AS tot,
+                  GREATEST(a20,a30,a40,a50,a60,a70) AS max_amt
+            FROM a
           )
-          SELECT ROUND(100.0 * amt / NULLIF(SUM(amt) OVER (),0), 1)
-          FROM a ORDER BY amt DESC, g LIMIT 1;
+          SELECT ROUND(100.0 * max_amt / NULLIF(tot,0), 1)
+          FROM total;
+
 
       # 연령대별 금액/비중(표 하단)
       SL15_3:
