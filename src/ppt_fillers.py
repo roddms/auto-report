@@ -287,16 +287,12 @@ def color_sl21_chart(chart, sdict, bar_series_name="방문인구(명)"):
             pass
 
 
+
 def color_line_markers_by_flags(chart, series_name, flags,
                                 color_festival=RGBColor(231, 76, 60),   # 빨강
-                                color_default=RGBColor(96, 96, 96),     # 회색/기본
+                                color_default=RGBColor(118, 113, 113),     # 회색/기본
                                 marker_size=6):
-    """
-    chart: python-pptx Chart
-    series_name: 라인 시리즈 이름 (예: '매출건수(건)')
-    flags: [0/1,...] (축제=1, 비축제=0)
-    포인트별로 마커 색을 다르게 칠함 (선 색은 그대로 유지)
-    """
+
     # 시리즈 찾기
     name2idx = {chart.series[i].name: i for i in range(len(chart.series))}
     if series_name not in name2idx or not flags:
@@ -304,7 +300,12 @@ def color_line_markers_by_flags(chart, series_name, flags,
 
     s = chart.series[name2idx[series_name]]
 
-    # 마커가 꺼져 있으면 켜기 (시리즈 공통 설정)
+    # 라인 색/굵기 지정 (시리즈 단위)
+    line = s.format.line
+    line.color.rgb = RGBColor(118, 113, 113)   # 회색
+    line.width = Pt(2.25)
+
+    # 마커 켜기
     if XL_MARKER_STYLE is not None:
         try:
             s.marker.style = XL_MARKER_STYLE.CIRCLE
@@ -312,15 +313,23 @@ def color_line_markers_by_flags(chart, series_name, flags,
         except Exception:
             pass
 
-    # 포인트별 마커 색상 적용
+    # 마커 색 + 마커 테두리 색 적용
     for i, pt in enumerate(s.points):
         try:
-            fill = pt.format.fill
-            fill.solid()
-            fill.fore_color.rgb = color_festival if flags[i] == 1 else color_default
+            base_color = color_festival if flags[i] == 1 else RGBColor(31,78,121)
+
+            # 마커 채우기(속)
+            marker = pt.marker
+            mfill = marker.format.fill
+            mfill.solid()
+            mfill.fore_color.rgb = base_color
+
+            # 마커 테두리
+            mline = marker.format.line
+            mline.color.rgb = color_default
+            mline.width = Pt(1)
 
         except Exception:
-            # 길이 불일치 등은 조용히 스킵
             continue
 
 # ---------------------------------

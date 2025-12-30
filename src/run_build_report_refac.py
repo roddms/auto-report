@@ -101,7 +101,7 @@ def get_basemap_img(bounds_3857, zoom=16):
 # 그룹별 시설 지도 (REGION_WKT 사용)
 # ------------------------------
 def plot_facility_group_map(engine, region_cd, group_name, out_png,
-                            region_wkt, buffer_m=500, title=None):
+                            region_wkt, buffer_m=500, title=None, figsize=(12, 7)):
     import geopandas as gpd
     import json
 
@@ -121,20 +121,41 @@ def plot_facility_group_map(engine, region_cd, group_name, out_png,
     sql_region = """
     SELECT ST_AsGeoJSON(ST_GeomFromText(:REGION_WKT, 4326)) AS gj;
     """
-    # 시설도 REGON_WKT로 공간조인
-    sql_fac = """
-    WITH reg AS (
-      SELECT ST_GeomFromText(:REGION_WKT, 4326) AS geom
-    )
-    SELECT
-      f.fclty_nm AS name,
-      f.Y_CRDNT  AS x,      -- lon
-      f.X_CRDNT  AS y,      -- lat
-      SUBSTRING(TRIM(f.fclty_sclas_cd) FROM 1 FOR 1) AS lclas
-    FROM regionmonitor.TB_MAIN_FCLTY_INFO f, reg
-    WHERE ST_Within(ST_SetSRID(ST_MakePoint(f.Y_CRDNT,f.X_CRDNT),4326), reg.geom)
-      AND SUBSTRING(TRIM(f.fclty_sclas_cd) FROM 1 FOR 1) = ANY(:LETTERS);
-    """
+
+    if group_name == "그룹5(개별)":
+        sql_fac = """
+        WITH reg AS (
+          SELECT ST_GeomFromText(:REGION_WKT, 4326) AS geom
+        )
+        SELECT
+          p.prkplce_nm AS name,
+          p.Y_CRDNT    AS x,      -- lon
+          p.X_CRDNT    AS y,      -- lat
+          'P'          AS lclas   -- 주차장 고정
+        FROM regionmonitor.TB_PRKPLCE_INFO p, reg
+        WHERE p.X_CRDNT IS NOT NULL
+          AND p.Y_CRDNT IS NOT NULL
+          AND ST_Within(
+                ST_SetSRID(ST_MakePoint(p.Y_CRDNT, p.X_CRDNT), 4326),
+                reg.geom
+              );
+        """
+    
+    else:
+        # 시설도 REGON_WKT로 공간조인
+        sql_fac = """
+        WITH reg AS (
+        SELECT ST_GeomFromText(:REGION_WKT, 4326) AS geom
+        )
+        SELECT
+        f.fclty_nm AS name,
+        f.Y_CRDNT  AS x,      -- lon
+        f.X_CRDNT  AS y,      -- lat
+        SUBSTRING(TRIM(f.fclty_sclas_cd) FROM 1 FOR 1) AS lclas
+        FROM regionmonitor.TB_MAIN_FCLTY_INFO f, reg
+        WHERE ST_Within(ST_SetSRID(ST_MakePoint(f.Y_CRDNT,f.X_CRDNT),4326), reg.geom)
+        AND SUBSTRING(TRIM(f.fclty_sclas_cd) FROM 1 FOR 1) = ANY(:LETTERS);
+        """
 
     params = {"REGION_WKT": region_wkt, "LETTERS": letters}
     with engine.begin() as conn:
@@ -158,16 +179,29 @@ def plot_facility_group_map(engine, region_cd, group_name, out_png,
         'A':'숙박시설','C':'문화여가시설','K':'상영관'
     }
 
-    fig, ax = plt.subplots(figsize=(8,7))
+    fig, ax = plt.subplots(figsize=figsize)
 
     # bbox & basemap (캐시)
     xmin, ymin, xmax, ymax = reg3857.total_bounds
-    pad = max((xmax-xmin), (ymax-ymin)) * 0.05
+    # pad = max((xmax-xmin), (ymax-ymin)) * 0.05
+    # bounds = (xmin - pad, ymin - pad, xmax + pad, ymax + pad)
+    width  = xmax - xmin
+    height = ymax - ymin
+
+    target_ratio = figsize[0] / figsize[1]
+
+    if width / height < target_ratio:
+        need_width = height * target_ratio
+        extra = (need_width - width) / 2
+        xmin -= extra
+        xmax += extra
+
+    pad = max(width, height) * 0.05
     bounds = (xmin - pad, ymin - pad, xmax + pad, ymax + pad)
     ax.set_xlim(bounds[0], bounds[2])
     ax.set_ylim(bounds[1], bounds[3])
 
-    img, ext = get_basemap_img(bounds, zoom=16)
+    img, ext = get_basemap_img(bounds, zoom=14)
     ax.imshow(img, extent=ext, interpolation="bilinear", zorder=0)
 
     # points
@@ -245,7 +279,8 @@ with engine.begin() as conn:
     ).scalar()
 
 if not region_wkt:
-    raise RuntimeError("⚠️ REGION_WKT 생성 실패 — REGION_CD 확인 필요")
+    print("⚠️ popltn_relm이 없어 REGION_WKT를 건너뜁니다. 지도 기능 비활성화.")
+    region_wkt = None
 print("✅ REGION_WKT 계산 완료")
 
 # 이후 모든 쿼리에 공통 파라미터로 사용
@@ -271,7 +306,7 @@ safe_name = "".join(c for c in region_name if c.isalnum() or c in (' ', '_', '-'
 
 # 🔹 PPT 저장 경로
 OUTPUT_PPT = f"out/report_{safe_name}.pptx"
-TEMPLATE_PPT = "template/master_pretendard.pptx"
+TEMPLATE_PPT = "template/master2.pptx"
 
 # ------------------------------
 # 토큰 / 차트 (커넥션 재사용)
@@ -345,32 +380,35 @@ region_cd = cfg["params"]["REGION_CD"]
 
 os.makedirs(f"out/img/{region_cd}", exist_ok=True)
 
-plot_facility_group_map(engine, region_cd, "그룹1", out_png=f"out/img/{region_cd}/group1_map.png", region_wkt=region_wkt, buffer_m=BUFFER_M)
-image_map["SL_G1_MAP"] = f"out/img/{region_cd}/group1_map.png"
+if region_wkt:
+    plot_facility_group_map(engine, region_cd, "그룹1", out_png=f"out/img/{region_cd}/group1_map.png", region_wkt=region_wkt, buffer_m=BUFFER_M)
+    image_map["SL_G1_MAP"] = f"out/img/{region_cd}/group1_map.png"
 
-plot_facility_group_map(engine, region_cd, "그룹2(개별)", out_png=f"out/img/{region_cd}/group2_map.png", region_wkt=region_wkt, buffer_m=BUFFER_M)
-image_map["SL_G2_MAP"] = f"out/img/{region_cd}/group2_map.png"
+    plot_facility_group_map(engine, region_cd, "그룹2(개별)", out_png=f"out/img/{region_cd}/group2_map.png", region_wkt=region_wkt, buffer_m=BUFFER_M)
+    image_map["SL_G2_MAP"] = f"out/img/{region_cd}/group2_map.png"
 
-plot_facility_group_map(engine, region_cd, "그룹3(개별)", out_png=f"out/img/{region_cd}/group3_map.png", region_wkt=region_wkt, buffer_m=BUFFER_M)
-image_map["SL_G3_MAP"] = f"out/img/{region_cd}/group3_map.png"
+    plot_facility_group_map(engine, region_cd, "그룹3(개별)", out_png=f"out/img/{region_cd}/group3_map.png", region_wkt=region_wkt, buffer_m=BUFFER_M)
+    image_map["SL_G3_MAP"] = f"out/img/{region_cd}/group3_map.png"
 
-plot_facility_group_map(engine, region_cd, "그룹4(개별)", out_png=f"out/img/{region_cd}/group4_map.png", region_wkt=region_wkt, buffer_m=BUFFER_M)
-image_map["SL_G4_MAP"] = f"out/img/{region_cd}/group4_map.png"
+    plot_facility_group_map(engine, region_cd, "그룹4(개별)", out_png=f"out/img/{region_cd}/group4_map.png", region_wkt=region_wkt, buffer_m=BUFFER_M)
+    image_map["SL_G4_MAP"] = f"out/img/{region_cd}/group4_map.png"
 
-plot_facility_group_map(engine, region_cd, "그룹5(개별)", out_png=f"out/img/{region_cd}/group5_map.png", region_wkt=region_wkt, buffer_m=BUFFER_M)
-image_map["SL_G5_MAP"] = f"out/img/{region_cd}/group5_map.png"
+    plot_facility_group_map(engine, region_cd, "그룹5(개별)", out_png=f"out/img/{region_cd}/group5_map.png", region_wkt=region_wkt, buffer_m=BUFFER_M, figsize=(8, 7))
+    image_map["SL_G5_MAP"] = f"out/img/{region_cd}/group5_map.png"
 
-plot_facility_group_map(engine, region_cd, "그룹6", out_png=f"out/img/{region_cd}/group6_map.png", region_wkt=region_wkt, buffer_m=BUFFER_M)
-image_map["SL_G6_MAP"] = f"out/img/{region_cd}/group6_map.png"
+    plot_facility_group_map(engine, region_cd, "그룹6", out_png=f"out/img/{region_cd}/group6_map.png", region_wkt=region_wkt, buffer_m=BUFFER_M)
+    image_map["SL_G6_MAP"] = f"out/img/{region_cd}/group6_map.png"
 
-plot_facility_group_map(engine, region_cd, "그룹7(개별)", out_png=f"out/img/{region_cd}/group7_map.png", region_wkt=region_wkt, buffer_m=BUFFER_M)
-image_map["SL_G7_MAP"] = f"out/img/{region_cd}/group7_map.png"
+    plot_facility_group_map(engine, region_cd, "그룹7(개별)", out_png=f"out/img/{region_cd}/group7_map.png", region_wkt=region_wkt, buffer_m=BUFFER_M)
+    image_map["SL_G7_MAP"] = f"out/img/{region_cd}/group7_map.png"
 
-plot_facility_group_map(engine, region_cd, "그룹8", out_png=f"out/img/{region_cd}/group8_map.png", region_wkt=region_wkt, buffer_m=BUFFER_M)
-image_map["SL_G8_MAP"] = f"out/img/{region_cd}/group8_map.png"
+    plot_facility_group_map(engine, region_cd, "그룹8", out_png=f"out/img/{region_cd}/group8_map.png", region_wkt=region_wkt, buffer_m=BUFFER_M)
+    image_map["SL_G8_MAP"] = f"out/img/{region_cd}/group8_map.png"
 
-print(f"DEBUG: 최종 Image Map: {image_map}")
+    print(f"DEBUG: 최종 Image Map: {image_map}")
 
+else:
+    print("⚠️ 지도 생성 스킵 (popltn_relm 없음)")
 # ------------------------------
 # PPT 저장 (토큰/차트/이미지)
 # ------------------------------
