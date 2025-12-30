@@ -8,7 +8,7 @@ PostgreSQL 데이터베이스에서 데이터를 조회하여 PowerPoint 보고�
 
 ```
 auto_report/
-├── run_batch_serial.py           # 🎯 메인 실행 파일 (배치 처리)
+├── run_batch_serial.py           # 메인 실행 파일
 ├── src/
 │   ├── run_build_report_refac.py # 보고서 생성 엔진
 │   └── ppt_fillers.py            # PPT 템플릿 채우기 유틸리티
@@ -41,7 +41,7 @@ pip install -r requirements.txt
 ```bash
 # 아래 파일의 region_info 내에 ("행사명", "지역코드", "시작일자", "종료일자") 입력 후 실행
 # run_batch_serial_suwon.py, run_batch_serial_Icheon.py (region_info만 다르고 동일한 실행 파일)
-python run_batch_serial.py
+python run_batch_serial_suwon.py
 ```
 
 생성된 보고서는 `out/` 디렉토리에 저장됩니다.
