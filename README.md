@@ -39,9 +39,8 @@ pip install -r requirements.txt
 ### 2단계: 실행
 
 ```bash
-# 배치 실행 (여러 지역 코드 순차 처리)
 # 아래 파일의 region_info 내에 ("행사명", "지역코드", "시작일자", "종료일자") 입력 후 실행
-# run_batch_serial_suwon.py, run_batch_serial_Icheon.py (region_info만 다르고 동일한 실행 파일임)
+# run_batch_serial_suwon.py, run_batch_serial_Icheon.py (region_info만 다르고 동일한 실행 파일)
 python run_batch_serial.py
 ```
 
